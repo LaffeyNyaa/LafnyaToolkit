@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="CppFormatter/CppFormatter.csproj" Id="a2d4aea3-24a9-4e7e-95a4-aef7b3449629" />
+  <Project Path="CSharpFormatter/CSharpFormatter.csproj" Id="57e80a50-ad92-48a3-bee2-bc7ee92dd21e" />
+  <Project Path="GDScriptFormatter/GDScriptFormatter.csproj" Id="2f4cb0f8-c466-46f6-8bf7-47efda1144bd" />
+  <Project Path="JavaFormatter/JavaFormatter.csproj" Id="2658cc25-d5b2-4fbc-b83c-021afa28f076" />
+  <Project Path="JsonFormatter/JsonFormatter.csproj" Id="5b354e29-a882-431a-bc5d-657c219bb856" />
+</Solution>

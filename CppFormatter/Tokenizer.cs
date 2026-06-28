@@ -1,0 +1,414 @@
+using System.Collections.Generic;
+using System.Text;
+
+namespace CppFormatter
+{
+    /// <summary>
+    /// Represents the types of tokens recognizable in C++ source code.
+    /// </summary>
+    internal enum TokenKind
+    {
+        /// <summary>Ordinary code (identifiers, keywords, operators, punctuation, etc.).</summary>
+        Code,
+        /// <summary>Ordinary string literal "..." and its prefixed variants L"..."/u8"..."/u"..."/U"..." (with escape sequences).</summary>
+        String,
+        /// <summary>Raw string literal R"delim(...)delim" and its prefixed variants LR"..."/u8R"..."/uR"..."/UR"..." (escape sequences not processed).</summary>
+        VerbatimString,
+        /// <summary>Character literal '...' (with escape sequences).</summary>
+        Char,
+        /// <summary>Single-line comment //... to end of line.</summary>
+        SingleLineComment,
+        /// <summary>Multi-line comment /* ... */.</summary>
+        MultiLineComment,
+        /// <summary>Preprocessor directive #... entire line (including backslash continuation).</summary>
+        Preprocessor
+    }
+
+    /// <summary>
+    /// Represents a token and its original text.
+    /// </summary>
+    internal struct Token
+    {
+        /// <summary>The token kind.</summary>
+        public TokenKind Kind;
+        /// <summary>The original text of the token (not normalized in any way).</summary>
+        public string Text;
+    }
+
+    /// <summary>
+    /// Splits a C++ source character stream into a token sequence, preserving original text and trivia.
+    /// </summary>
+    internal static class Tokenizer
+    {
+        /// <summary>
+        /// Tokenizes the source and returns a list of tokens.
+        /// </summary>
+        /// <param name="source">The original source string.</param>
+        /// <returns>A list of tokens in order of appearance.</returns>
+        public static List<Token> Tokenize(string source)
+        {
+            var tokens = new List<Token>();
+            var code = new StringBuilder();
+            int i = 0;
+            int n = source.Length;
+
+            while (i < n)
+            {
+                char c = source[i];
+
+                if (c == '/' && i + 1 < n && source[i + 1] == '/')
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+
+                    while (i < n && source[i] != '\n')
+                    {
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.SingleLineComment,
+                        Text = source.Substring(start, i - start) });
+                    continue;
+                }
+
+                if (c == '/' && i + 1 < n && source[i + 1] == '*')
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+                    i += 2;
+
+                    while (i < n)
+                    {
+                        if (source[i] == '*' && i + 1 < n && source[i + 1] == '/')
+                        {
+                            i += 2;
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.MultiLineComment,
+                        Text = source.Substring(start, i - start) });
+                    continue;
+                }
+
+                int rawPrefixLen = TryMatchRawStringPrefix(source, i);
+                if (rawPrefixLen >= 0 && !IsPrevIdentChar(source, i))
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+                    i += rawPrefixLen + 2;
+
+                    int delimStart = i;
+                    while (i < n && source[i] != '(')
+                    {
+                        i++;
+                    }
+
+                    if (i >= n)
+                    {
+                        tokens.Add(new Token { Kind = TokenKind.VerbatimString,
+                            Text = source.Substring(start, i - start) });
+                        continue;
+                    }
+
+                    string delim = source.Substring(delimStart, i - delimStart);
+                    i++;
+                    string terminator = ")" + delim + "\"";
+                    int endIdx = source.IndexOf(terminator, i,
+                        System.StringComparison.Ordinal);
+
+                    if (endIdx < 0)
+                    {
+                        i = n;
+                    }
+                    else
+                    {
+                        i = endIdx + terminator.Length;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.VerbatimString,
+                        Text = source.Substring(start, i - start) });
+                    continue;
+                }
+
+                int strPrefixLen = TryMatchStringPrefix(source, i);
+                if (strPrefixLen >= 0 && (strPrefixLen == 0 || !IsPrevIdentChar(source, i)))
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+                    i += strPrefixLen + 1;
+
+                    while (i < n)
+                    {
+                        if (source[i] == '\\')
+                        {
+                            i += 2;
+                            continue;
+                        }
+
+                        if (source[i] == '"')
+                        {
+                            i++;
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.String,
+                        Text = source.Substring(start, i - start) });
+                    continue;
+                }
+
+                if (c == '\'')
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+                    i++;
+
+                    while (i < n)
+                    {
+                        if (source[i] == '\\')
+                        {
+                            i += 2;
+                            continue;
+                        }
+
+                        if (source[i] == '\'')
+                        {
+                            i++;
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.Char,
+                        Text = source.Substring(start, i - start) });
+                    continue;
+                }
+
+                if (c == '#' && IsLineStart(source, i))
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+
+                    while (i < n)
+                    {
+                        if (source[i] == '\\' && i + 1 < n && source[i + 1] == '\n')
+                        {
+                            i += 2;
+                            continue;
+                        }
+
+                        if (source[i] == '\\' && i + 2 < n &&
+                            source[i + 1] == '\r' && source[i + 2] == '\n')
+                        {
+                            i += 3;
+                            continue;
+                        }
+
+                        if (source[i] == '\n')
+                        {
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.Preprocessor,
+                        Text = source.Substring(start, i - start) });
+                    continue;
+                }
+
+                code.Append(c);
+                i++;
+            }
+
+            FlushCode(tokens, code);
+            return tokens;
+        }
+
+        /// <summary>
+        /// Reconstructs the token list back into a string (should match the original text).
+        /// </summary>
+        /// <param name="tokens">The token list.</param>
+        /// <returns>The reconstructed string.</returns>
+        public static string Reconstruct(List<Token> tokens)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var t in tokens)
+            {
+                sb.Append(t.Text);
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Constructs a boolean array marking whether each character position belongs to a Code token,
+        /// based on the given text and token list.
+        /// </summary>
+        /// <param name="text">The text.</param>
+        /// <param name="tokens">The token list (should be the tokenization result of text).</param>
+        /// <returns>A boolean array; true means the position is a Code token character.</returns>
+        public static bool[] BuildCodeMask(string text, List<Token> tokens)
+        {
+            var mask = new bool[text.Length];
+            int pos = 0;
+
+            foreach (var t in tokens)
+            {
+                for (int j = 0; j < t.Text.Length; j++)
+                {
+                    if (pos + j < mask.Length)
+                    {
+                        mask[pos + j] = t.Kind == TokenKind.Code;
+                    }
+                }
+
+                pos += t.Text.Length;
+            }
+
+            return mask;
+        }
+
+        /// <summary>
+        /// Outputs accumulated Code characters as a Code token and clears the accumulator.
+        /// </summary>
+        /// <param name="tokens">The token list.</param>
+        /// <param name="code">The StringBuilder accumulating Code characters.</param>
+        private static void FlushCode(List<Token> tokens, StringBuilder code)
+        {
+            if (code.Length > 0)
+            {
+                tokens.Add(new Token { Kind = TokenKind.Code,
+                    Text = code.ToString() });
+                code.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Determines whether the '#' at position index is at the start of a line
+        /// (preceded only by whitespace or the beginning of the file).
+        /// </summary>
+        /// <param name="source">The source string.</param>
+        /// <param name="index">The position of the current '#'.</param>
+        /// <returns>true if the '#' is at line start; otherwise false.</returns>
+        private static bool IsLineStart(string source, int index)
+        {
+            int j = index - 1;
+
+            while (j >= 0)
+            {
+                char ch = source[j];
+
+                if (ch == '\n')
+                {
+                    return true;
+                }
+
+                if (ch != ' ' && ch != '\t' && ch != '\r')
+                {
+                    return false;
+                }
+
+                j--;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Determines whether a given character is an identifier character (letter, digit, or underscore).
+        /// </summary>
+        /// <param name="c">The character to test.</param>
+        /// <returns>true if the character is an identifier character; otherwise false.</returns>
+        private static bool IsIdentChar(char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') || c == '_';
+        }
+
+        /// <summary>
+        /// Determines whether the character before position i is an identifier character.
+        /// </summary>
+        /// <param name="source">The source string.</param>
+        /// <param name="i">The current position.</param>
+        /// <returns>true if the previous character is an identifier character; otherwise false.</returns>
+        private static bool IsPrevIdentChar(string source, int i)
+        {
+            if (i == 0)
+            {
+                return false;
+            }
+
+            return IsIdentChar(source[i - 1]);
+        }
+
+        /// <summary>
+        /// Attempts to match the prefix of a raw string literal at position i,
+        /// returning the prefix length (excluding R and ").
+        /// </summary>
+        /// <param name="source">The source string.</param>
+        /// <param name="i">The current position.</param>
+        /// <returns>The prefix length (0, 1, or 2); -1 if not the start of a raw string literal.</returns>
+        private static int TryMatchRawStringPrefix(string source, int i)
+        {
+            int n = source.Length;
+
+            if (i + 1 < n && source[i] == 'R' && source[i + 1] == '"')
+            {
+                return 0;
+            }
+
+            if (i + 2 < n && (source[i] == 'L' || source[i] == 'u' || source[i] == 'U') &&
+                source[i + 1] == 'R' && source[i + 2] == '"')
+            {
+                return 1;
+            }
+
+            if (i + 3 < n && source[i] == 'u' && source[i + 1] == '8' &&
+                source[i + 2] == 'R' && source[i + 3] == '"')
+            {
+                return 2;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Attempts to match the prefix of an ordinary string literal at position i,
+        /// returning the prefix length (excluding ").
+        /// </summary>
+        /// <param name="source">The source string.</param>
+        /// <param name="i">The current position.</param>
+        /// <returns>The prefix length (0, 1, or 2); -1 if not the start of a string literal.</returns>
+        private static int TryMatchStringPrefix(string source, int i)
+        {
+            int n = source.Length;
+
+            if (i < n && source[i] == '"')
+            {
+                return 0;
+            }
+
+            if (i + 1 < n && (source[i] == 'L' || source[i] == 'u' || source[i] == 'U') &&
+                source[i + 1] == '"')
+            {
+                return 1;
+            }
+
+            if (i + 2 < n && source[i] == 'u' && source[i + 1] == '8' &&
+                source[i + 2] == '"')
+            {
+                return 2;
+            }
+
+            return -1;
+        }
+    }
+}
