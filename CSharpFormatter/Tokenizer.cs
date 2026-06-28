@@ -104,7 +104,6 @@ namespace CSharpFormatter
                     FlushCode(tokens, code);
                     int start = i;
                     i += 2;
-
                     while (i < n)
                     {
                         if (source[i] == '"')
@@ -252,7 +251,6 @@ namespace CSharpFormatter
         public static string Reconstruct(List<Token> tokens)
         {
             var sb = new StringBuilder();
-
             foreach (var t in tokens)
             {
                 sb.Append(t.Text);
@@ -304,11 +302,9 @@ namespace CSharpFormatter
         private static bool IsLineStart(string source, int index)
         {
             int j = index - 1;
-
             while (j >= 0)
             {
                 char ch = source[j];
-
                 if (ch == '\n')
                 {
                     return true;

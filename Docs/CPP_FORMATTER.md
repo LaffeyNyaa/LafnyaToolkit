@@ -16,6 +16,13 @@
 - **C++ Standard**: Strictly follows the **C++20** standard syntax.
 - **Base Style**: Adheres to the **K&R** (Kernighan and Ritchie) coding style.
 
+### Multi-line Token Content Protection
+
+- **Protected Tokens**: The formatter preserves the internal content of multi-line raw string literals (`R"delim(...)delim"` and prefixed variants) and multi-line comments (`/* ... */`) exactly as-is.
+- **No Modification**: Lines fully inside a multi-line raw string or multi-line comment are never modified — trailing whitespace, blank lines, line length limits, and indentation rules do not apply to them.
+- **Line Ending Inside Token**: If a line's last character falls inside a multi-line token, trailing whitespace trimming is skipped for that line to avoid corrupting string content.
+- **Brace Merging**: A `{` that appears alone on a line but is inside a comment or string literal is never merged to the previous line.
+
 ### Control Flow Statements
 
 - **Mandatory Braces**: Enforces curly braces `{}` for all control structures (`if`, `else`, `else if`, `for`, `while`, etc.).
@@ -142,6 +149,21 @@ In addition to `if`/`else`/`else if`/`for`/`while`, the formatter also enforces 
   } while (cond);
   ```
 
+- **`do-while` Closing Brace**: The formatter also ensures that for existing `do-while` loops where `}` and `while` are on separate lines, the `while` is merged onto the same line as `}`. This applies only when the `}` matches the body of a `do` statement (verified via brace matching), preventing incorrect merges with standalone `while` loops.
+  - *Before*:
+    ```cpp
+    do {
+        stmt;
+    }
+    while (cond);
+    ```
+  - *After*:
+    ```cpp
+    do {
+        stmt;
+    } while (cond);
+    ```
+
 - **`switch`**: If the switch body is a single non-block statement, it is wrapped in `{ ... }`. Example:
   ```cpp
   switch (x) {
@@ -156,3 +178,23 @@ In addition to `if`/`else`/`else if`/`for`/`while`, the formatter also enforces 
 The stream insertion (`<<`) and extraction (`>>`) operators are treated as safe break points for line wrapping, with the following constraint:
 
 A break is permitted at `<<` or `>>` only when the preceding non-whitespace character is one of `)`, `]`, an identifier character (letter/digit/`_`), `"` (string close), or `'` (char close). This avoids breaking inside template parameter lists (e.g., `vector<vector<int>>`) where `>>` is part of a template closing bracket rather than a stream operator.
+
+---
+
+### Continuation Indicator: Exclusion Rules
+
+When determining whether a line is a continuation of the previous line (for indentation purposes), the formatter treats lines ending with `,`, `+`, `(`, `=`, `?`, `:`, `&&`, or `||` as continuation indicators. However, the following `:`-terminated lines are **excluded** from being treated as continuations:
+
+- **Access specifiers**: `public:`, `private:`, `protected:`
+- **Case labels**: `case <expr>:`
+- **Default label**: `default:`
+- **Ordinary labels**: `<identifier>:`
+
+This prevents incorrect over-indentation of statements following access specifiers, switch case labels, and goto labels. The `:` in a ternary expression (e.g., `cond ? a :`) still triggers continuation indentation.
+
+---
+
+### File Encoding
+
+- **Read**: The formatter auto-detects the file encoding via byte order marks (BOM). Supported encodings: UTF-8 (with/without BOM), UTF-16 LE (with BOM), UTF-16 BE (with BOM), UTF-32 LE (with BOM), UTF-32 BE (with BOM). Files without a BOM are read as UTF-8.
+- **Write**: After formatting, the file is always written as UTF-8 without BOM, regardless of the original encoding. If the formatted content is identical to the original (and the original was already UTF-8 without BOM), the file is skipped and not rewritten.

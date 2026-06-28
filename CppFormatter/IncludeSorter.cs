@@ -54,7 +54,8 @@ namespace CppFormatter
                 return source;
             }
 
-            var includes = new List<string>();
+            var includes = new List<IncludeEntry>();
+            var pendingComments = new List<string>();
 
             for (int i = firstInclude; i <= lastInclude; i++)
             {
@@ -62,44 +63,52 @@ namespace CppFormatter
 
                 if (IsIncludeDirective(trimmed))
                 {
-                    includes.Add(trimmed);
+                    includes.Add(new IncludeEntry(
+                        new List<string>(pendingComments), trimmed));
+                    pendingComments.Clear();
+                    continue;
+                }
+
+                if (IsCommentLine(trimmed))
+                {
+                    pendingComments.Add(trimmed);
                 }
             }
 
-            var systemGroup = new List<string>();
-            var thirdPartyGroup = new List<string>();
-            var projectModuleGroup = new List<string>();
-            var currentModuleGroup = new List<string>();
+            var systemGroup = new List<IncludeEntry>();
+            var thirdPartyGroup = new List<IncludeEntry>();
+            var projectModuleGroup = new List<IncludeEntry>();
+            var currentModuleGroup = new List<IncludeEntry>();
 
-            foreach (var inc in includes)
+            foreach (var entry in includes)
             {
-                int bucket = ClassifyInclude(inc);
+                int bucket = ClassifyInclude(entry.IncludeLine);
 
                 if (bucket == 0)
                 {
-                    systemGroup.Add(inc);
+                    systemGroup.Add(entry);
                 }
 
                 else if (bucket == 1)
                 {
-                    thirdPartyGroup.Add(inc);
+                    thirdPartyGroup.Add(entry);
                 }
 
                 else if (bucket == 2)
                 {
-                    projectModuleGroup.Add(inc);
+                    projectModuleGroup.Add(entry);
                 }
 
                 else
                 {
-                    currentModuleGroup.Add(inc);
+                    currentModuleGroup.Add(entry);
                 }
             }
 
-            systemGroup.Sort(CompareByPath);
-            thirdPartyGroup.Sort(CompareByPath);
-            projectModuleGroup.Sort(CompareByPath);
-            currentModuleGroup.Sort(CompareByPath);
+            systemGroup.Sort(CompareEntryByPath);
+            thirdPartyGroup.Sort(CompareEntryByPath);
+            projectModuleGroup.Sort(CompareEntryByPath);
+            currentModuleGroup.Sort(CompareEntryByPath);
             var newBlock = new List<string>();
             AppendGroup(newBlock, systemGroup);
             AppendGroup(newBlock, thirdPartyGroup);
@@ -147,10 +156,14 @@ namespace CppFormatter
             return result.ToString();
         }
 
-        /// <summary>Appends include lines from one bucket to the result block, inserting exactly one blank line between buckets.</summary>
+        /// <summary>
+        /// Appends include entries from one bucket to the result block,
+        /// emitting each entry's leading comments followed by its include
+        /// line, with exactly one blank line between buckets.
+        /// </summary>
         /// <param name="block">The result block being built.</param>
-        /// <param name="group">The list of include lines for the current bucket.</param>
-        private static void AppendGroup(List<string> block, List<string> group)
+        /// <param name="group">The list of include entries for the bucket.</param>
+        private static void AppendGroup(List<string> block, List<IncludeEntry> group)
         {
             if (group.Count == 0)
             {
@@ -162,7 +175,23 @@ namespace CppFormatter
                 block.Add(string.Empty);
             }
 
-            block.AddRange(group);
+            foreach (var entry in group)
+            {
+                block.AddRange(entry.LeadingComments);
+                block.Add(entry.IncludeLine);
+            }
+        }
+
+        /// <summary>
+        /// Compares two include entries by their include path, delegating
+        /// to CompareByPath on the underlying include lines.
+        /// </summary>
+        /// <param name="a">The first entry.</param>
+        /// <param name="b">The second entry.</param>
+        /// <returns>The comparison result.</returns>
+        private static int CompareEntryByPath(IncludeEntry a, IncludeEntry b)
+        {
+            return CompareByPath(a.IncludeLine, b.IncludeLine);
         }
 
         /// <summary>Compares by include path using Ordinal lexicographic order; falls back to comparing original lines Ordinal when paths are equal, to maintain stability.</summary>
@@ -356,6 +385,30 @@ namespace CppFormatter
         private static bool IsAsciiLetter(char c)
         {
             return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+        }
+
+        /// <summary>
+        /// Represents a single #include directive together with the comment
+        /// lines that immediately precede it within the include block.
+        /// </summary>
+        private class IncludeEntry
+        {
+            /// <summary>Gets the comment lines directly above this include.</summary>
+            public List<string> LeadingComments { get; }
+
+            /// <summary>Gets the trimmed #include directive line.</summary>
+            public string IncludeLine { get; }
+
+            /// <summary>
+            /// Initializes a new instance of the IncludeEntry class.
+            /// </summary>
+            /// <param name="leadingComments">The preceding comment lines.</param>
+            /// <param name="includeLine">The include directive line.</param>
+            public IncludeEntry(List<string> leadingComments, string includeLine)
+            {
+                LeadingComments = leadingComments;
+                IncludeLine = includeLine;
+            }
         }
     }
 }

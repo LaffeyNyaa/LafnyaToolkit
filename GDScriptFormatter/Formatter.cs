@@ -14,19 +14,32 @@ namespace GDScriptFormatter
         private const int MaxLineLength = 80;
 
         /// <summary>
-        /// Applies all formatting rules to a source string and returns the result.
+        /// Applies all formatting rules to a source string and returns the result. Line endings are
+        /// normalized first, then tabs are normalized only in Code regions, then enums are expanded,
+        /// and finally the tokenization is reused for re-indentation and line-length splitting.
         /// </summary>
         /// <param name="source">The original source string.</param>
         /// <returns>The formatted source string.</returns>
         public static string Format(string source)
         {
-            var tokens = Tokenizer.Tokenize(source);
-            string text = Tokenizer.Reconstruct(tokens);
+            if (source == null || source.Length == 0)
+            {
+                return source ?? string.Empty;
+            }
+
+            string text = source.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            var tabTokens = Tokenizer.Tokenize(text);
+            bool[] tabMask = Tokenizer.BuildCodeMask(text, tabTokens);
+            text = NormalizeTabs(text, tabMask);
+
             text = ExpandEnums(text);
-            text = text.Replace("\t", "    ");
-            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            var tokens = Tokenizer.Tokenize(text);
+            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+
             var lines = SplitLines(text);
-            lines = Reindent(lines, text);
+            lines = Reindent(lines, text, tokens, isCode);
             lines = ApplyBlankLineRules(lines);
             lines = CollapseBlankLines(lines);
             lines = TrimTrailingWhitespace(lines);
@@ -34,6 +47,39 @@ namespace GDScriptFormatter
             string result = string.Join("\n", lines);
             result = EnsureSingleTrailingNewline(result);
             return result;
+        }
+
+        /// <summary>
+        /// Replaces tabs with 4 spaces only at Code-region positions, preserving tabs inside string
+        /// literals and comments so that string contents are never modified.
+        /// </summary>
+        /// <param name="text">The normalized text.</param>
+        /// <param name="isCode">The code mask of the text.</param>
+        /// <returns>The text with Code-region tabs expanded to 4 spaces.</returns>
+        private static string NormalizeTabs(string text, bool[] isCode)
+        {
+            if (text.Length == 0)
+            {
+                return text;
+            }
+
+            var sb = new StringBuilder(text.Length + 16);
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                if (c == '\t' && i < isCode.Length && isCode[i])
+                {
+                    sb.Append("    ");
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -70,14 +116,12 @@ namespace GDScriptFormatter
                 }
 
                 int braceStart = FindOpenBrace(text, isCode, afterEnum);
-
                 if (braceStart < 0)
                 {
                     continue;
                 }
 
                 int braceEnd = FindMatchingClose(text, isCode, braceStart);
-
                 if (braceEnd < 0)
                 {
                     continue;
@@ -86,7 +130,6 @@ namespace GDScriptFormatter
                 string content = text.Substring(braceStart + 1,
                     braceEnd - braceStart - 1);
                 var members = SplitEnumMembers(content);
-
                 if (members.Count == 0)
                 {
                     continue;
@@ -122,12 +165,17 @@ namespace GDScriptFormatter
         /// Colon-based indentation recalculation: infers block depth stack from original indentation,
         /// colon-terminated code lines (not inside brackets) open a new block, bracket depth &gt; 0 or
         /// previous line ending with \ indicates a continuation line (indented one extra level). Lines inside
-        /// triple-quoted strings preserve their original indentation.
+        /// triple-quoted strings preserve their original indentation. Reuses the caller-provided tokens
+        /// and code mask instead of re-tokenizing.
         /// </summary>
-        private static List<string> Reindent(List<string> lines, string text)
+        /// <param name="lines">The input lines.</param>
+        /// <param name="text">The full text corresponding to the lines.</param>
+        /// <param name="tokens">The tokenization of text (reused).</param>
+        /// <param name="isCode">The code mask of text (reused).</param>
+        /// <returns>The re-indented lines.</returns>
+        private static List<string> Reindent(List<string> lines, string text,
+            List<Token> tokens, bool[] isCode)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
             var lineStarts = ComputeLineStarts(lines);
             var lineInfo = ComputeLineInfo(lines, text, isCode, lineStarts);
@@ -224,7 +272,8 @@ namespace GDScriptFormatter
                 info[i].OriginalDepth = origDepth;
                 info[i].IsContinuation = parenBracketDepth > 0;
 
-                if (i > 0 && EndsWithBackslash(lines[i - 1]))
+                if (i > 0 && EndsWithBackslash(text, isCode,
+                    lineStarts[i - 1], lines[i - 1].Length))
                 {
                     info[i].IsContinuation = true;
                 }
@@ -493,7 +542,6 @@ namespace GDScriptFormatter
 
             bool sameIndent = prevIndent == curIndent;
             bool deeperThanPrev = curIndent > prevIndent;
-            bool shallowerThanPrev = curIndent < prevIndent;
             int want = 0;
 
             if (sameIndent && IsFuncOrClassDecl(curTrimmed))
@@ -534,7 +582,10 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Determines whether a preceding comment line is attached to the current declaration (originally no blank line between them).
+        /// Determines whether a preceding comment line is attached to the current declaration.
+        /// Doc comment lines (starting with ##) are always force-attached to a following declaration
+        /// regardless of whether a blank line originally separated them. Single-# comments are
+        /// attached only when no blank line originally separated them.
         /// </summary>
         private static bool IsAttachedComment(string prevTrimmed,
             string curTrimmed, List<NonBlankEntry> nonBlank, int curIdx)
@@ -547,6 +598,11 @@ namespace GDScriptFormatter
             if (!IsDeclarationLine(curTrimmed))
             {
                 return false;
+            }
+
+            if (prevTrimmed.StartsWith("##"))
+            {
+                return true;
             }
 
             if (!nonBlank[curIdx].HadBlankAbove)
@@ -737,7 +793,7 @@ namespace GDScriptFormatter
             }
 
             if (StartsWithKeyword(trimmed, "static") &&
-                trimmed.Contains("var"))
+                (trimmed.Contains("var") || trimmed.Contains("func")))
             {
                 return true;
             }
@@ -793,8 +849,7 @@ namespace GDScriptFormatter
                 return 2;
             }
 
-            if (StartsWithKeyword(trimmed, "static") &&
-                trimmed.Contains("var"))
+            if (StartsWithKeyword(trimmed, "static var"))
             {
                 return 3;
             }
@@ -820,10 +875,26 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Extracts the member name from a member declaration.
+        /// Extracts the member name from a member declaration. Handles static-prefixed declarations
+        /// (static var, static func) by stripping the leading "static " before applying the keyword rules.
         /// </summary>
         private static string ExtractMemberName(string trimmed)
         {
+            if (trimmed.StartsWith("static "))
+            {
+                string rest = trimmed.Substring("static ".Length).TrimStart();
+
+                if (rest.StartsWith("var "))
+                {
+                    return ExtractNameAfter(rest, "var ");
+                }
+
+                if (rest.StartsWith("func "))
+                {
+                    return ExtractNameAfter(rest, "func ");
+                }
+            }
+
             if (trimmed.StartsWith("var "))
             {
                 return ExtractNameAfter(trimmed, "var ");
@@ -1013,7 +1084,9 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Recursively splits a line so each segment is at most 80 characters.
+        /// Recursively splits a line so each segment is at most 80 characters. Splitting priority:
+        /// unclosed-bracket comma split; closed-bracket comma split (commas inside already-balanced
+        /// brackets); top-level equals wrapping; otherwise leave the line unchanged.
         /// </summary>
         private static List<string> SplitLongLine(string line)
         {
@@ -1040,7 +1113,6 @@ namespace GDScriptFormatter
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
 
             int bracketDepth = 0;
-            bool hasUnclosedBracket = false;
 
             for (int ci = indentLen; ci < line.Length; ci++)
             {
@@ -1064,10 +1136,7 @@ namespace GDScriptFormatter
                 }
             }
 
-            if (bracketDepth > 0)
-            {
-                hasUnclosedBracket = true;
-            }
+            bool hasUnclosedBracket = bracketDepth > 0;
 
             if (hasUnclosedBracket)
             {
@@ -1081,6 +1150,26 @@ namespace GDScriptFormatter
 
                     if (first.Length > 0 && first.Length < line.Length)
                     {
+                        var res = new List<string> { first };
+                        res.AddRange(SplitLongLine(rest));
+                        return res;
+                    }
+                }
+            }
+
+            if (!hasUnclosedBracket)
+            {
+                int breakAt = FindCommaBreakInBrackets(line, isCode, indentLen);
+
+                if (breakAt > 0 && breakAt < line.Length)
+                {
+                    string first = line.Substring(0, breakAt).TrimEnd();
+
+                    if (first.Length > 0 && first.Length <= MaxLineLength &&
+                        first.Length < line.Length)
+                    {
+                        string rest = contIndent +
+                            line.Substring(breakAt).TrimStart();
                         var res = new List<string> { first };
                         res.AddRange(SplitLongLine(rest));
                         return res;
@@ -1244,23 +1333,59 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Determines whether a line ends with a backslash (continuation marker).
+        /// Determines whether the line occupying [lineStart, lineStart+lineLength) in text ends with
+        /// a continuation backslash that is located in a Code region. Backslashes inside comments or
+        /// string literals do not trigger continuation. A doubled backslash (\\) in Code is treated
+        /// as a non-continuation to preserve prior behavior.
         /// </summary>
-        private static bool EndsWithBackslash(string line)
+        /// <param name="text">The full text.</param>
+        /// <param name="isCode">The code mask of text.</param>
+        /// <param name="lineStart">The starting offset of the line in text.</param>
+        /// <param name="lineLength">The length of the line (excluding the line terminator).</param>
+        /// <returns>True if the line ends with a Code-region continuation backslash.</returns>
+        private static bool EndsWithBackslash(string text, bool[] isCode,
+            int lineStart, int lineLength)
         {
-            string t = line.TrimEnd();
+            int lastIdx = -1;
 
-            if (t.Length > 0 && t[t.Length - 1] == '\\')
+            for (int i = lineStart + lineLength - 1; i >= lineStart; i--)
             {
-                if (t.Length >= 2 && t[t.Length - 2] == '\\')
+                if (i >= text.Length)
                 {
-                    return false;
+                    continue;
                 }
 
-                return true;
+                char c = text[i];
+
+                if (c != ' ' && c != '\t')
+                {
+                    lastIdx = i;
+                    break;
+                }
             }
 
-            return false;
+            if (lastIdx < 0)
+            {
+                return false;
+            }
+
+            if (lastIdx >= isCode.Length || !isCode[lastIdx])
+            {
+                return false;
+            }
+
+            if (text[lastIdx] != '\\')
+            {
+                return false;
+            }
+
+            if (lastIdx > lineStart && text[lastIdx - 1] == '\\' &&
+                lastIdx - 1 < isCode.Length && isCode[lastIdx - 1])
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -1296,21 +1421,6 @@ namespace GDScriptFormatter
         private static bool IsWordChar(char c)
         {
             return char.IsLetterOrDigit(c) || c == '_';
-        }
-
-        /// <summary>
-        /// Skips whitespace characters and returns the next non-whitespace position.
-        /// </summary>
-        private static int SkipWhitespace(string text, int pos)
-        {
-            while (pos < text.Length &&
-                (text[pos] == ' ' || text[pos] == '\t' ||
-                text[pos] == '\n' || text[pos] == '\r'))
-            {
-                pos++;
-            }
-
-            return pos;
         }
 
         /// <summary>

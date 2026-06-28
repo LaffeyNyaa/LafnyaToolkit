@@ -72,21 +72,9 @@ namespace JsonFormatter
             while (_index < _text.Length)
             {
                 char c = _text[_index];
-                if (c == ' ' || c == '\t')
+                if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
                 {
-                    _index++;
-                    _column++;
-                }
-                else if (c == '\n')
-                {
-                    _index++;
-                    _line++;
-                    _column = 1;
-                }
-                else if (c == '\r')
-                {
-                    _index++;
-                    _column = 1;
+                    ReadChar();
                 }
                 else
                 {
@@ -97,20 +85,32 @@ namespace JsonFormatter
 
         /// <summary>
         /// Reads and consumes the current character, updating line and column
-        /// numbers.
+        /// numbers. A lone '\r' (old-Mac line ending) increments the line
+        /// counter, and a '\r\n' sequence is treated as a single line break by
+        /// consuming the '\n'.
         /// </summary>
         /// <returns>The character that was consumed.</returns>
         private char ReadChar()
         {
+            if (_index >= _text.Length)
+            {
+                throw new InvalidOperationException("ReadChar past end of input.");
+            }
             char c = _text[_index];
             _index++;
-            if (c == '\n')
+            if (c == '\r')
             {
                 _line++;
                 _column = 1;
+                // Treat \r\n as a single line break by consuming the \n.
+                if (_index < _text.Length && _text[_index] == '\n')
+                {
+                    _index++;
+                }
             }
-            else if (c == '\r')
+            else if (c == '\n')
             {
+                _line++;
                 _column = 1;
             }
             else
@@ -295,8 +295,7 @@ namespace JsonFormatter
             // Optional '-'
             if (_index < _text.Length && _text[_index] == '-')
             {
-                _index++;
-                _column++;
+                ReadChar();
             }
 
             if (_index >= _text.Length)
@@ -308,18 +307,15 @@ namespace JsonFormatter
             char c = _text[_index];
             if (c == '0')
             {
-                _index++;
-                _column++;
+                ReadChar();
             }
             else if (c >= '1' && c <= '9')
             {
-                _index++;
-                _column++;
+                ReadChar();
                 while (_index < _text.Length &&
                     _text[_index] >= '0' && _text[_index] <= '9')
                 {
-                    _index++;
-                    _column++;
+                    ReadChar();
                 }
             }
             else
@@ -330,8 +326,7 @@ namespace JsonFormatter
             // Optional fractional part
             if (_index < _text.Length && _text[_index] == '.')
             {
-                _index++;
-                _column++;
+                ReadChar();
                 if (_index >= _text.Length ||
                     _text[_index] < '0' || _text[_index] > '9')
                 {
@@ -340,8 +335,7 @@ namespace JsonFormatter
                 while (_index < _text.Length &&
                     _text[_index] >= '0' && _text[_index] <= '9')
                 {
-                    _index++;
-                    _column++;
+                    ReadChar();
                 }
             }
 
@@ -349,13 +343,11 @@ namespace JsonFormatter
             if (_index < _text.Length &&
                 (_text[_index] == 'e' || _text[_index] == 'E'))
             {
-                _index++;
-                _column++;
+                ReadChar();
                 if (_index < _text.Length &&
                     (_text[_index] == '+' || _text[_index] == '-'))
                 {
-                    _index++;
-                    _column++;
+                    ReadChar();
                 }
                 if (_index >= _text.Length ||
                     _text[_index] < '0' || _text[_index] > '9')
@@ -365,8 +357,7 @@ namespace JsonFormatter
                 while (_index < _text.Length &&
                     _text[_index] >= '0' && _text[_index] <= '9')
                 {
-                    _index++;
-                    _column++;
+                    ReadChar();
                 }
             }
 
@@ -387,8 +378,7 @@ namespace JsonFormatter
                 {
                     throw Error("invalid keyword '" + expected + "'");
                 }
-                _index++;
-                _column++;
+                ReadChar();
             }
             return JsonValue.FromScalar(kind, expected);
         }

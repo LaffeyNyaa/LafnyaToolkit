@@ -1,0 +1,251 @@
+using System.Collections.Generic;
+
+namespace CSharpFormatter
+{
+    /// <summary>
+    /// Splits lines exceeding the maximum length at safe token boundaries.
+    /// </summary>
+    internal static class LineLengthProcessor
+    {
+        /// <summary>
+        /// Splits lines exceeding 80 characters at safe token boundaries;
+        /// continuation lines are indented one extra level.
+        /// </summary>
+        /// <param name="lines">The line list.</param>
+        /// <returns>The processed line list.</returns>
+        public static List<string> ApplyLineLengthLimit(
+            List<string> lines)
+        {
+            var result = new List<string>(lines.Count);
+
+            foreach (var line in lines)
+            {
+                if (line.Length <= TextUtils.MaxLineLength)
+                {
+                    result.Add(line);
+                    continue;
+                }
+
+                var split = SplitLongLine(line);
+                result.AddRange(split);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Recursively splits a single line so that each segment does not
+        /// exceed 80 characters; splits only at Code token boundaries.
+        /// </summary>
+        private static List<string> SplitLongLine(string line)
+        {
+            if (line.Length <= TextUtils.MaxLineLength)
+            {
+                return new List<string> { line };
+            }
+
+            int indentLen = 0;
+
+            while (indentLen < line.Length && line[indentLen] == ' ')
+            {
+                indentLen++;
+            }
+
+            if (indentLen >= line.Length)
+            {
+                return new List<string> { line };
+            }
+
+            string indent = line.Substring(0, indentLen);
+            string contIndent = indent +
+                new string(' ', TextUtils.IndentSize);
+            var tokens = Tokenizer.Tokenize(line);
+            bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
+            int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
+            if (breakAt < 0 || breakAt >= line.Length)
+            {
+                return new List<string> { line };
+            }
+
+            string first = line.Substring(0, breakAt).TrimEnd();
+            string rest = contIndent + line.Substring(breakAt).TrimStart();
+
+            if (first.Length == 0 || first.Length >= line.Length)
+            {
+                return new List<string> { line };
+            }
+
+            var result = new List<string> { first };
+            result.AddRange(SplitLongLine(rest));
+            return result;
+        }
+
+        /// <summary>
+        /// Finds a safe break point within a Code token: prefers the largest
+        /// break point not exceeding 80 characters; if no such point exists,
+        /// returns the first break point beyond 80 characters.
+        /// </summary>
+        private static int FindSafeBreakPoint(string line, bool[] isCode,
+            int startIdx)
+        {
+            int bestInRange = -1;
+            int firstOutOfRange = -1;
+            int i = startIdx;
+            while (i < line.Length)
+            {
+                if (!isCode[i])
+                {
+                    i++;
+                    continue;
+                }
+
+                char c = line[i];
+                int bp = -1;
+                bp = TryMatchTwoCharOperator(line, i, c);
+
+                if (bp < 0 && c == ',')
+                {
+                    bp = i + 1;
+                }
+
+                if (bp < 0 && c == ';' && i + 1 < line.Length)
+                {
+                    bp = i + 1;
+                }
+
+                if (bp < 0 && i > startIdx)
+                {
+                    bp = TryMatchSingleCharOp(line, i, c, startIdx);
+                }
+
+                if (bp > 0)
+                {
+                    if (bp <= TextUtils.MaxLineLength)
+                    {
+                        bestInRange = bp;
+                    }
+
+                    else if (firstOutOfRange < 0)
+                    {
+                        firstOutOfRange = bp;
+                    }
+                }
+
+                i++;
+            }
+
+            if (bestInRange > 0)
+            {
+                return bestInRange;
+            }
+
+            return firstOutOfRange;
+        }
+
+        /// <summary>
+        /// Attempts to match a two-character operator at position
+        /// <paramref name="i"/> and returns the break position after it.
+        /// </summary>
+        private static int TryMatchTwoCharOperator(string line, int i,
+            char c)
+        {
+            if (i + 1 >= line.Length)
+            {
+                return -1;
+            }
+
+            char next = line[i + 1];
+
+            if (c == '=' && (next == '=' || next == '>'))
+            {
+                return i + 2;
+            }
+
+            if (c == '!' && next == '=')
+            {
+                return i + 2;
+            }
+
+            if (c == '<' && next == '=')
+            {
+                return i + 2;
+            }
+
+            if (c == '>' && next == '=')
+            {
+                return i + 2;
+            }
+
+            if (c == '+' && next == '=')
+            {
+                return i + 2;
+            }
+
+            if (c == '-' && next == '=')
+            {
+                return i + 2;
+            }
+
+            if (c == '&' && next == '&')
+            {
+                return i + 2;
+            }
+
+            if (c == '|' && next == '|')
+            {
+                return i + 2;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Attempts to match a single-character binary operator at position
+        /// <paramref name="i"/>.
+        /// </summary>
+        private static int TryMatchSingleCharOp(string line, int i, char c,
+            int startIdx)
+        {
+            bool isBinaryChar = c == '+' || c == '-' || c == '*' ||
+                c == '/' || c == '%' || c == '<' || c == '>';
+
+            if (isBinaryChar && IsBinaryOpContext(line, i, startIdx))
+            {
+                return i + 1;
+            }
+
+            if (c == '=' && IsBinaryOpContext(line, i, startIdx) &&
+                (i + 1 >= line.Length ||
+                (line[i + 1] != '=' && line[i + 1] != '>')))
+            {
+                return i + 1;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Determines whether position <paramref name="i"/> in the line is
+        /// in a binary operator context (preceded by ), ], identifier, _,
+        /// or ").
+        /// </summary>
+        private static bool IsBinaryOpContext(string line, int i,
+            int startIdx)
+        {
+            int prev = i - 1;
+            while (prev >= startIdx && line[prev] == ' ')
+            {
+                prev--;
+            }
+
+            if (prev < startIdx)
+            {
+                return false;
+            }
+
+            char pc = line[prev];
+            return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
+                pc == '_' || pc == '"';
+        }
+    }
+}

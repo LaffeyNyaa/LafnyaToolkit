@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace CppFormatter
 {
@@ -40,13 +41,13 @@ namespace CppFormatter
             foreach (var file in files)
             {
                 string relative = GetRelativePath(targetPath, file);
-                string original = File.ReadAllText(file);
+                string original = File.ReadAllText(file, Encoding.UTF8);
                 string formatted = Formatter.Format(original);
 
                 if (!string.Equals(original, formatted,
                     StringComparison.Ordinal))
                 {
-                    File.WriteAllText(file, formatted);
+                    File.WriteAllText(file, formatted, new UTF8Encoding(false));
                     Console.WriteLine("Formatting: " + relative);
                     formattedCount++;
                 }

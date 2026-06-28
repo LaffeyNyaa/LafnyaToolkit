@@ -12,6 +12,11 @@ namespace JsonFormatter
     public static class JsonFormatter
     {
         /// <summary>
+        /// Number of spaces per indentation level.
+        /// </summary>
+        private const int IndentSize = 2;
+
+        /// <summary>
         /// Parses and formats JSON text.
         /// </summary>
         /// <param name="text">The raw JSON text.</param>
@@ -19,7 +24,7 @@ namespace JsonFormatter
         public static string Format(string text)
         {
             JsonValue root = JsonParser.Parse(text);
-            var sb = new StringBuilder();
+            var sb = new StringBuilder(text.Length + 16);
             SerializeValue(root, 0, sb);
             sb.Append('\n');
             return sb.ToString();
@@ -120,10 +125,7 @@ namespace JsonFormatter
         /// <param name="indent">The indentation level.</param>
         private static void AppendIndent(StringBuilder sb, int indent)
         {
-            for (int i = 0; i < indent; i++)
-            {
-                sb.Append("  ");
-            }
+            sb.Append(' ', indent * IndentSize);
         }
     }
 }

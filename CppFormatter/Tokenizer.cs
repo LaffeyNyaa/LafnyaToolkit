@@ -277,6 +277,144 @@ namespace CppFormatter
         }
 
         /// <summary>
+        /// Computes the starting character position of each line in the
+        /// concatenated full text. Lines are separated by a single '\n'.
+        /// </summary>
+        /// <param name="lines">The list of lines.</param>
+        /// <returns>An array where result[i] is the start position of
+        /// lines[i].</returns>
+        public static int[] ComputeLineStarts(IList<string> lines)
+        {
+            var starts = new int[lines.Count];
+            int pos = 0;
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                starts[i] = pos;
+                pos += lines[i].Length;
+
+                if (i < lines.Count - 1)
+                {
+                    pos++;
+                }
+            }
+
+            return starts;
+        }
+
+        /// <summary>
+        /// Computes which lines are entirely inside a multi-line
+        /// VerbatimString or MultiLineComment token. A line is protected iff
+        /// there exists a VerbatimString or MultiLineComment token whose start
+        /// is strictly before the line start and whose end is strictly after
+        /// the line end.
+        /// </summary>
+        /// <param name="text">The full text.</param>
+        /// <param name="tokens">The token list.</param>
+        /// <param name="lineCount">The number of lines.</param>
+        /// <returns>A boolean array; true means the line is entirely inside a
+        /// multi-line token and should not be modified by formatting
+        /// rules.</returns>
+        public static bool[] ComputeProtectedLines(string text,
+            List<Token> tokens, int lineCount)
+        {
+            var protectedLines = new bool[lineCount];
+
+            if (lineCount == 0)
+            {
+                return protectedLines;
+            }
+
+            var lines = text.Split('\n');
+            int[] lineStarts = ComputeLineStarts(lines);
+            int n = lineCount < lines.Length ? lineCount : lines.Length;
+
+            int pos = 0;
+            foreach (var t in tokens)
+            {
+                int tokenStart = pos;
+                int tokenEnd = tokenStart + t.Text.Length;
+                pos = tokenEnd;
+
+                if (t.Kind != TokenKind.VerbatimString &&
+                    t.Kind != TokenKind.MultiLineComment)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < n; i++)
+                {
+                    int lineStart = lineStarts[i];
+                    int lineEnd = lineStart + lines[i].Length;
+
+                    if (lineStart > tokenStart && lineEnd < tokenEnd)
+                    {
+                        protectedLines[i] = true;
+                    }
+                }
+            }
+
+            return protectedLines;
+        }
+
+        /// <summary>
+        /// Computes which lines have their last character position inside a
+        /// multi-line VerbatimString or MultiLineComment token. Used by
+        /// TrimTrailingWhitespace: if a line's last character is inside a
+        /// multi-line token, trailing whitespace should not be trimmed to
+        /// avoid breaking raw string contents.
+        /// </summary>
+        /// <param name="text">The full text.</param>
+        /// <param name="tokens">The token list.</param>
+        /// <param name="lineStarts">The line start positions computed by
+        /// ComputeLineStarts.</param>
+        /// <param name="lines">The list of lines.</param>
+        /// <returns>A boolean array; true means the line's end position is
+        /// inside a multi-line token.</returns>
+        public static bool[] ComputeLineEndsInsideToken(string text,
+            List<Token> tokens, int[] lineStarts, IList<string> lines)
+        {
+            int lineCount = lines.Count;
+            var result = new bool[lineCount];
+
+            if (lineCount == 0)
+            {
+                return result;
+            }
+
+            int pos = 0;
+            foreach (var t in tokens)
+            {
+                int tokenStart = pos;
+                int tokenEnd = tokenStart + t.Text.Length;
+                pos = tokenEnd;
+
+                if (t.Kind != TokenKind.VerbatimString &&
+                    t.Kind != TokenKind.MultiLineComment)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < lineCount; i++)
+                {
+                    if (lines[i].Length == 0)
+                    {
+                        continue;
+                    }
+
+                    int lineEnd = lineStarts[i] + lines[i].Length - 1;
+
+                    if (lineEnd >= tokenStart && lineEnd < tokenEnd)
+                    {
+                        result[i] = true;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Outputs accumulated Code characters as a Code token and clears the accumulator.
         /// </summary>
         /// <param name="tokens">The token list.</param>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace GDScriptFormatter
 {
@@ -35,31 +36,92 @@ namespace GDScriptFormatter
             var files = DiscoverGdFiles(targetPath);
             int formattedCount = 0;
             int skippedCount = 0;
+            int failedCount = 0;
+            Encoding utf8NoBom = new UTF8Encoding(false);
 
             foreach (var file in files)
             {
                 string relative = GetRelativePath(targetPath, file);
-                string original = File.ReadAllText(file);
-                string formatted = Formatter.Format(original);
 
-                if (!string.Equals(original, formatted,
-                    StringComparison.Ordinal))
+                try
                 {
-                    File.WriteAllText(file, formatted);
-                    Console.WriteLine("Formatting: " + relative);
-                    formattedCount++;
+                    string original = File.ReadAllText(file, utf8NoBom);
+                    string formatted = Formatter.Format(original);
+
+                    if (!string.Equals(original, formatted,
+                        StringComparison.Ordinal))
+                    {
+                        WriteFileAtomic(file, formatted, utf8NoBom);
+                        Console.WriteLine("Formatting: " + relative);
+                        formattedCount++;
+                    }
+
+                    else
+                    {
+                        Console.WriteLine("Skipped: " + relative);
+                        skippedCount++;
+                    }
                 }
-
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine("Skipped: " + relative);
-                    skippedCount++;
+                    Console.Error.WriteLine("Error: failed to process " + relative +
+                        ": " + ex.Message);
+                    failedCount++;
                 }
             }
 
-            int total = formattedCount + skippedCount;
-            Console.WriteLine("Total: " + total + ", Formatted: " +
-                formattedCount + ", Skipped: " + skippedCount);
+            int total = formattedCount + skippedCount + failedCount;
+            string summary = "Total: " + total + ", Formatted: " +
+                formattedCount + ", Skipped: " + skippedCount;
+            if (failedCount > 0)
+            {
+                summary += ", Failed: " + failedCount;
+            }
+            Console.WriteLine(summary);
+            Environment.Exit(failedCount);
+        }
+
+        /// <summary>
+        /// Writes content to the final path atomically by first writing to a temporary file in the same
+        /// directory and then replacing the destination file via File.Replace. If File.Replace fails,
+        /// falls back to Delete + Move. Residual temporary files are cleaned up in a finally block.
+        /// </summary>
+        /// <param name="finalPath">The final file path to write to.</param>
+        /// <param name="content">The content to write.</param>
+        /// <param name="encoding">The encoding to use when writing.</param>
+        private static void WriteFileAtomic(string finalPath, string content,
+            Encoding encoding)
+        {
+            string directory = Path.GetDirectoryName(finalPath);
+            string tempPath = Path.Combine(directory,
+                Path.GetFileName(finalPath) + ".tmp");
+
+            try
+            {
+                File.WriteAllText(tempPath, content, encoding);
+                try
+                {
+                    File.Replace(tempPath, finalPath, null);
+                }
+                catch (Exception)
+                {
+                    File.Delete(finalPath);
+                    File.Move(tempPath, finalPath);
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
         }
 
         /// <summary>

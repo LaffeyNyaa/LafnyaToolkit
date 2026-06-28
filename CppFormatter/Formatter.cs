@@ -12,6 +12,15 @@ namespace CppFormatter
         private const int IndentSize = 4;
         /// <summary>Maximum length of a single line.</summary>
         private const int MaxLineLength = 80;
+        /// <summary>Two-char operators whose break point sits right after
+        /// the operator. Excludes &lt;&lt;/&gt;&gt; (stream ops need
+        /// IsStreamOpContext) and single-char ops.</summary>
+        private static readonly string[] TwoCharBreakOps =
+            { "==", "!=", "<=", ">=", "=>", "+=", "-=", "&&", "||" };
+        /// <summary>Keywords that introduce a brace-delimited block.</summary>
+        private static readonly string[] BlockStartKeywords =
+            { "namespace", "struct", "switch", "catch", "class", "while",
+              "union", "enum", "else", "for", "try", "do", "if" };
 
         /// <summary>
         /// Applies all formatting rules to the source string and returns the result.
@@ -28,13 +37,20 @@ namespace CppFormatter
             text = text.Replace("\t", "    ");
             text = text.Replace("\r\n", "\n").Replace("\r", "\n");
             text = MoveOpenBraceToPreviousLine(text);
+            text = MergeDoWhileCloseBrace(text);
+            tokens = Tokenizer.Tokenize(text);
+            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             var lines = SplitLines(text);
-            lines = Reindent(lines, text);
-            lines = TrimNamespaceBodyBlankLines(lines, text);
-            lines = ApplyBlankLineRules(lines);
-            lines = CollapseBlankLines(lines);
-            lines = TrimTrailingWhitespace(lines);
-            lines = ApplyLineLengthLimit(lines);
+            lines = Reindent(lines, text, tokens, isCode);
+            lines = TrimNamespaceBodyBlankLines(lines, text, tokens, isCode);
+            string textForBlank = string.Join("\n", lines);
+            lines = ApplyBlankLineRules(lines, textForBlank);
+            string textForCollapse = string.Join("\n", lines);
+            lines = CollapseBlankLines(lines, textForCollapse);
+            string textForTrim = string.Join("\n", lines);
+            lines = TrimTrailingWhitespace(lines, textForTrim);
+            string textForLimit = string.Join("\n", lines);
+            lines = ApplyLineLengthLimit(lines, textForLimit);
             string result = string.Join("\n", lines);
             result = EnsureSingleTrailingNewline(result);
             return result;
@@ -171,43 +187,13 @@ namespace CppFormatter
             }
 
             int stmtStart = i;
-            int j = i;
-            int depth = 0;
+            int stmtEnd = ScanStatementEnd(text, isCode, i);
 
-            while (j < text.Length)
-            {
-                if (isCode[j])
-                {
-                    char c = text[j];
-
-                    if (c == '(' || c == '[')
-                    {
-                        depth++;
-                    }
-
-                    else if (c == ')' || c == ']')
-                    {
-                        if (depth > 0)
-                        {
-                            depth--;
-                        }
-                    }
-
-                    else if (c == ';' && depth == 0)
-                    {
-                        break;
-                    }
-                }
-
-                j++;
-            }
-
-            if (j >= text.Length)
+            if (stmtEnd < 0)
             {
                 return;
             }
 
-            int stmtEnd = j + 1;
             insertions.Add(new Insertion(stmtStart, "{\n"));
             insertions.Add(new Insertion(stmtEnd, "\n}"));
         }
@@ -231,43 +217,13 @@ namespace CppFormatter
             }
 
             int stmtStart = i;
-            int j = i;
-            int depth = 0;
+            int stmtEnd = ScanStatementEnd(text, isCode, i);
 
-            while (j < text.Length)
-            {
-                if (isCode[j])
-                {
-                    char c = text[j];
-
-                    if (c == '(' || c == '[')
-                    {
-                        depth++;
-                    }
-
-                    else if (c == ')' || c == ']')
-                    {
-                        if (depth > 0)
-                        {
-                            depth--;
-                        }
-                    }
-
-                    else if (c == ';' && depth == 0)
-                    {
-                        break;
-                    }
-                }
-
-                j++;
-            }
-
-            if (j >= text.Length)
+            if (stmtEnd < 0)
             {
                 return;
             }
 
-            int stmtEnd = j + 1;
             int w = SkipWhitespace(text, stmtEnd);
 
             if (w >= text.Length || !MatchesWord(text, w, "while"))
@@ -305,6 +261,49 @@ namespace CppFormatter
             }
 
             CollectBodyInsertions(text, isCode, afterParen, insertions);
+        }
+
+        /// <summary>
+        /// Scans a statement starting from startPos, tracking bracket depth,
+        /// and stops at the first semicolon encountered at depth 0. Returns
+        /// the position immediately after that semicolon, or -1 if no such
+        /// semicolon is found.
+        /// </summary>
+        private static int ScanStatementEnd(string text, bool[] isCode,
+            int startPos)
+        {
+            int j = startPos;
+            int depth = 0;
+
+            while (j < text.Length)
+            {
+                if (isCode[j])
+                {
+                    char c = text[j];
+
+                    if (c == '(' || c == '[')
+                    {
+                        depth++;
+                    }
+
+                    else if (c == ')' || c == ']')
+                    {
+                        if (depth > 0)
+                        {
+                            depth--;
+                        }
+                    }
+
+                    else if (c == ';' && depth == 0)
+                    {
+                        return j + 1;
+                    }
+                }
+
+                j++;
+            }
+
+            return -1;
         }
 
         /// <summary>
@@ -451,27 +450,118 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Merges a { that sits on its own line back onto the previous line (K&R style).
-        /// Only merges when { is alone on its line, avoiding incorrect handling when
-        /// { is already on the same line as code.
+        /// Merges a { that sits on its own line back onto the previous line
+        /// (K&amp;R style). Only merges when { is alone on its line and lies in a
+        /// code region; braces inside string literals or comments are left
+        /// untouched.
         /// </summary>
         private static string MoveOpenBraceToPreviousLine(string text)
         {
+            var tokens = Tokenizer.Tokenize(text);
+            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             string[] lines = text.Split('\n');
             var result = new List<string>(lines.Length);
+            int pos = 0;
 
             for (int i = 0; i < lines.Length; i++)
             {
                 string trimmed = lines[i].Trim();
+                bool merged = false;
 
                 if (trimmed == "{" && i > 0 && result.Count > 0)
                 {
-                    string prev = result[result.Count - 1].TrimEnd();
+                    int bracePos = pos + lines[i].IndexOf('{');
+                    bool isCodeBrace = bracePos < isCode.Length &&
+                        isCode[bracePos];
 
-                    if (prev.Length > 0)
+                    if (isCodeBrace)
                     {
-                        result[result.Count - 1] = prev + " {";
-                        continue;
+                        string prev = result[result.Count - 1].TrimEnd();
+
+                        if (prev.Length > 0)
+                        {
+                            result[result.Count - 1] = prev + " {";
+                            merged = true;
+                        }
+                    }
+                }
+
+                if (!merged)
+                {
+                    result.Add(lines[i]);
+                }
+
+                if (i < lines.Length - 1)
+                {
+                    pos += lines[i].Length + 1;
+                }
+            }
+
+            return string.Join("\n", result);
+        }
+
+        /// <summary>
+        /// Merges a lone closing brace that terminates a do-while body with the
+        /// following while line, producing K&amp;R style "} while (cond);". Only
+        /// braces in code regions are considered; braces inside strings or
+        /// comments are left untouched.
+        /// </summary>
+        private static string MergeDoWhileCloseBrace(string text)
+        {
+            string[] lines = text.Split('\n');
+            var tokens = Tokenizer.Tokenize(text);
+            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var result = new List<string>(lines.Length);
+            var merged = new bool[lines.Length];
+            int pos = 0;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                int lineStart = pos;
+
+                if (i < lines.Length - 1)
+                {
+                    pos += lines[i].Length + 1;
+                }
+
+                if (merged[i])
+                {
+                    continue;
+                }
+
+                string trimmed = lines[i].Trim();
+
+                if ((trimmed == "}" || trimmed == "};") &&
+                    i + 1 < lines.Length)
+                {
+                    int braceOffset = lines[i].IndexOf('}');
+                    int bracePos = lineStart + braceOffset;
+
+                    if (bracePos < isCode.Length && isCode[bracePos])
+                    {
+                        int openBracePos = FindMatchingOpenBrace(text, isCode,
+                            bracePos);
+
+                        if (openBracePos >= 0 &&
+                            IsDoKeywordBefore(text, isCode, openBracePos))
+                        {
+                            int j = i + 1;
+
+                            while (j < lines.Length &&
+                                lines[j].Trim().Length == 0)
+                            {
+                                j++;
+                            }
+
+                            if (j < lines.Length &&
+                                StartsWithKeyword(lines[j].Trim(), "while"))
+                            {
+                                result.Add(lines[i].TrimEnd() + " " +
+                                    lines[j].Trim());
+                                merged[j] = true;
+                                continue;
+                            }
+                        }
                     }
                 }
 
@@ -482,15 +572,80 @@ namespace CppFormatter
         }
 
         /// <summary>
+        /// Finds the matching open brace for a close brace at closePos by
+        /// scanning backward through code regions only. Returns -1 if no
+        /// match is found.
+        /// </summary>
+        private static int FindMatchingOpenBrace(string text, bool[] isCode,
+            int closePos)
+        {
+            int depth = 1;
+            int i = closePos - 1;
+
+            while (i >= 0)
+            {
+                if (isCode[i])
+                {
+                    if (text[i] == '}')
+                    {
+                        depth++;
+                    }
+                    else if (text[i] == '{')
+                    {
+                        depth--;
+
+                        if (depth == 0)
+                        {
+                            return i;
+                        }
+                    }
+                }
+
+                i--;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Determines whether the keyword "do" immediately precedes the open
+        /// brace at openBracePos, ignoring any whitespace between them.
+        /// </summary>
+        private static bool IsDoKeywordBefore(string text, bool[] isCode,
+            int openBracePos)
+        {
+            int i = openBracePos - 1;
+
+            while (i >= 0 && (text[i] == ' ' || text[i] == '\t' ||
+                text[i] == '\n' || text[i] == '\r'))
+            {
+                i--;
+            }
+
+            if (i < 1)
+            {
+                return false;
+            }
+
+            int doStart = i - 1;
+
+            if (doStart >= isCode.Length || !isCode[doStart])
+            {
+                return false;
+            }
+
+            return MatchesWord(text, doStart, "do");
+        }
+
+        /// <summary>
         /// Recomputes leading whitespace for each line based on nesting depth.
         /// Lines fully inside a VerbatimString or MultiLineComment token (but not the first line
         /// of such a token) preserve their original leading whitespace to avoid damaging
         /// string/comment content.
         /// </summary>
-        private static List<string> Reindent(List<string> lines, string text)
+        private static List<string> Reindent(List<string> lines, string text,
+            List<Token> tokens, bool[] isCode)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             int[] depths = new int[lines.Count];
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
             bool[] inEnumBlock = ComputeInEnumBlock(lines, text, isCode);
@@ -536,19 +691,7 @@ namespace CppFormatter
             }
 
             var result = new List<string>(lines.Count);
-            var lineStarts = new int[lines.Count];
-            int p = 0;
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                lineStarts[i] = p;
-                p += lines[i].Length;
-
-                if (i < lines.Count - 1)
-                {
-                    p++;
-                }
-            }
+            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -568,7 +711,7 @@ namespace CppFormatter
 
                 int baseDepth = depths[i];
 
-                if (i > 0 && !inEnumBlock[i] &&
+                if (i > 0 && !inEnumBlock[i] && !caseBody[i] &&
                     IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
                     text, isCode))
                 {
@@ -611,9 +754,14 @@ namespace CppFormatter
             char last = trimmed[trimmed.Length - 1];
 
             if (last == ',' || last == '+' || last == '(' || last == '=' ||
-                last == '?' || last == ':')
+                last == '?')
             {
                 return true;
+            }
+
+            if (last == ':')
+            {
+                return !IsLabelLine(trimmed);
             }
 
             if (trimmed.Length >= 2)
@@ -637,25 +785,86 @@ namespace CppFormatter
         }
 
         /// <summary>
+        /// Determines whether a line that ends with ':' is a label line
+        /// (access specifier, default label, case label, or plain identifier
+        /// label) rather than a ternary-operator continuation.
+        /// The input is fully trimmed (both leading and trailing) to handle
+        /// re-indented lines that carry leading whitespace.
+        /// </summary>
+        private static bool IsLabelLine(string line)
+        {
+            string trimmed = line.Trim();
+
+            if (trimmed.Length == 0)
+            {
+                return false;
+            }
+
+            if (trimmed == "public:" || trimmed == "private:" ||
+                trimmed == "protected:")
+            {
+                return true;
+            }
+
+            if (trimmed == "default:")
+            {
+                return true;
+            }
+
+            if (StartsWithKeyword(trimmed, "case"))
+            {
+                return true;
+            }
+
+            if (trimmed.EndsWith(":") && trimmed.Length > 1)
+            {
+                string label = trimmed.Substring(0, trimmed.Length - 1);
+
+                if (IsPureIdentifier(label))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines whether a string is a pure C++ identifier: starting with
+        /// a letter or underscore and containing only letters, digits, or
+        /// underscores.
+        /// </summary>
+        private static bool IsPureIdentifier(string s)
+        {
+            if (s.Length == 0)
+            {
+                return false;
+            }
+
+            if (!char.IsLetter(s[0]) && s[0] != '_')
+            {
+                return false;
+            }
+
+            foreach (char c in s)
+            {
+                if (!char.IsLetterOrDigit(c) && c != '_')
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Computes whether each line lies inside an enum block.
         /// </summary>
         private static bool[] ComputeInEnumBlock(List<string> lines,
             string text, bool[] isCode)
         {
             var inEnumBlock = new bool[lines.Count];
-            var lineStarts = new int[lines.Count];
-            int pos = 0;
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                lineStarts[i] = pos;
-                pos += lines[i].Length;
-
-                if (i < lines.Count - 1)
-                {
-                    pos++;
-                }
-            }
+            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
 
             var enumRanges = new List<KeyValuePair<int, int>>();
             int depth = 0;
@@ -736,19 +945,7 @@ namespace CppFormatter
             bool[] isCode)
         {
             var caseBody = new bool[lines.Count];
-            var lineStarts = new int[lines.Count];
-            int pos = 0;
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                lineStarts[i] = pos;
-                pos += lines[i].Length;
-
-                if (i < lines.Count - 1)
-                {
-                    pos++;
-                }
-            }
+            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
 
             var switchRanges = new List<KeyValuePair<int, int>>();
             var braceStack = new Stack<KeyValuePair<bool, int>>();
@@ -842,9 +1039,14 @@ namespace CppFormatter
                         }
                     }
 
+                    if (inInner)
+                    {
+                        continue;
+                    }
+
                     string trimmed = lines[li].Trim();
 
-                    if (!inInner && IsCaseLabelLine(trimmed))
+                    if (IsCaseLabelLine(trimmed))
                     {
                         inCaseBody = true;
                     }
@@ -880,19 +1082,7 @@ namespace CppFormatter
             List<Token> tokens)
         {
             var preserveIndent = new bool[lines.Count];
-            var lineStarts = new int[lines.Count];
-            int pos = 0;
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                lineStarts[i] = pos;
-                pos += lines[i].Length;
-
-                if (i < lines.Count - 1)
-                {
-                    pos++;
-                }
-            }
+            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
 
             int tokenPos = 0;
 
@@ -924,25 +1114,12 @@ namespace CppFormatter
         /// Removes blank lines immediately after the opening { and immediately before the closing } of a namespace body.
         /// </summary>
         private static List<string> TrimNamespaceBodyBlankLines(
-            List<string> lines, string text)
+            List<string> lines, string text, List<Token> tokens,
+            bool[] isCode)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             var result = new List<string>(lines.Count);
 
-            var lineStarts = new int[lines.Count];
-            int pos = 0;
-
-            for (int i = 0; i < lines.Count; i++)
-            {
-                lineStarts[i] = pos;
-                pos += lines[i].Length;
-
-                if (i < lines.Count - 1)
-                {
-                    pos++;
-                }
-            }
+            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
 
             var nsBlocks = new List<KeyValuePair<int, int>>();
             int braceDepth = 0;
@@ -1020,36 +1197,40 @@ namespace CppFormatter
                 {
                     int ls = lineStarts[li];
 
-                    if (ls > openBracePos && ls < closeBracePos)
+                    if (ls <= openBracePos || ls >= closeBracePos)
                     {
-                        if (lines[li].Trim().Length == 0)
-                        {
-                            int nextNonBlank = li + 1;
+                        continue;
+                    }
 
-                            while (nextNonBlank < lines.Count &&
-                                lines[nextNonBlank].Trim().Length == 0)
-                            {
-                                nextNonBlank++;
-                            }
+                    if (lines[li].Trim().Length != 0)
+                    {
+                        continue;
+                    }
 
-                            bool isAfterOpenBrace = li > 0 &&
-                                lineStarts[li - 1] + lines[li - 1].Length <=
-                                openBracePos + 1;
+                    int nextNonBlank = li + 1;
 
-                            if (isAfterOpenBrace)
-                            {
-                                removeSet.Add(li);
-                            }
+                    while (nextNonBlank < lines.Count &&
+                        lines[nextNonBlank].Trim().Length == 0)
+                    {
+                        nextNonBlank++;
+                    }
 
-                            bool isBeforeCloseBrace = nextNonBlank <
-                                lines.Count &&
-                                lineStarts[nextNonBlank] >= closeBracePos;
+                    bool isAfterOpenBrace = li > 0 &&
+                        lineStarts[li - 1] + lines[li - 1].Length <=
+                        openBracePos + 1;
 
-                            if (isBeforeCloseBrace)
-                            {
-                                removeSet.Add(li);
-                            }
-                        }
+                    if (isAfterOpenBrace)
+                    {
+                        removeSet.Add(li);
+                    }
+
+                    bool isBeforeCloseBrace = nextNonBlank <
+                        lines.Count &&
+                        lineStarts[nextNonBlank] >= closeBracePos;
+
+                    if (isBeforeCloseBrace)
+                    {
+                        removeSet.Add(li);
                     }
                 }
             }
@@ -1066,17 +1247,28 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Ensures exactly one blank line above and below blocks/declarations (with start/end-of-parent-block exceptions).
+        /// Ensures exactly one blank line above and below blocks/declarations
+        /// (with start/end-of-parent-block exceptions). Lines entirely inside a
+        /// multi-line string or comment token are preserved verbatim and never
+        /// stripped or regenerated by the blank-line rules.
         /// </summary>
-        private static List<string> ApplyBlankLineRules(List<string> lines)
+        private static List<string> ApplyBlankLineRules(List<string> lines,
+            string text)
         {
+            var tokens = Tokenizer.Tokenize(text);
+            bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
+                tokens, lines.Count);
             var nonBlank = new List<KeyValuePair<bool, string>>(lines.Count);
             bool prevWasBlank = false;
             bool isFirst = true;
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
-                if (line.Trim().Length == 0)
+                var line = lines[i];
+                bool isProtected = i < protectedLines.Length &&
+                    protectedLines[i];
+
+                if (line.Trim().Length == 0 && !isProtected)
                 {
                     prevWasBlank = true;
                     continue;
@@ -1134,16 +1326,29 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Collapses 3 or more consecutive blank lines into 1.
+        /// Collapses 3 or more consecutive blank lines into 1. Lines entirely
+        /// inside a multi-line string or comment token are preserved verbatim
+        /// and never participate in blank-line collapsing.
         /// </summary>
-        private static List<string> CollapseBlankLines(List<string> lines)
+        private static List<string> CollapseBlankLines(List<string> lines,
+            string text)
         {
+            var tokens = Tokenizer.Tokenize(text);
+            bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
+                tokens, lines.Count);
             var result = new List<string>(lines.Count);
             int blankRun = 0;
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
-                if (line.Trim().Length == 0)
+                if (i < protectedLines.Length && protectedLines[i])
+                {
+                    result.Add(lines[i]);
+                    blankRun = 0;
+                    continue;
+                }
+
+                if (lines[i].Trim().Length == 0)
                 {
                     blankRun++;
 
@@ -1156,7 +1361,7 @@ namespace CppFormatter
                 else
                 {
                     blankRun = 0;
-                    result.Add(line);
+                    result.Add(lines[i]);
                 }
             }
 
@@ -1164,29 +1369,58 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Trims trailing whitespace from each line.
+        /// Trims trailing whitespace from each line. Lines whose last character
+        /// lies inside a multi-line string or comment token are preserved
+        /// verbatim to avoid damaging raw string contents.
         /// </summary>
-        private static List<string> TrimTrailingWhitespace(List<string> lines)
+        private static List<string> TrimTrailingWhitespace(List<string> lines,
+            string text)
         {
+            var tokens = Tokenizer.Tokenize(text);
+            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
+            bool[] endsInside = Tokenizer.ComputeLineEndsInsideToken(text,
+                tokens, lineStarts, lines);
             var result = new List<string>(lines.Count);
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
-                result.Add(line.TrimEnd());
+                if (i < endsInside.Length && endsInside[i])
+                {
+                    result.Add(lines[i]);
+                }
+                else
+                {
+                    result.Add(lines[i].TrimEnd());
+                }
             }
 
             return result;
         }
 
         /// <summary>
-        /// Splits lines exceeding 80 characters at safe token boundaries; continuation lines are indented one extra level.
+        /// Splits lines exceeding 80 characters at safe token boundaries;
+        /// continuation lines are indented one extra level. Lines entirely
+        /// inside a multi-line string or comment token are preserved verbatim
+        /// and never split.
         /// </summary>
-        private static List<string> ApplyLineLengthLimit(List<string> lines)
+        private static List<string> ApplyLineLengthLimit(List<string> lines,
+            string text)
         {
+            var tokens = Tokenizer.Tokenize(text);
+            bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
+                tokens, lines.Count);
             var result = new List<string>(lines.Count);
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
+                if (i < protectedLines.Length && protectedLines[i])
+                {
+                    result.Add(lines[i]);
+                    continue;
+                }
+
+                string line = lines[i];
+
                 if (line.Length <= MaxLineLength)
                 {
                     result.Add(line);
@@ -1267,69 +1501,21 @@ namespace CppFormatter
                 char c = line[i];
                 int bp = -1;
 
-                if (c == '=' && i + 1 < line.Length && line[i + 1] == '=')
+                if (i + 1 < line.Length)
                 {
-                    bp = i + 2;
-                    i++;
+                    string pair = line.Substring(i, 2);
+                    foreach (var op in TwoCharBreakOps)
+                    {
+                        if (pair == op)
+                        {
+                            bp = i + 2;
+                            i++;
+                            break;
+                        }
+                    }
                 }
 
-                else if (c == '!' && i + 1 < line.Length &&
-                    line[i + 1] == '=')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '<' && i + 1 < line.Length &&
-                    line[i + 1] == '=')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '>' && i + 1 < line.Length &&
-                    line[i + 1] == '=')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '=' && i + 1 < line.Length &&
-                    line[i + 1] == '>')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '+' && i + 1 < line.Length &&
-                    line[i + 1] == '=')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '-' && i + 1 < line.Length &&
-                    line[i + 1] == '=')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '&' && i + 1 < line.Length &&
-                    line[i + 1] == '&')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '|' && i + 1 < line.Length &&
-                    line[i + 1] == '|')
-                {
-                    bp = i + 2;
-                    i++;
-                }
-
-                else if (c == '<' && i + 1 < line.Length &&
+                if (bp < 0 && c == '<' && i + 1 < line.Length &&
                     line[i + 1] == '<' &&
                     IsStreamOpContext(line, i, startIdx))
                 {
@@ -1337,7 +1523,7 @@ namespace CppFormatter
                     i++;
                 }
 
-                else if (c == '>' && i + 1 < line.Length &&
+                else if (bp < 0 && c == '>' && i + 1 < line.Length &&
                     line[i + 1] == '>' &&
                     IsStreamOpContext(line, i, startIdx))
                 {
@@ -1345,12 +1531,12 @@ namespace CppFormatter
                     i++;
                 }
 
-                else if (c == ',')
+                else if (bp < 0 && c == ',')
                 {
                     bp = i + 1;
                 }
 
-                else if (c == ';')
+                else if (bp < 0 && c == ';')
                 {
                     if (i + 1 < line.Length)
                     {
@@ -1358,14 +1544,15 @@ namespace CppFormatter
                     }
                 }
 
-                else if (i > startIdx && IsBinaryOpContext(line, i,
-                    startIdx) && (c == '+' || c == '-' || c == '*' ||
-                    c == '/' || c == '%' || c == '<' || c == '>'))
+                else if (bp < 0 && i > startIdx &&
+                    IsBinaryOpContext(line, i, startIdx) &&
+                    (c == '+' || c == '-' || c == '*' || c == '/' ||
+                    c == '%' || c == '<' || c == '>'))
                 {
                     bp = i + 1;
                 }
 
-                else if (c == '=' && i > startIdx &&
+                else if (bp < 0 && c == '=' && i > startIdx &&
                     IsBinaryOpContext(line, i, startIdx) &&
                     (i + 1 >= line.Length || (line[i + 1] != '=' &&
                     line[i + 1] != '>')))
@@ -1652,13 +1839,7 @@ namespace CppFormatter
                 return false;
             }
 
-            string[] keywords =
-            {
-                "namespace", "struct", "switch", "catch", "class", "while",
-                "union", "enum", "else", "for", "try", "do", "if"
-            };
-
-            foreach (var kw in keywords)
+            foreach (var kw in BlockStartKeywords)
             {
                 if (StartsWithKeyword(trimmed, kw))
                 {

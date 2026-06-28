@@ -12,9 +12,29 @@
 
 ## Formatting Rules
 
+### Brace Style (K&R)
+
+All opening braces `{` must be placed on the **same line** as the controlling statement or declaration (K&R style). An opening brace that occupies its own line is moved to the end of the preceding non-blank line.
+
+- **Incorrect Example**:
+  ```java
+  if (a == b)
+  {
+      return true;
+  }
+  ```
+- **Correct Example**:
+  ```java
+  if (a == b) {
+      return true;
+  }
+  ```
+
+This rule applies to all constructs: `if`, `else`, `for`, `while`, `do`, `switch`, `try`, `catch`, `finally`, `synchronized`, `class`, `interface`, `enum`, methods, lambda expressions, and anonymous classes.
+
 ### Mandatory Braces
 
-All control flow statements (`if`, `else`, `else if`, `for`, `while`, `do`, `synchronized`, `try`, etc.) must be enclosed in curly braces.
+All control flow statements (`if`, `else`, `else if`, `for`, `while`, `do`, `synchronized`, `try`, etc.) must be enclosed in curly braces. Single-statement bodies without braces are automatically wrapped.
 
 - **Incorrect Example**:
   ```java
@@ -71,17 +91,16 @@ Use exactly **4 spaces** for each indentation level.
 
 ### Switch/Case Indentation
 
-Inside a `switch` block, `case` and `default` labels are indented one level relative to the `switch` keyword. The body of each case is at the same indentation level as the case label (Oracle style), not indented further.
+Inside a `switch` block, `case` and `default` labels are indented one level relative to the `switch` keyword. The body of each case is at the same indentation level as the case label, not indented further.
 
 - **Example**:
   ```java
-  switch (x)
-  {
+  switch (x) {
       case 1:
-          doSomething();
-          break;
+      doSomething();
+      break;
       default:
-          break;
+      break;
   }
   ```
 
@@ -93,15 +112,13 @@ Annotation lines (lines starting with `@`) are considered attached to the declar
   ```java
   @Override
 
-  public void foo()
-  {
+  public void foo() {
   }
   ```
 - **Correct Example**:
   ```java
   @Override
-  public void foo()
-  {
+  public void foo() {
   }
   ```
 
@@ -119,7 +136,24 @@ Annotation lines (lines starting with `@`) are considered attached to the declar
 
 ### File Encoding
 
-All files are read and written using UTF-8 encoding without BOM. Original file encodings and BOM markers are normalized to UTF-8 no BOM on write.
+- **Read**: The formatter auto-detects the file encoding via byte order marks (BOM). Supported encodings: UTF-8 (with/without BOM), UTF-16 LE (with BOM), UTF-16 BE (with BOM), UTF-32 LE (with BOM), UTF-32 BE (with BOM). Files without a BOM are read as UTF-8.
+- **Write**: After formatting, the file is always written as UTF-8 without BOM, regardless of the original encoding. If the formatted content is identical to the original (and the original was already UTF-8 without BOM), the file is skipped and not rewritten.
+
+### Token-Aware Processing
+
+All structural formatting operations (brace placement, blank line insertion, tab expansion, line continuation detection) are **token-aware**. The formatter tokenizes the source into Code, String, TextBlock, Char, SingleLineComment, and MultiLineComment tokens before applying any structural change.
+
+- **Comments**: Content inside `//`, `/* */`, and `/** */` (Javadoc) comments is never modified. Braces, keywords, and tabs inside comments are left untouched.
+- **String literals**: Content inside `"..."` strings is never modified.
+- **Text blocks**: Content inside `"""..."""` text blocks (Java 13+) is never modified. Tabs inside text blocks are preserved.
+- **Char literals**: Content inside `'...'` character constants is never modified.
+- **Indentation preservation**: Lines inside multi-line comments and text blocks preserve their original leading whitespace.
+
+### Idempotency
+
+Formatting is **idempotent**: running the formatter on an already-formatted file produces no changes. One formatting pass yields the final state — repeated formatting of the same file will always result in the "Skipped" status with zero modifications.
+
+This guarantee holds for all transformations in the pipeline: brace enforcement, K&R brace placement, enum expansion, import sorting, tab expansion, indentation, blank line rules, and line length splitting.
 
 ### Error Handling
 
@@ -137,7 +171,7 @@ Each enum value must be written on a separate line.
   ```
 - **Correct Example**:
   ```java
-  enum TokenType { 
+  enum TokenType {
       Code,
       String,
       VerbatimString,
@@ -163,3 +197,5 @@ The classification of imports into groups is determined based on the file's `pac
 - **System libraries**: Imports starting with `java.` or `javax.`.
 - **Third-party libraries**: All remaining imports.
 If the file has no `package` declaration, the project root falls back to the target directory name, and there is no "current module" group.
+
+**Comment preservation**: Comment lines (`// ...` and `/* ... */`) inside an import block are preserved in place and act as segment boundaries. Imports between two comment lines (or between a comment line and a blank line / block edge) form an independent segment that is sorted on its own. This keeps adjacent imports grouped with their explanatory comments while still applying the ordering rules within each segment.

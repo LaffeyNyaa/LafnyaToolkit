@@ -12,6 +12,21 @@ namespace JsonFormatter
     public class Program
     {
         /// <summary>
+        /// UTF-8 encoding without BOM, reused across all file writes.
+        /// </summary>
+        private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
+
+        /// <summary>
+        /// Result of processing a single JSON file.
+        /// </summary>
+        private enum ProcessFileResult
+        {
+            Formatted,
+            Skipped,
+            Failed
+        }
+
+        /// <summary>
         /// Program entry point.
         /// </summary>
         /// <param name="args">CLI arguments; args[0] should be the target directory path.</param>
@@ -35,59 +50,143 @@ namespace JsonFormatter
             }
 
             var files = DiscoverJsonFiles(targetPath);
-            int formattedCount = 0;
-            int skippedCount = 0;
-            int failedCount = 0;
+            int formatted = 0;
+            int skipped = 0;
+            int failed = 0;
 
             foreach (var file in files)
             {
-                string relative = GetRelativePath(targetPath, file);
-
-                try
+                ProcessFileResult result = ProcessFile(file, targetPath);
+                switch (result)
                 {
-                    string original = File.ReadAllText(file, Encoding.UTF8);
-                    string formatted = JsonFormatter.Format(original);
-
-                    if (!string.Equals(original, formatted,
-                        StringComparison.Ordinal))
-                    {
-                        File.WriteAllText(file, formatted,
-                            new UTF8Encoding(false));
-                        Console.WriteLine("Formatting: " + relative);
-                        formattedCount++;
-                    }
-
-                    else
-                    {
-                        Console.WriteLine("Skipped: " + relative);
-                        skippedCount++;
-                    }
-                }
-
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine("Error: " + relative + ": " +
-                        ex.Message);
-                    failedCount++;
+                    case ProcessFileResult.Formatted:
+                        formatted++;
+                        break;
+                    case ProcessFileResult.Skipped:
+                        skipped++;
+                        break;
+                    case ProcessFileResult.Failed:
+                        failed++;
+                        break;
                 }
             }
 
-            int total = formattedCount + skippedCount + failedCount;
+            PrintSummary(formatted, skipped, failed);
+        }
+
+        /// <summary>
+        /// Reads, formats, compares, and optionally writes a single JSON file.
+        /// Prints the per-file progress line and returns the processing result.
+        /// </summary>
+        /// <param name="file">The full path to the JSON file.</param>
+        /// <param name="root">The root directory used for computing the relative path.</param>
+        /// <returns>The processing result.</returns>
+        private static ProcessFileResult ProcessFile(string file, string root)
+        {
+            string relative = GetRelativePath(root, file);
+            try
+            {
+                string original = File.ReadAllText(file, Encoding.UTF8);
+                string formatted = JsonFormatter.Format(original);
+                if (!string.Equals(original, formatted, StringComparison.Ordinal))
+                {
+                    File.WriteAllText(file, formatted, Utf8NoBom);
+                    Console.WriteLine("Formatting: " + relative);
+                    return ProcessFileResult.Formatted;
+                }
+                Console.WriteLine("Skipped: " + relative);
+                return ProcessFileResult.Skipped;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Error: " + relative + ": " + ex.Message);
+                return ProcessFileResult.Failed;
+            }
+        }
+
+        /// <summary>
+        /// Prints the summary line: Total, Formatted, Skipped, Failed.
+        /// </summary>
+        private static void PrintSummary(int formatted, int skipped, int failed)
+        {
+            int total = formatted + skipped + failed;
             Console.WriteLine("Total: " + total + ", Formatted: " +
-                formattedCount + ", Skipped: " + skippedCount + ", Failed: " +
-                failedCount);
+                formatted + ", Skipped: " + skipped + ", Failed: " + failed);
         }
 
         /// <summary>
         /// Recursively discovers all .json files under the target directory,
-        /// sorted alphabetically.
+        /// sorted alphabetically (OrdinalIgnoreCase). Inaccessible subdirectories
+        /// are skipped with a warning to stderr.
         /// </summary>
         /// <param name="root">The root directory.</param>
         /// <returns>A sorted list of full paths to .json files.</returns>
         private static List<string> DiscoverJsonFiles(string root)
         {
-            var files = new List<string>(Directory.EnumerateFiles(root, "*.json",
-                SearchOption.AllDirectories));
+            var files = new List<string>();
+            var stack = new Stack<string>();
+            stack.Push(root);
+
+            while (stack.Count > 0)
+            {
+                string current = stack.Pop();
+
+                string[] currentFiles;
+                try
+                {
+                    currentFiles = Directory.GetFiles(current, "*.json", SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
+                        current + " (" + ex.Message + ")");
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+                    continue;
+                }
+
+                files.AddRange(currentFiles);
+
+                string[] subdirs;
+                try
+                {
+                    subdirs = Directory.GetDirectories(current, "*", SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
+                        current + " (" + ex.Message + ")");
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+                    continue;
+                }
+
+                foreach (string dir in subdirs)
+                {
+                    stack.Push(dir);
+                }
+            }
+
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return files;
         }

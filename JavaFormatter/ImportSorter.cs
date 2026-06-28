@@ -125,7 +125,8 @@ namespace JavaFormatter
                 return source;
             }
 
-            var imports = new List<string>();
+            var newBlock = new List<string>();
+            var currentSegment = new List<string>();
 
             for (int i = firstImport; i <= lastImport; i++)
             {
@@ -133,52 +134,19 @@ namespace JavaFormatter
 
                 if (IsImportDirective(trimmed))
                 {
-                    imports.Add(trimmed);
+                    currentSegment.Add(trimmed);
+                }
+                else if (IsCommentLine(trimmed))
+                {
+                    AppendSortedSegment(newBlock, currentSegment, currentModule,
+                        projectRoot);
+                    currentSegment.Clear();
+                    newBlock.Add(trimmed);
                 }
             }
 
-            var systemGroup = new List<string>();
-            var thirdPartyGroup = new List<string>();
-            var projectModuleGroup = new List<string>();
-            var currentModuleGroup = new List<string>();
-
-            foreach (var imp in imports)
-            {
-                string ns = ExtractNamespace(imp);
-
-                if (!string.IsNullOrEmpty(currentModule) && ns == currentModule)
-                {
-                    currentModuleGroup.Add(imp);
-                }
-
-                else if (!string.IsNullOrEmpty(projectRoot) &&
-                    ns.StartsWith(projectRoot + ".") &&
-                    (string.IsNullOrEmpty(currentModule) || ns != currentModule))
-                {
-                    projectModuleGroup.Add(imp);
-                }
-
-                else if (ns.StartsWith("java.") || ns.StartsWith("javax."))
-                {
-                    systemGroup.Add(imp);
-                }
-
-                else
-                {
-                    thirdPartyGroup.Add(imp);
-                }
-            }
-
-            systemGroup.Sort(CompareByNamespace);
-            thirdPartyGroup.Sort(CompareByNamespace);
-            projectModuleGroup.Sort(CompareByNamespace);
-            currentModuleGroup.Sort(CompareByNamespace);
-
-            var newBlock = new List<string>();
-            AppendGroup(newBlock, systemGroup);
-            AppendGroup(newBlock, thirdPartyGroup);
-            AppendGroup(newBlock, projectModuleGroup);
-            AppendGroup(newBlock, currentModuleGroup);
+            AppendSortedSegment(newBlock, currentSegment, currentModule,
+                projectRoot);
 
             var result = new StringBuilder();
 
@@ -220,6 +188,60 @@ namespace JavaFormatter
             }
 
             return result.ToString();
+        }
+
+        private static void AppendSortedSegment(List<string> newBlock,
+            List<string> segment, string currentModule, string projectRoot)
+        {
+            if (segment.Count == 0)
+            {
+                return;
+            }
+
+            var systemGroup = new List<string>();
+            var thirdPartyGroup = new List<string>();
+            var projectModuleGroup = new List<string>();
+            var currentModuleGroup = new List<string>();
+
+            foreach (var imp in segment)
+            {
+                string ns = ExtractNamespace(imp);
+
+                if (!string.IsNullOrEmpty(currentModule) && ns == currentModule)
+                {
+                    currentModuleGroup.Add(imp);
+                }
+
+                else if (!string.IsNullOrEmpty(projectRoot) &&
+                    ns.StartsWith(projectRoot + ".") &&
+                    (string.IsNullOrEmpty(currentModule) || ns != currentModule))
+                {
+                    projectModuleGroup.Add(imp);
+                }
+
+                else if (ns.StartsWith("java.") || ns.StartsWith("javax."))
+                {
+                    systemGroup.Add(imp);
+                }
+
+                else
+                {
+                    thirdPartyGroup.Add(imp);
+                }
+            }
+
+            systemGroup.Sort(CompareByNamespace);
+            thirdPartyGroup.Sort(CompareByNamespace);
+            projectModuleGroup.Sort(CompareByNamespace);
+            currentModuleGroup.Sort(CompareByNamespace);
+
+            var segmentBlock = new List<string>();
+            AppendGroup(segmentBlock, systemGroup);
+            AppendGroup(segmentBlock, thirdPartyGroup);
+            AppendGroup(segmentBlock, projectModuleGroup);
+            AppendGroup(segmentBlock, currentModuleGroup);
+
+            newBlock.AddRange(segmentBlock);
         }
 
         private static void AppendGroup(List<string> block, List<string> group)

@@ -157,6 +157,23 @@ var is_active = true:
 
 ## Implementation Notes
 
+### Processing Pipeline
+
+`Format` applies rules in a fixed order: (1) normalize line endings (`\r\n`/`\r` → `\n`); (2) tab normalization restricted to `Code` regions (see below); (3) `ExpandEnums`; (4) re-tokenize once and reuse the resulting tokens and code mask across re-indentation and line-length splitting; (5) apply blank-line rules; (6) collapse excessive blank lines; (7) trim trailing whitespace; (8) apply line-length splitting; (9) ensure a single trailing newline. Line-ending normalization happens before `ExpandEnums` to avoid producing mixed line endings after enum expansion.
+
+### Lexical Analysis & Prefixed String Literals
+
+The tokenizer recognizes four token kinds: `Code`, `String`, `TripleString`, and `Comment`. In addition to ordinary string literals, it recognizes GDScript 2.x prefixed string literals:
+- **Raw strings**: `r"..."`, `r'...'`, `r"""..."""`, `R"..."` — the prefix character (`r`/`R`) is emitted as a separate `Code` token, and the following string is scanned with the standard string/triple-string logic. The prefix is only recognized when the preceding character is not a word character, so identifiers ending in `r` are not misread.
+- **StringName literals**: `&"..."`, `&'...'` — the `&` prefix is emitted as `Code`, the string as `String`/`TripleString`.
+- **NodePath literals**: `^"..."`, `^'...'` — the `^` prefix is emitted as `Code`, the string as `String`/`TripleString`.
+
+As a result, `#`, `"`, and `'` inside these prefixed literals are never misinterpreted as lexical boundaries (comment starts or string delimiters), so the contents of raw strings, StringNames, and NodePaths are preserved exactly.
+
+### Tab Normalization
+
+Tabs are replaced with 4 spaces **only** at positions marked as `Code` by the tokenizer's code mask. Tabs inside string literals (including triple-quoted and raw strings) and inside comments are preserved verbatim, so string contents are never modified.
+
 ### Class Member Reordering
 
 The formatter does **not** physically reorder class members. The 21-category ordering above is a style recommendation for authors. The formatter only enforces blank-line spacing between different member groups — it inserts one blank line between adjacent top-level members that belong to different groups, but never moves members. This avoids breaking `@onready`/`@export` initialization-order dependencies.
@@ -172,21 +189,24 @@ Indentation depth is recomputed from the source structure: a code line whose las
 ### Continuation Lines
 
 A line is treated as a continuation (not a new statement) when:
-- The running bracket depth across the file is greater than zero at the start of that line, or
-- The previous line ended with a trailing `\`.
+- The running bracket depth (parentheses and square brackets only; braces are handled via the block stack) across the file is greater than zero at the start of that line, or
+- The previous line ended with a trailing `\` **and** that backslash is located in a `Code` region.
 
-Continuation lines are indented one additional level beyond the statement's base indentation. Blank-line rules are not applied between a line and its continuation.
+Backslashes inside comments or string literals do **not** trigger continuation. A doubled backslash (`\\`) in `Code` is treated as a non-continuation. Continuation lines are indented one additional level beyond the statement's base indentation. Blank-line rules are not applied between a line and its continuation.
 
 ### Line Length Splitting
 
-Lines exceeding 80 characters are split using GDScript-valid continuation:
-- After commas inside already-open brackets (implicit continuation).
-- For long expressions without open brackets, the right-hand side is wrapped in `(...)` and then split after operators or commas. The parenthesized form is semantically identical in GDScript.
-- If no safe split point exists (e.g., a single over-long string literal), the line is left unchanged rather than emit invalid GDScript.
+Lines exceeding 80 characters are split, in priority order, by attempting:
+1. **Unclosed-bracket comma split**: if brackets are still open at the end of the line, split after the last comma inside brackets such that the first segment is ≤ 80 characters.
+2. **Closed-bracket comma split**: even when all brackets on the line are balanced, if a comma exists inside brackets, split after the last such comma that keeps the first segment ≤ 80 characters.
+3. **Top-level `=` wrap**: if a top-level `=` exists (excluding `==`, `!=`, `<=`, `>=`, `+=`, `-=`, `*=`, `/=`) and the right-hand side is not already parenthesized, wrap the RHS in `(...)` and recursively split.
+4. **No safe split**: if none of the above applies safely (e.g., a single over-long string literal), the line is left unchanged rather than emit invalid GDScript.
 
-### Variable-Group Classification Precedence
+Split continuation lines are indented one additional level, and splitting recurses until all segments are ≤ 80 characters or no safe split point remains.
 
-When classifying top-level members for blank-line spacing, the first-match-wins rule applies:
+### Top-Level Member Classification
+
+Both `static var` and `static func` are recognized as top-level members for blank-line spacing. Classification follows a first-match-wins rule:
 1. `signal` → Signals
 2. `enum` → Enums
 3. `const` → Constants
@@ -196,4 +216,19 @@ When classifying top-level members for blank-line spacing, the first-match-wins 
 7. Name starts with `_` → Private
 8. Otherwise → Regular
 
+`static func` falls through the variable-group checks and is classified by name (private if it starts with `_`, otherwise regular), the same as a non-static `func`. This guarantees that one blank line is inserted between a `static var` and an adjacent `static func` (they belong to different groups), while two adjacent `static func`s of the same name-privacy group are not separated by an extra group-break blank line.
+
 For example, `@export var _hidden: int` is classified as **@export** (rule 5 takes precedence over rule 7), and `@onready var _state: Node` is classified as **@onready** (rule 6 takes precedence over rule 7).
+
+### Doc Comment Attachment
+
+`##` doc-comment blocks (consecutive non-blank lines starting with `##`) are **always** attached to the immediately following declaration, even when a blank line originally separated the doc comment from the declaration. This preserves the doc-to-declaration association. Ordinary `#` comments retain the original-attachment behavior: they attach to the following declaration only when no blank line originally separated them.
+
+### File I/O Behavior
+
+- **Encoding (Read)**: The formatter auto-detects the file encoding via byte order marks (BOM). Supported encodings: UTF-8 (with/without BOM), UTF-16 LE (with BOM), UTF-16 BE (with BOM), UTF-32 LE (with BOM), UTF-32 BE (with BOM). Files without a BOM are read as UTF-8.
+- **Encoding (Write)**: After formatting, the file is always written as UTF-8 without BOM, regardless of the original encoding. If the formatted content is identical to the original (and the original was already UTF-8 without BOM), the file is skipped and not rewritten.
+- **Atomic writes**: Output is first written to a temporary file in the same directory, then atomically swapped into place via `File.Replace` (with a `Delete` + `Move` fallback when `File.Replace` is unsupported). A failed write does not corrupt the original file.
+- **Per-file resilience**: If reading or writing a single file raises an exception, the tool prints an error message naming the file and continues processing the remaining files.
+- **Exit code**: The process exit code equals the number of files that failed (0 = all files processed successfully).
+- **Summary line**: `Total: N, Formatted: F, Skipped: S`; when there are failures, `, Failed: W` is appended.

@@ -211,8 +211,35 @@ Accessor keywords (`get`, `set`, `init`, `add`, `remove`) are identified by word
 
 ### File Encoding
 
-All files are read and written using UTF-8 encoding without BOM. Original file encodings and BOM markers are normalized to UTF-8 no BOM on write.
+- **Read**: The formatter auto-detects the file encoding via byte order marks (BOM). Supported encodings: UTF-8 (with/without BOM), UTF-16 LE (with BOM), UTF-16 BE (with BOM), UTF-32 LE (with BOM), UTF-32 BE (with BOM). Files without a BOM are read as UTF-8.
+- **Write**: After formatting, the file is always written as UTF-8 without BOM, regardless of the original encoding. If the formatted content is identical to the original (and the original was already UTF-8 without BOM), the file is skipped and not rewritten.
 
 ### Error Handling
 
 If an error occurs while processing a file (e.g., read-only, locked, permission denied), the tool prints `Error: <relative path>: <message>` to stderr, increments the `Failed` counter, and continues processing the remaining files. The run does not abort on a single file failure.
+
+## Token-Awareness Protection
+
+All formatting transformations are **token-aware**: the formatter first tokenises the source into typed tokens (Code, String, VerbatimString, Char, SingleLineComment, MultiLineComment, Preprocessor), then builds a code mask marking which character positions belong to Code tokens. Formatting decisions consult this mask to ensure that the contents of strings and comments are never altered.
+
+Protected operations include:
+
+- **Tab replacement:** Tabs are expanded to 4 spaces only inside Code tokens. Tabs inside verbatim strings (`@"..."`) and comments are preserved verbatim.
+- **Brace moving (Allman style):** Only braces in code regions are moved to their own line. Braces inside strings (e.g., `var x = "str {";`), interpolated strings (`$"{x}"`), verbatim strings, or comments are left untouched.
+- **Blank-line insertion:** Blank lines are inserted before block-start keywords (`if`, `for`, `foreach`, etc.) only when the keyword is in a code region. Keywords appearing inside multi-line comments or verbatim strings do not trigger blank-line insertion.
+- **Switch case detection:** `case`/`default` labels are recognised only when they appear in code regions, preventing false matches inside comments.
+- **Line-length splitting:** Break points are chosen only at Code token boundaries, so strings and comments are never split mid-token.
+
+## Idempotency Guarantee
+
+The formatter is **idempotent**: running `Format` on its own output produces no further changes. That is, `Format(Format(source)) == Format(source)` for any input.
+
+This guarantee holds because:
+
+1. Each transformation pass either detects and skips already-formatted content or produces output that is stable under re-application.
+2. The token mask and per-line code-region flags are recomputed from the current text at each run, so blank-line and indentation decisions always reflect the actual content rather than stale state.
+3. Blank-line rules insert at most one blank line before block-starts and collapse multiple blanks to one, converging in a single pass.
+4. Brace enforcement detects existing braces and does not add duplicates.
+5. Line splitting recurses until every segment is within the 80-character limit, then re-running finds no lines exceeding the limit.
+
+Files that are already in canonical form are reported as `Skipped` on every subsequent run.
