@@ -29,17 +29,41 @@ namespace CSharpFormatter
             text = text.Replace("\r\n", "\n").Replace("\r", "\n");
             text = TextUtils.MoveOpenBraceToOwnLine(text);
             var lines = TextUtils.SplitLines(text);
-            // Tokenise once for all downstream line-based processing.
+            // Tokenise once for Reindent (which needs the pre-Reindent text
+            // and code mask to compute brace depths and continuation flags).
             var tokenized = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokenized);
             bool[] isCodeLine = TextUtils.ComputeIsCodeLine(lines, isCode);
             lines = IndentationProcessor.Reindent(lines, text, tokenized,
                 isCode, isCodeLine);
-            lines = BlankLineProcessor.ApplyBlankLineRules(lines,
-                isCodeLine);
+            // Split long lines BEFORE applying blank-line rules so that
+            // multi-line statements produced by line-length splitting are
+            // visible to the blank-line rules on the first pass. This is
+            // required for idempotency: on a second pass the lines are
+            // already split, and the blank-line rules would otherwise insert
+            // a new blank line above the first segment.
+            lines = LineLengthProcessor.ApplyLineLengthLimit(lines);
+            // Recompute text, tokens, code mask, and per-line flags from the
+            // post-split lines so that continuation/statement-end detection
+            // reflects the actual (possibly split) line structure.
+            text = string.Join("\n", lines);
+            tokenized = Tokenizer.Tokenize(text);
+            isCode = Tokenizer.BuildCodeMask(text, tokenized);
+            isCodeLine = TextUtils.ComputeIsCodeLine(lines, isCode);
+            int[] lineStarts = TextUtils.ComputeLineStarts(lines);
+            var lineContinuesNext = new bool[lines.Count];
+            var lineEndsStatement = new bool[lines.Count];
+            for (int i = 0; i < lines.Count; i++)
+            {
+                lineContinuesNext[i] = TextUtils.IsContinuationIndicator(
+                    lines[i], lineStarts[i], text, isCode);
+                lineEndsStatement[i] = TextUtils.EndsStatement(
+                    lines[i], lineStarts[i], text, isCode);
+            }
+            lines = BlankLineProcessor.ApplyBlankLineRules(lines, isCodeLine,
+                lineContinuesNext, lineEndsStatement);
             lines = BlankLineProcessor.CollapseBlankLines(lines);
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines);
-            lines = LineLengthProcessor.ApplyLineLengthLimit(lines);
             string result = string.Join("\n", lines);
             result = TextUtils.EnsureSingleTrailingNewline(result);
             return result;

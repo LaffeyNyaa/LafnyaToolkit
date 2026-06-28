@@ -351,72 +351,14 @@ namespace CSharpFormatter
 
         /// <summary>
         /// Determines whether the specified line ends with a continuation
-        /// indicator within a code region. Scans backward from the end of
-        /// the line, skipping non-code characters and whitespace, to find
-        /// the last code-region character. This correctly handles trailing
-        /// comments (e.g., <c>code, // comment</c>).
+        /// indicator. Delegates to
+        /// <see cref="TextUtils.IsContinuationIndicator"/>.
         /// </summary>
-        /// <param name="line">The line text.</param>
-        /// <param name="lineStart">The starting offset of this line in
-        /// <paramref name="text"/>.</param>
-        /// <param name="text">The full source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <returns>true if the line ends with a continuation indicator;
-        /// otherwise false.</returns>
         private static bool IsContinuationIndicator(string line,
             int lineStart, string text, bool[] isCode)
         {
-            int lastCodeIdx = -1;
-
-            for (int i = line.Length - 1; i >= 0; i--)
-            {
-                int textPos = lineStart + i;
-
-                if (textPos < 0 || textPos >= isCode.Length ||
-                    !isCode[textPos])
-                {
-                    continue;
-                }
-
-                char c = line[i];
-
-                if (c == ' ' || c == '\t')
-                {
-                    continue;
-                }
-
-                lastCodeIdx = i;
-                break;
-            }
-
-            if (lastCodeIdx < 0)
-            {
-                return false;
-            }
-
-            char last = line[lastCodeIdx];
-
-            if (last == ',' || last == '+' || last == '(' ||
-                last == '=' || last == '?')
-            {
-                return true;
-            }
-
-            if (lastCodeIdx < 1)
-            {
-                return false;
-            }
-
-            int prevTextPos = lineStart + lastCodeIdx - 1;
-
-            if (prevTextPos < 0 || prevTextPos >= isCode.Length ||
-                !isCode[prevTextPos])
-            {
-                return false;
-            }
-
-            string last2 = line.Substring(lastCodeIdx - 1, 2);
-            return last2 == "&&" || last2 == "||";
+            return TextUtils.IsContinuationIndicator(line, lineStart, text,
+                isCode);
         }
     }
 }

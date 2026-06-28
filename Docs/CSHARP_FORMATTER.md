@@ -49,9 +49,12 @@ switch (x)
 
 ### Blank Lines Around Code Blocks and Multi-line Statements
 
-Maintain exactly one blank line above and below code blocks and multi-line statements.
+Maintain exactly one blank line above and below code blocks and multi-line statements. A **multi-line statement** is a statement that has been split across two or more physical lines due to line-length wrapping (see [Line Length Limit](#line-length-limit)): the first segment ends with a continuation operator (`,`, `+`, `-`, `*`, `/`, `%`, `=`, `=>`, `<`, `>`, `&&`, `||`, etc.) and the last segment ends with `;` or `}`.
 - **Exception 1:** Do not add a blank line above if the block or statement is located at the very beginning of its parent block.
 - **Exception 2:** Do not add a blank line below if the block or statement is located at the very end of its parent block.
+- **Exception 3 (block-head):** Do not add a blank line above a multi-line statement if the previous non-blank line opens a block (`{` alone or ends with `{`).
+- **Exception 4 (comment-attachment):** Do not add a blank line above a multi-line statement if the previous non-blank line is a comment (`//`, `/*`, `*`, or `///`); the comment is considered attached to the declaration.
+- **Exception 5 (try/catch/finally):** Do not add a blank line between a `try`, `catch`, or `finally` clause and the closing brace of the preceding block. A `catch` or `finally` clause sits directly adjacent to the `}` of its `try` (or preceding `catch`) block, with no intervening blank line. Multiple consecutive `catch` clauses are likewise not separated by blank lines.
 
 **Incorrect:**
 ```csharp
@@ -79,6 +82,30 @@ for (i = 0; i < 10; i++)
         Console.WriteLine("i is 5");
     }
 }
+```
+
+**try/catch/finally example:**
+```csharp
+try
+{
+    DoWork();
+}
+catch (Exception ex)
+{
+    Log.Error(ex);
+}
+finally
+{
+    Cleanup();
+}
+```
+
+**Multi-line statement example:**
+```csharp
+Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
+    targetPath);
+
+Environment.Exit(2);
 ```
 
 ### Indentation
@@ -241,5 +268,8 @@ This guarantee holds because:
 3. Blank-line rules insert at most one blank line before block-starts and collapse multiple blanks to one, converging in a single pass.
 4. Brace enforcement detects existing braces and does not add duplicates.
 5. Line splitting recurses until every segment is within the 80-character limit, then re-running finds no lines exceeding the limit.
+6. **Continuation detection coverage:** the `IsContinuationIndicator` test recognises the full set of break-point operators listed under [Line Length Limit](#line-length-limit) (`,`, `;`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `=`, `+=`, `-=`, `=>`, `&&`, `||`). Because `==`/`!=`/`<=`/`>=`/`+=`/`-=` all end in `=`, and `=>` ends in `>`, the test only needs to check the trailing character against the set `{ ',', '+', '-', '*', '/', '%', '<', '>', '=', '&&', '||' }`. This keeps `IndentationProcessor` and `LineLengthProcessor` in agreement on where continuation indents apply, so a line split by the length limiter is recognised as a continuation on the next run and receives the same indent.
+7. **Fixed continuation indent:** `LineLengthProcessor.SplitLongLine` computes the continuation indent once from the first segment's indent (first-segment indent + 4 spaces) and reuses that fixed value for every subsequent segment of the same statement. This avoids cascading indents (12 → 16 → 20 → …) that would otherwise diverge from `IndentationProcessor`'s single +4 application and break idempotency on statements requiring three or more segments.
+8. **Pipeline ordering:** `LineLengthProcessor.ApplyLineLengthLimit` runs *before* `BlankLineProcessor.ApplyBlankLineRules`, and the text/tokens/code-mask/per-line flags are recomputed from the post-split lines before the blank-line rules consult them. This ensures the multi-line-statement blank-line rules see the same line structure on the first pass as on every subsequent pass, so no new blank line is inserted on a second run.
 
 Files that are already in canonical form are reported as `Skipped` on every subsequent run.

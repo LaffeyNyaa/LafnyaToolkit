@@ -26,7 +26,7 @@ namespace CSharpFormatter
                     continue;
                 }
 
-                var split = SplitLongLine(line);
+                var split = SplitLongLine(line, null);
                 result.AddRange(split);
             }
 
@@ -36,8 +36,13 @@ namespace CSharpFormatter
         /// <summary>
         /// Recursively splits a single line so that each segment does not
         /// exceed 80 characters; splits only at Code token boundaries.
+        /// <paramref name="fixedContIndent"/> is the fixed continuation
+        /// indent reused across all continuation segments so that 3+
+        /// segment splits do not cascade; pass null on the first call to
+        /// trigger computation from the original line's indent.
         /// </summary>
-        private static List<string> SplitLongLine(string line)
+        private static List<string> SplitLongLine(string line,
+            string fixedContIndent)
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -57,8 +62,18 @@ namespace CSharpFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            string contIndent = indent +
-                new string(' ', TextUtils.IndentSize);
+
+            // On the first call (fixedContIndent == null), compute the fixed
+            // continuation indent from the original line's indent. This indent
+            // is reused for ALL continuation segments so that 3+ segment splits
+            // do not cascade (parent+4 for every continuation line, matching
+            // IndentationProcessor's behaviour).
+            if (fixedContIndent == null)
+            {
+                fixedContIndent = indent +
+                    new string(' ', TextUtils.IndentSize);
+            }
+
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
@@ -68,7 +83,7 @@ namespace CSharpFormatter
             }
 
             string first = line.Substring(0, breakAt).TrimEnd();
-            string rest = contIndent + line.Substring(breakAt).TrimStart();
+            string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
 
             if (first.Length == 0 || first.Length >= line.Length)
             {
@@ -76,7 +91,7 @@ namespace CSharpFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest));
+            result.AddRange(SplitLongLine(rest, fixedContIndent));
             return result;
         }
 
