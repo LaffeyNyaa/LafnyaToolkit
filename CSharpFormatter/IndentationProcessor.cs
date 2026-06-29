@@ -334,7 +334,7 @@ namespace CSharpFormatter
                     string trimmed = lines[li].Trim();
 
                     if (!inInner && isCodeLine[li] &&
-                        TextUtils.IsCaseLabelLine(trimmed))
+                        LineClassifier.IsCaseLabelLine(trimmed))
                     {
                         inCaseBody = true;
                     }
@@ -352,13 +352,13 @@ namespace CSharpFormatter
         /// <summary>
         /// Determines whether the specified line ends with a continuation
         /// indicator. Delegates to
-        /// <see cref="TextUtils.IsContinuationIndicator"/>.
+        /// <see cref="LineClassifier.IsContinuationIndicator"/>.
         /// </summary>
         private static bool IsContinuationIndicator(string line,
             int lineStart, string text, bool[] isCode)
         {
-            return TextUtils.IsContinuationIndicator(line, lineStart, text,
-                isCode);
+            return LineClassifier.IsContinuationIndicator(line, lineStart,
+                text, isCode);
         }
     }
 }

@@ -4,38 +4,6 @@ using System.Text;
 namespace CppFormatter
 {
     /// <summary>
-    /// Represents the types of tokens recognizable in C++ source code.
-    /// </summary>
-    internal enum TokenKind
-    {
-        /// <summary>Ordinary code (identifiers, keywords, operators, punctuation, etc.).</summary>
-        Code,
-        /// <summary>Ordinary string literal "..." and its prefixed variants L"..."/u8"..."/u"..."/U"..." (with escape sequences).</summary>
-        String,
-        /// <summary>Raw string literal R"delim(...)delim" and its prefixed variants LR"..."/u8R"..."/uR"..."/UR"..." (escape sequences not processed).</summary>
-        VerbatimString,
-        /// <summary>Character literal '...' (with escape sequences).</summary>
-        Char,
-        /// <summary>Single-line comment //... to end of line.</summary>
-        SingleLineComment,
-        /// <summary>Multi-line comment /* ... */.</summary>
-        MultiLineComment,
-        /// <summary>Preprocessor directive #... entire line (including backslash continuation).</summary>
-        Preprocessor
-    }
-
-    /// <summary>
-    /// Represents a token and its original text.
-    /// </summary>
-    internal struct Token
-    {
-        /// <summary>The token kind.</summary>
-        public TokenKind Kind;
-        /// <summary>The original text of the token (not normalized in any way).</summary>
-        public string Text;
-    }
-
-    /// <summary>
     /// Splits a C++ source character stream into a token sequence, preserving original text and trivia.
     /// </summary>
     internal static class Tokenizer

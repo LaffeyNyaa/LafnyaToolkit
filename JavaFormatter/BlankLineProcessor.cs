@@ -65,13 +65,13 @@ namespace JavaFormatter
                 bool lineStartsInCode = FirstNonWsInCode(line, lineStart,
                     isCode);
                 bool isBlockStart = lineStartsInCode &&
-                    TextUtils.IsBlockStartLine(trimmed);
+                    LineClassifier.IsBlockStartLine(trimmed);
                 bool currentIsImport = lineStartsInCode &&
-                    TextUtils.IsImportDirective(trimmed);
+                    LineClassifier.IsImportDirective(trimmed);
                 bool currentIsDoWhileTail = lineStartsInCode &&
-                    TextUtils.IsDoWhileTail(trimmed);
+                    LineClassifier.IsDoWhileTail(trimmed);
                 bool currentIsBlockCont = lineStartsInCode &&
-                    TextUtils.IsBlockContinuation(trimmed);
+                    LineClassifier.IsBlockContinuation(trimmed);
                 bool currentIsAnnotation = lineStartsInCode &&
                     trimmed.StartsWith("@");
                 bool currentStartsWithCloseBrace = lineStartsInCode &&
@@ -95,9 +95,9 @@ namespace JavaFormatter
                     bool prevEndsWithOpenBrace = prevEndsInCode &&
                         TextUtils.EndsWithOpenBrace(prevTrimmed);
                     bool prevIsBlockEnd = prevStartsInCode &&
-                        TextUtils.IsBlockEndLine(prevTrimmed);
+                        LineClassifier.IsBlockEndLine(prevTrimmed);
                     bool prevIsImport = prevStartsInCode &&
-                        TextUtils.IsImportDirective(prevTrimmed);
+                        LineClassifier.IsImportDirective(prevTrimmed);
                     bool prevIsPackage = prevStartsInCode &&
                         prevTrimmed.StartsWith("package ");
 
@@ -122,6 +122,28 @@ namespace JavaFormatter
                     if (!wantBlankAbove && currentIsImport && prevIsPackage)
                     {
                         wantBlankAbove = true;
+                    }
+
+                    bool currentIsDocCommentStart =
+                        trimmed.StartsWith("/**");
+                    if (!wantBlankAbove && currentIsDocCommentStart)
+                    {
+                        bool prevIsRegularComment =
+                            prevTrimmed.StartsWith("//") ||
+                            (prevTrimmed.StartsWith("/*") &&
+                                !prevTrimmed.StartsWith("/**")) ||
+                            (prevTrimmed.StartsWith("*") &&
+                                !prevTrimmed.EndsWith("*/"));
+                        bool prevIsBlockOpenBrace =
+                            prevTrimmed == "{" ||
+                            TextUtils.EndsWithOpenBrace(prevTrimmed);
+
+                        if (prevTrimmed.Length > 0 &&
+                            !prevIsRegularComment &&
+                            !prevIsBlockOpenBrace)
+                        {
+                            wantBlankAbove = true;
+                        }
                     }
                 }
 

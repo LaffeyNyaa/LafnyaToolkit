@@ -148,6 +148,29 @@ Maintain exactly one blank line above and below structural declarations, includi
 - **Exception 1:** Do not add a blank line above if the declaration is at the very beginning of its parent block.
 - **Exception 2:** Do not add a blank line below if the declaration is at the very end of its parent block.
 
+### Empty Lines: Documentation Comments
+
+- **General Rule**: Keep exactly one empty line above a documentation comment block (`///`) when the preceding non-blank line is a code statement. This separates the "doc comment + declaration" logical unit from the previous unit.
+- **Exceptions** (no empty line added above the `///`):
+  - The previous non-blank line is itself a `///` documentation comment (multi-line doc continuation).
+  - The previous non-blank line is a regular comment (`//`, `/*`, or `*` continuation) attached to the declaration below.
+  - The previous non-blank line is a block-opening brace (`{` alone or ending with `{`).
+- *Incorrect*:
+  ```csharp
+  /// <summary>Number of spaces per indent level.</summary>
+  private const int IndentSize = 4;
+  /// <summary>Maximum line length.</summary>
+  private const int MaxLineLength = 80;
+  ```
+- *Correct*:
+  ```csharp
+  /// <summary>Number of spaces per indent level.</summary>
+  private const int IndentSize = 4;
+
+  /// <summary>Maximum line length.</summary>
+  private const int MaxLineLength = 80;
+  ```
+
 ### End-of-File Newline
 
 Every file must end with exactly one newline character. 

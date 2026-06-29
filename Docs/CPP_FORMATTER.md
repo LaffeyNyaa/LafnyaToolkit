@@ -84,6 +84,29 @@
   - Do not add an empty line below if located at the end of the parent block.
 - **Namespace Specifics**: No empty lines are allowed immediately after the opening brace `{` or immediately before the closing brace `}` of a namespace.
 
+### Empty Lines: Documentation Comments
+
+- **General Rule**: Keep exactly one empty line above a documentation comment block (`///`) when the preceding non-blank line is a code statement. This separates the "doc comment + declaration" logical unit from the previous unit.
+- **Exceptions** (no empty line added above the `///`):
+  - The previous non-blank line is itself a `///` documentation comment (multi-line doc continuation).
+  - The previous non-blank line is a regular comment (`//`, `/*`, or `*` continuation) attached to the declaration below.
+  - The previous non-blank line is a block-opening brace (`{` alone or ending with `{`).
+- *Incorrect*:
+  ```cpp
+  /// <summary>Indentation uses 4 spaces per level.</summary>
+  private const int IndentSize = 4;
+  /// <summary>Maximum length of a single line.</summary>
+  private const int MaxLineLength = 80;
+  ```
+- *Correct*:
+  ```cpp
+  /// <summary>Indentation uses 4 spaces per level.</summary>
+  private const int IndentSize = 4;
+
+  /// <summary>Maximum length of a single line.</summary>
+  private const int MaxLineLength = 80;
+  ```
+
 ### End of File (EOF) Newline
 
 - **Newline Rule**: Every file must end with exactly **one newline character**.

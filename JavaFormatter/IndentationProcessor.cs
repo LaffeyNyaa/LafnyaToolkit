@@ -98,7 +98,7 @@ namespace JavaFormatter
                 int baseDepth = depths[i];
 
                 if (i > 0 && !inEnumBlock[i] &&
-                    TextUtils.IsContinuationIndicator(lines[i - 1],
+                    LineClassifier.IsContinuationIndicator(lines[i - 1],
                     lineStarts[i - 1], text, isCode))
                 {
                     baseDepth++;

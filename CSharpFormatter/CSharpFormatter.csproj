@@ -54,6 +54,7 @@
     <Compile Include="UsingSorter.cs" />
     <Compile Include="Formatter.cs" />
     <Compile Include="TextUtils.cs" />
+    <Compile Include="LineClassifier.cs" />
     <Compile Include="BraceEnforcer.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="PropertyFormatter.cs" />

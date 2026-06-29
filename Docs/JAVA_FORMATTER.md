@@ -85,6 +85,29 @@ Maintain exactly one blank line above and below declarations such as classes, me
   - Do **not** add a blank line above if the declaration is the very first element inside a parent block.
   - Do **not** add a blank line below if the declaration is the very last element inside a parent block.
 
+### Empty Lines: Documentation Comments
+
+- **General Rule**: Keep exactly one empty line above a Javadoc block start (`/**`) when the preceding non-blank line is a code statement. This separates the "doc comment + declaration" logical unit from the previous unit.
+- **Exceptions** (no empty line added above the `/**`):
+  - The previous non-blank line is a regular comment (`//`, `/*` without `/**`, or `*` continuation) attached to the declaration below.
+  - The previous non-blank line is a block-opening brace (`{` alone or ending with `{`).
+  - Note: When the previous non-blank line ends with `*/` (the end of a preceding Javadoc block), an empty line IS added to separate the two doc blocks.
+- *Incorrect*:
+  ```java
+  /** Doc for x. */
+  private final int x = 0;
+  /** Doc for y. */
+  private final int y = 1;
+  ```
+- *Correct*:
+  ```java
+  /** Doc for x. */
+  private final int x = 0;
+
+  /** Doc for y. */
+  private final int y = 1;
+  ```
+
 ### Indentation
 
 Use exactly **4 spaces** for each indentation level.

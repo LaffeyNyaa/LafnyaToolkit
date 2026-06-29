@@ -49,6 +49,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Formatter.cs" />
+    <Compile Include="IndentationProcessor.cs" />
+    <Compile Include="BlankLineProcessor.cs" />
+    <Compile Include="LineLengthProcessor.cs" />
+    <Compile Include="EnumFormatter.cs" />
+    <Compile Include="TextUtils.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Tokenizer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

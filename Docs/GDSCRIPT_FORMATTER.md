@@ -59,6 +59,29 @@ for n in numbers:
 
 - Maintain exactly **two blank lines** above and below class definitions and method declarations.
 
+### Empty Lines: Documentation Comments
+
+- **General Rule**: Keep exactly one empty line above a documentation comment block (`##`) when the preceding non-blank line is a code statement. This separates the "doc comment + declaration" logical unit from the previous unit.
+- **Exceptions** (no empty line added above the `##`):
+  - The previous non-blank line is itself a `##` documentation comment (multi-line doc continuation).
+  - The previous non-blank line is a regular comment (`#` without `##`) attached to the declaration below.
+  - The previous non-blank line is a file header line (`@tool`, `@icon`, `class_name`, `extends`).
+- *Incorrect*:
+  ```gdscript
+  ## Doc for x.
+  var x := 0
+  ## Doc for y.
+  var y := 1
+  ```
+- *Correct*:
+  ```gdscript
+  ## Doc for x.
+  var x := 0
+
+  ## Doc for y.
+  var y := 1
+  ```
+
 ### End-of-File (EOF) Newline
 
 - Every file must end with exactly **one newline character**.

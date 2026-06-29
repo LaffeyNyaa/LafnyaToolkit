@@ -33,7 +33,7 @@ namespace CSharpFormatter
             // and code mask to compute brace depths and continuation flags).
             var tokenized = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokenized);
-            bool[] isCodeLine = TextUtils.ComputeIsCodeLine(lines, isCode);
+            bool[] isCodeLine = LineClassifier.ComputeIsCodeLine(lines, isCode);
             lines = IndentationProcessor.Reindent(lines, text, tokenized,
                 isCode, isCodeLine);
             // Compute continuation flags from the post-Reindent (pre-split)
@@ -48,7 +48,7 @@ namespace CSharpFormatter
             var preSplitContinues = new bool[lines.Count];
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = TextUtils.IsContinuationIndicator(
+                preSplitContinues[i] = LineClassifier.IsContinuationIndicator(
                     lines[i], lineStarts[i], text, isCode);
             }
             // Split long lines BEFORE applying blank-line rules so that
@@ -65,15 +65,15 @@ namespace CSharpFormatter
             text = string.Join("\n", lines);
             tokenized = Tokenizer.Tokenize(text);
             isCode = Tokenizer.BuildCodeMask(text, tokenized);
-            isCodeLine = TextUtils.ComputeIsCodeLine(lines, isCode);
+            isCodeLine = LineClassifier.ComputeIsCodeLine(lines, isCode);
             lineStarts = TextUtils.ComputeLineStarts(lines);
             var lineContinuesNext = new bool[lines.Count];
             var lineEndsStatement = new bool[lines.Count];
             for (int i = 0; i < lines.Count; i++)
             {
-                lineContinuesNext[i] = TextUtils.IsContinuationIndicator(
+                lineContinuesNext[i] = LineClassifier.IsContinuationIndicator(
                     lines[i], lineStarts[i], text, isCode);
-                lineEndsStatement[i] = TextUtils.EndsStatement(
+                lineEndsStatement[i] = LineClassifier.EndsStatement(
                     lines[i], lineStarts[i], text, isCode);
             }
             lines = BlankLineProcessor.ApplyBlankLineRules(lines, isCodeLine,

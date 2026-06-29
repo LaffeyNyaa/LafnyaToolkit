@@ -93,7 +93,7 @@ namespace CSharpFormatter
                 bool lineIsCode = origIdx < isCodeLine.Length &&
                     isCodeLine[origIdx];
                 bool isBlockStart = lineIsCode &&
-                    TextUtils.IsBlockStartLine(trimmed);
+                    LineClassifier.IsBlockStartLine(trimmed);
                 bool wantBlankAbove = false;
 
                 if (result.Count > 0)
@@ -105,7 +105,7 @@ namespace CSharpFormatter
                     bool prevIsCode = prevOrigIdx < isCodeLine.Length &&
                         isCodeLine[prevOrigIdx];
 
-                    bool prevIsBlockEnd = TextUtils.IsBlockEndLine(prevTrimmed);
+                    bool prevIsBlockEnd = LineClassifier.IsBlockEndLine(prevTrimmed);
                     bool prevIsBlockStartBrace = prevTrimmed == "{" ||
                         TextUtils.EndsWithOpenBrace(prevTrimmed);
                     bool prevIsComment = IsCommentLine(prevTrimmed);
@@ -130,8 +130,8 @@ namespace CSharpFormatter
                     // Existing rule: preserve blank lines between using directives
                     // when the input already had one.
                     if (!wantBlankAbove &&
-                        TextUtils.IsUsingDirective(trimmed) &&
-                        TextUtils.IsUsingDirective(prevTrimmed) &&
+                        LineClassifier.IsUsingDirective(trimmed) &&
+                        LineClassifier.IsUsingDirective(prevTrimmed) &&
                         entry.HadBlankAbove)
                     {
                         wantBlankAbove = true;
@@ -154,7 +154,7 @@ namespace CSharpFormatter
                         lineEndsStatement[prevOrigIdx] &&
                         (prevOrigIdx - 1) < lineContinuesNext.Length &&
                         lineContinuesNext[prevOrigIdx - 1];
-                    bool currentIsBlockEnd = TextUtils.IsBlockEndLine(trimmed);
+                    bool currentIsBlockEnd = LineClassifier.IsBlockEndLine(trimmed);
 
                     if (!wantBlankAbove && prevIsMultiLineEnd &&
                         !currentIsBlockEnd)
@@ -197,6 +197,30 @@ namespace CSharpFormatter
                     if (currentIsCatchOrFinally && prevIsBlockEnd)
                     {
                         wantBlankAbove = false;
+                    }
+
+                    // NEW rule: doc-comment blank-line rule. A ///
+                    // documentation-comment line should have a blank line
+                    // above it when the previous non-blank line is a code
+                    // statement. Exceptions (no blank added): the previous
+                    // line is itself a /// doc comment (multi-line doc
+                    // continuation), a regular comment (//, /*, *), or a
+                    // block-opening brace ({ or ends with {). Note that
+                    // IsCommentLine also matches ///, so prevIsDocComment
+                    // must be checked first and excluded from the regular
+                    // comment case.
+                    bool currentIsDocComment = trimmed.StartsWith("///");
+                    if (!wantBlankAbove && currentIsDocComment)
+                    {
+                        bool prevIsDocComment =
+                            prevTrimmed.StartsWith("///");
+                        bool prevIsRegularComment = !prevIsDocComment &&
+                            prevIsComment;
+                        if (prevTrimmed.Length > 0 && !prevIsDocComment &&
+                            !prevIsRegularComment && !prevIsBlockStartBrace)
+                        {
+                            wantBlankAbove = true;
+                        }
                     }
                 }
 

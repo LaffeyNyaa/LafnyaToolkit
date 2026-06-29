@@ -47,7 +47,7 @@ namespace JavaFormatter
             var preSplitContinues = new bool[lines.Count];
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = TextUtils.IsContinuationIndicator(
+                preSplitContinues[i] = LineClassifier.IsContinuationIndicator(
                     lines[i], lineStartsForLimit[i], textForLimit,
                     isCodeForLimit);
             }
