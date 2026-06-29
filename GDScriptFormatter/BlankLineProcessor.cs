@@ -16,12 +16,11 @@ namespace GDScriptFormatter
         {
             /// <summary>Whether a blank line existed above this line in the original input.</summary>
             public bool HadBlankAbove;
-
             /// <summary>The line text.</summary>
             public string Line;
-
             /// <summary>The indentation level.</summary>
             public int Indent;
+
             public NonBlankEntry(bool hadBlankAbove, string line, int indent)
             {
                 HadBlankAbove = hadBlankAbove;
@@ -73,7 +72,6 @@ namespace GDScriptFormatter
                 {
                     string prevTrimmed = result[result.Count - 1].Trim();
                     int prevIndent = resultIndents[resultIndents.Count - 1];
-
                     wantBlankAbove = ComputeDesiredBlanksAbove(
                         prevTrimmed, trimmed, nonBlank, i,
                         prevIndent, lineIndent);
@@ -132,30 +130,24 @@ namespace GDScriptFormatter
             {
                 want = 2;
             }
-
             else if (sameIndent && TextUtils.IsFuncOrClassDecl(prevTrimmed) &&
                 !TextUtils.IsFuncOrClassDecl(curTrimmed))
             {
                 want = 2;
             }
-
-            else if (TextUtils.IsBlockStartLine(curTrimmed) &&
-                !TextUtils.IsSameGroup(
+            else if (TextUtils.IsBlockStartLine(curTrimmed) && !TextUtils.IsSameGroup(
                 prevTrimmed, curTrimmed) && sameIndent)
             {
                 want = 1;
             }
-
-            else if (TextUtils.IsBlockStartLine(curTrimmed) &&
-                !deeperThanPrev &&
+            else if (TextUtils.IsBlockStartLine(curTrimmed) && !deeperThanPrev &&
                 prevTrimmed.Length > 0 && prevTrimmed != ":" &&
                 !TextUtils.EndsWithColon(prevTrimmed))
             {
                 want = 1;
             }
 
-            if (want == 0 && sameIndent &&
-                TextUtils.IsTopLevelMember(prevTrimmed) &&
+            if (want == 0 && sameIndent && TextUtils.IsTopLevelMember(prevTrimmed) &&
                 TextUtils.IsTopLevelMember(curTrimmed) &&
                 !TextUtils.IsSameGroup(prevTrimmed, curTrimmed))
             {
@@ -171,13 +163,9 @@ namespace GDScriptFormatter
             if (want == 0 && curTrimmed.StartsWith("##"))
             {
                 bool prevIsDocComment = prevTrimmed.StartsWith("##");
-
-                bool prevIsRegularComment = prevTrimmed.StartsWith("#") &&
-                    !prevIsDocComment;
-
+                bool prevIsRegularComment = prevTrimmed.StartsWith("#") && !prevIsDocComment;
                 bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
                     prevTrimmed.EndsWith("{");
-
                 bool prevIsFileHeader = TextUtils.IsFileHeaderLine(prevTrimmed);
 
                 if (prevTrimmed.Length > 0 && !prevIsDocComment &&
@@ -192,7 +180,6 @@ namespace GDScriptFormatter
             // single-line statements at the same indent. Only PRESERVES an
             // existing blank (HadBlankAbove); never adds one. Prevents the
             // "align downward" logic from stripping the author's blank.
-
             if (want == 0 && nonBlank[curIdx].HadBlankAbove &&
                 prevIndent == curIndent &&
                 IsPlainSingleLineStatement(prevTrimmed) &&
@@ -206,13 +193,8 @@ namespace GDScriptFormatter
 
         /// <summary>
         /// Determines whether a trimmed line is a plain single-line GDScript
-        /// statement: non-empty, not a comment, not a block-start (lines ending
-        /// with ":"), not a file header, and not an annotation line ("@...").
-        /// Note: var/const/signal/enum declarations are treated as plain
-        /// single-line statements so that author-inserted blank lines between
-        /// them are preserved (consistent with C# field initializers).
-        /// func/class declarations end with ":" and are excluded as block-starts;
-        /// class_name/extends are excluded as file headers.
+        /// statement: non-empty, not a comment, not a block-start, not a
+        /// declaration, not a func/class declaration, and not a file header.
         /// </summary>
         private static bool IsPlainSingleLineStatement(string trimmed)
         {
@@ -220,27 +202,26 @@ namespace GDScriptFormatter
             {
                 return false;
             }
-
             if (trimmed.StartsWith("#"))
             {
                 return false;
             }
-
             if (TextUtils.IsBlockStartLine(trimmed))
             {
                 return false;
             }
-
+            if (TextUtils.IsDeclarationLine(trimmed))
+            {
+                return false;
+            }
+            if (TextUtils.IsFuncOrClassDecl(trimmed))
+            {
+                return false;
+            }
             if (TextUtils.IsFileHeaderLine(trimmed))
             {
                 return false;
             }
-
-            if (trimmed.StartsWith("@"))
-            {
-                return false;
-            }
-
             return true;
         }
 
@@ -289,7 +270,6 @@ namespace GDScriptFormatter
                 {
                     count++;
                 }
-
                 else
                 {
                     break;
@@ -318,7 +298,6 @@ namespace GDScriptFormatter
                         result.Add(string.Empty);
                     }
                 }
-
                 else
                 {
                     if (blankRun > 2)
@@ -330,9 +309,7 @@ namespace GDScriptFormatter
                         }
 
                         string trimmed = line.Trim();
-
-                        bool nearFuncClass =
-                            TextUtils.IsFuncOrClassDecl(trimmed);
+                        bool nearFuncClass = TextUtils.IsFuncOrClassDecl(trimmed);
 
                         if (!nearFuncClass && result.Count > 0)
                         {

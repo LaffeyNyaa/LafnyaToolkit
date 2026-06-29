@@ -25,10 +25,8 @@ namespace CppFormatter
             string text)
         {
             var tokens = Tokenizer.Tokenize(text);
-
             bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
                 tokens, lines.Count);
-
             var nonBlank = new List<NonBlankEntry>(lines.Count);
             bool prevWasBlank = false;
             bool isFirst = true;
@@ -36,7 +34,6 @@ namespace CppFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
-
                 bool isProtected = i < protectedLines.Length &&
                     protectedLines[i];
 
@@ -47,10 +44,8 @@ namespace CppFormatter
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
-
                 nonBlank.Add(new NonBlankEntry(hadBlankAbove, line,
                     isProtected));
-
                 prevWasBlank = false;
                 isFirst = false;
             }
@@ -74,18 +69,15 @@ namespace CppFormatter
                         wantBlankAbove = true;
                     }
 
-                    if (!wantBlankAbove &&
-                        TextUtils.IsBlockEndLine(prevTrimmed) &&
+                    if (!wantBlankAbove && TextUtils.IsBlockEndLine(prevTrimmed) &&
                         trimmed.Length > 0 && trimmed != "}" &&
                         !trimmed.StartsWith("}"))
                     {
                         wantBlankAbove = true;
                     }
 
-                    if (!wantBlankAbove &&
-                        TextUtils.IsIncludeDirective(trimmed) &&
-                        TextUtils.IsIncludeDirective(prevTrimmed) &&
-                        nonBlank[i].HadBlankAbove)
+                    if (!wantBlankAbove && TextUtils.IsIncludeDirective(trimmed) &&
+                        TextUtils.IsIncludeDirective(prevTrimmed) && nonBlank[i].Key)
                     {
                         wantBlankAbove = true;
                     }
@@ -93,36 +85,14 @@ namespace CppFormatter
                     if (!wantBlankAbove && trimmed.StartsWith("///"))
                     {
                         bool prevIsDocComment = prevTrimmed.StartsWith("///");
-
-                        bool prevIsRegularComment =
-                            prevTrimmed.StartsWith("//") ||
+                        bool prevIsRegularComment = prevTrimmed.StartsWith("//") ||
                             prevTrimmed.StartsWith("/*") ||
                             prevTrimmed.StartsWith("*");
-
                         bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
                             TextUtils.EndsWithOpenBrace(prevTrimmed);
 
                         if (prevTrimmed.Length > 0 && !prevIsDocComment &&
                             !prevIsRegularComment && !prevIsBlockOpenBrace)
-                        {
-                            wantBlankAbove = true;
-                        }
-                    }
-
-                    // Preserve author-inserted blank lines between adjacent
-                    // single-line statements. Only PRESERVES an existing blank
-                    // (hadBlankAbove); never adds one. Both current and previous
-                    // non-blank lines must be plain single-line statements.
-
-                    if (!wantBlankAbove && nonBlank[i].HadBlankAbove)
-                    {
-                        bool currentIsPlainStmt = IsPlainSingleLineStatement(
-                            trimmed, nonBlank[i].IsProtected);
-
-                        bool prevIsPlainStmt = IsPlainSingleLineStatement(
-                            prevTrimmed, nonBlank[i - 1].IsProtected);
-
-                        if (currentIsPlainStmt && prevIsPlainStmt)
                         {
                             wantBlankAbove = true;
                         }
@@ -153,10 +123,8 @@ namespace CppFormatter
             string text)
         {
             var tokens = Tokenizer.Tokenize(text);
-
             bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
                 tokens, lines.Count);
-
             var result = new List<string>(lines.Count);
             int blankRun = 0;
 
@@ -203,10 +171,8 @@ namespace CppFormatter
         {
             var tokens = Tokenizer.Tokenize(text);
             int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
-
             bool[] endsInside = Tokenizer.ComputeLineEndsInsideToken(text,
                 tokens, lineStarts, lines);
-
             var result = new List<string>(lines.Count);
 
             for (int i = 0; i < lines.Count; i++)
@@ -215,7 +181,6 @@ namespace CppFormatter
                 {
                     result.Add(lines[i]);
                 }
-
                 else
                 {
                     result.Add(lines[i].TrimEnd());
@@ -223,80 +188,6 @@ namespace CppFormatter
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Determines whether the specified trimmed line is a comment line.
-        /// </summary>
-        /// <param name="trimmed">The trimmed line to inspect.</param>
-        /// <returns>true if the line is a line/block-continuation comment;
-        /// otherwise, false.</returns>
-        private static bool IsCommentLine(string trimmed)
-        {
-            return trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
-                trimmed.StartsWith("*");
-        }
-
-        /// <summary>
-        /// Determines whether the specified trimmed line is a plain C++
-        /// single-line statement: not protected, ends with ';' (but not a
-        /// block start/end), and is not a comment line.
-        /// </summary>
-        /// <param name="trimmed">The trimmed line to inspect.</param>
-        /// <param name="isProtected">Whether the line is protected (inside a
-        /// multi-line string or comment token).</param>
-        /// <returns>true if the line is a plain single-line statement;
-        /// otherwise, false.</returns>
-        private static bool IsPlainSingleLineStatement(string trimmed,
-            bool isProtected)
-        {
-            if (isProtected)
-            {
-                return false;
-            }
-
-            if (trimmed.Length == 0 || !trimmed.EndsWith(";"))
-            {
-                return false;
-            }
-
-            if (TextUtils.IsBlockEndLine(trimmed))
-            {
-                return false;
-            }
-
-            if (TextUtils.IsBlockStartLine(trimmed))
-            {
-                return false;
-            }
-
-            if (IsCommentLine(trimmed))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Carries the per-line metadata required by
-        /// <see cref="ApplyBlankLineRules"/>: whether a blank line originally
-        /// preceded the non-blank line, the line text itself, and whether the
-        /// line is protected (inside a multi-line string or comment token).
-        /// </summary>
-        private struct NonBlankEntry
-        {
-            public bool HadBlankAbove;
-            public string Line;
-            public bool IsProtected;
-
-            public NonBlankEntry(bool hadBlankAbove, string line,
-                bool isProtected)
-            {
-                HadBlankAbove = hadBlankAbove;
-                Line = line;
-                IsProtected = isProtected;
-            }
         }
     }
 }
