@@ -34,10 +34,33 @@ namespace JavaFormatter
             text = TextUtils.EnsureOpenBraceOnSameLine(text);
             var lines = TextUtils.SplitLines(text);
             lines = IndentationProcessor.Reindent(lines, text);
+            // Compute continuation flags from the post-Reindent (pre-split)
+            // line structure so that LineLengthProcessor can detect
+            // continuation lines and avoid cascading indents when splitting
+            // them (a continuation line split at parent+4 must keep its
+            // segments at parent+4, not parent+8).
+            string textForLimit = string.Join("\n", lines);
+            var tokensForLimit = Tokenizer.Tokenize(textForLimit);
+            bool[] isCodeForLimit = Tokenizer.BuildCodeMask(textForLimit,
+                tokensForLimit);
+            int[] lineStartsForLimit = TextUtils.ComputeLineStarts(lines);
+            var preSplitContinues = new bool[lines.Count];
+            for (int i = 0; i < lines.Count; i++)
+            {
+                preSplitContinues[i] = TextUtils.IsContinuationIndicator(
+                    lines[i], lineStartsForLimit[i], textForLimit,
+                    isCodeForLimit);
+            }
+            // Split long lines BEFORE applying blank-line rules so that the
+            // preSplitContinues flags (computed above) stay aligned with the
+            // line list. Running BlankLineProcessor first would insert blank
+            // lines and shift indices, causing LineLengthProcessor to read
+            // the wrong continuation flag for each line.
+            lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
+                preSplitContinues);
             lines = BlankLineProcessor.ApplyBlankLineRules(lines);
             lines = BlankLineProcessor.CollapseBlankLines(lines);
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines);
-            lines = LineLengthProcessor.ApplyLineLengthLimit(lines);
             string result = string.Join("\n", lines);
             result = TextUtils.EnsureSingleTrailingNewline(result);
             return result;

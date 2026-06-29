@@ -10,23 +10,58 @@ namespace CSharpFormatter
         /// <summary>
         /// Splits lines exceeding 80 characters at safe token boundaries;
         /// continuation lines are indented one extra level.
+        /// <paramref name="lineContinuesNext"/> flags whether each line ends
+        /// with a continuation indicator; when a line is itself a continuation
+        /// of the previous line, its split segments reuse the line's current
+        /// indent (no extra level) so that splitting a continuation line does
+        /// not cascade into deeper indents on a second pass.
         /// </summary>
         /// <param name="lines">The line list.</param>
+        /// <param name="lineContinuesNext">Per-line flags indicating whether
+        /// the line ends with a continuation indicator; entry i corresponds
+        /// to line i. May be null when continuation detection is not
+        /// available.</param>
         /// <returns>The processed line list.</returns>
         public static List<string> ApplyLineLengthLimit(
-            List<string> lines)
+            List<string> lines, bool[] lineContinuesNext)
         {
             var result = new List<string>(lines.Count);
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
+                var line = lines[i];
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     result.Add(line);
                     continue;
                 }
 
-                var split = SplitLongLine(line, null);
+                // If this line is itself a continuation of the previous line
+                // (previous line ends with a continuation indicator), the
+                // continuation indent equals this line's current indent — do
+                // NOT add another indent level. Otherwise, continuation
+                // segments are indented one level deeper than the statement
+                // base indent (handled by passing null to SplitLongLine).
+                bool isContinuation = lineContinuesNext != null &&
+                    i > 0 && i - 1 < lineContinuesNext.Length &&
+                    lineContinuesNext[i - 1];
+                string fixedContIndent;
+                if (isContinuation)
+                {
+                    int indentLen = 0;
+                    while (indentLen < line.Length &&
+                        line[indentLen] == ' ')
+                    {
+                        indentLen++;
+                    }
+                    fixedContIndent = line.Substring(0, indentLen);
+                }
+                else
+                {
+                    fixedContIndent = null;
+                }
+
+                var split = SplitLongLine(line, fixedContIndent);
                 result.AddRange(split);
             }
 

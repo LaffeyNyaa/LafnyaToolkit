@@ -40,10 +40,36 @@ namespace GDScriptFormatter
 
             var lines = SplitLines(text);
             lines = Reindent(lines, text, tokens, isCode);
+            // Compute continuation flags from the post-Reindent (pre-split)
+            // line structure so that LineLengthProcessor can detect
+            // continuation lines and avoid cascading indents when splitting
+            // them (a continuation line split at parent+4 must keep its
+            // segments at parent+4, not parent+8).
+            string textForLimit = string.Join("\n", lines);
+            var tokensForLimit = Tokenizer.Tokenize(textForLimit);
+            bool[] isCodeForLimit = Tokenizer.BuildCodeMask(textForLimit,
+                tokensForLimit);
+            int[] lineStartsForLimit = ComputeLineStarts(lines);
+            var lineInfoForLimit = ComputeLineInfo(lines, textForLimit,
+                isCodeForLimit, lineStartsForLimit);
+            var preSplitContinues = new bool[lines.Count];
+            for (int i = 0; i < lines.Count; i++)
+            {
+                // Line i "continues to next" when line i+1 is detected as a
+                // continuation (unclosed bracket from line i, or line i ends
+                // with a continuation backslash).
+                preSplitContinues[i] = i + 1 < lines.Count &&
+                    lineInfoForLimit[i + 1].IsContinuation;
+            }
+            // Split long lines BEFORE applying blank-line rules so that the
+            // preSplitContinues flags (computed above) stay aligned with the
+            // line list. Running BlankLineProcessor first would insert blank
+            // lines and shift indices, causing LineLengthProcessor to read
+            // the wrong continuation flag for each line.
+            lines = ApplyLineLengthLimit(lines, preSplitContinues);
             lines = ApplyBlankLineRules(lines);
             lines = CollapseBlankLines(lines);
             lines = TrimTrailingWhitespace(lines);
-            lines = ApplyLineLengthLimit(lines);
             string result = string.Join("\n", lines);
             result = EnsureSingleTrailingNewline(result);
             return result;
@@ -253,8 +279,11 @@ namespace GDScriptFormatter
 
         /// <summary>
         /// Analyzes per-line properties: colon/brace termination, continuation, original indentation depth.
-        /// Continuation detection is based only on parentheses and square bracket depth (brace depth does not affect continuation,
-        /// because brace lines are handled via the stack through the BraceTerminated flag).
+        /// Continuation detection is based on parenthesis, square bracket, and brace depth. A line
+        /// ending with a trailing { (BraceTerminated) does NOT increment the bracket depth — its
+        /// body is indented via the stack — so that block-style dicts are not double-indented.
+        /// Inline-open dicts/braces (e.g. "var m = {k: v,") DO increment the depth so that
+        /// subsequent continuation lines are detected and preserved as continuations.
         /// </summary>
         private static LineAnalysis[] ComputeLineInfo(List<string> lines,
             string text, bool[] isCode, int[] lineStarts)
@@ -282,10 +311,11 @@ namespace GDScriptFormatter
                 info[i].BraceTerminated = false;
                 info[i].IsCloseBrace = false;
 
+                int firstCodeIdx = -1;
+                int lastCodeIdx = -1;
+
                 if (trimmed.Length > 0)
                 {
-                    int firstCodeIdx = -1;
-                    int lastCodeIdx = -1;
                     int lineEnd = lineStarts[i] + line.Length;
 
                     for (int ci = lineStarts[i]; ci < lineEnd &&
@@ -332,11 +362,20 @@ namespace GDScriptFormatter
 
                     char c = text[ci];
 
-                    if (c == '(' || c == '[')
+                    // Skip the trailing { on BraceTerminated lines — it is
+                    // handled by the stack via BraceTerminated, so counting
+                    // it here would double-indent the body of a block-style
+                    // dict.
+                    if (info[i].BraceTerminated && ci == lastCodeIdx)
+                    {
+                        continue;
+                    }
+
+                    if (c == '(' || c == '[' || c == '{')
                     {
                         parenBracketDepth++;
                     }
-                    else if (c == ')' || c == ']')
+                    else if (c == ')' || c == ']' || c == '}')
                     {
                         if (parenBracketDepth > 0)
                         {
@@ -1063,20 +1102,56 @@ namespace GDScriptFormatter
         /// <summary>
         /// Splits lines exceeding 80 characters: split after commas inside already-open brackets;
         /// for assignment statements, wrap the RHS in (...) then split; leave the line unchanged if no safe split point is found.
+        /// <paramref name="lineContinuesNext"/> flags whether each line ends with a continuation
+        /// indicator; when a line is itself a continuation of the previous line, its split
+        /// segments reuse the line's current indent (no extra level) so that splitting a
+        /// continuation line does not cascade into deeper indents on a second pass.
         /// </summary>
-        private static List<string> ApplyLineLengthLimit(List<string> lines)
+        /// <param name="lines">The current lines.</param>
+        /// <param name="lineContinuesNext">Per-line flags indicating whether the line ends with
+        /// a continuation indicator; entry i corresponds to line i. May be null when
+        /// continuation detection is not available.</param>
+        /// <returns>The lines with long lines split.</returns>
+        private static List<string> ApplyLineLengthLimit(List<string> lines,
+            bool[] lineContinuesNext)
         {
             var result = new List<string>(lines.Count);
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
+                var line = lines[i];
                 if (line.Length <= MaxLineLength)
                 {
                     result.Add(line);
                     continue;
                 }
 
-                var split = SplitLongLine(line);
+                // If this line is itself a continuation of the previous line
+                // (previous line ends with a continuation indicator), the
+                // continuation indent equals this line's current indent — do
+                // NOT add another indent level. Otherwise, continuation
+                // segments are indented one level deeper than the statement
+                // base indent (handled by passing null to SplitLongLine).
+                bool isContinuation = lineContinuesNext != null &&
+                    i > 0 && i - 1 < lineContinuesNext.Length &&
+                    lineContinuesNext[i - 1];
+                string fixedContIndent;
+                if (isContinuation)
+                {
+                    int indentLen = 0;
+                    while (indentLen < line.Length &&
+                        line[indentLen] == ' ')
+                    {
+                        indentLen++;
+                    }
+                    fixedContIndent = line.Substring(0, indentLen);
+                }
+                else
+                {
+                    fixedContIndent = null;
+                }
+
+                var split = SplitLongLine(line, fixedContIndent);
                 result.AddRange(split);
             }
 
@@ -1087,8 +1162,16 @@ namespace GDScriptFormatter
         /// Recursively splits a line so each segment is at most 80 characters. Splitting priority:
         /// unclosed-bracket comma split; closed-bracket comma split (commas inside already-balanced
         /// brackets); top-level equals wrapping; otherwise leave the line unchanged.
+        /// <paramref name="fixedContIndent"/> is the fixed continuation indent reused across all
+        /// continuation segments so that 3+ segment splits do not cascade; pass null on the first
+        /// call to trigger computation from the original line's indent.
         /// </summary>
-        private static List<string> SplitLongLine(string line)
+        /// <param name="line">The line to split.</param>
+        /// <param name="fixedContIndent">The fixed continuation indent, or null to compute from
+        /// the line's indent on the first split.</param>
+        /// <returns>The list of split segments.</returns>
+        private static List<string> SplitLongLine(string line,
+            string fixedContIndent)
         {
             if (line.Length <= MaxLineLength)
             {
@@ -1108,7 +1191,13 @@ namespace GDScriptFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            string contIndent = indent + new string(' ', IndentSize);
+            // On the first call (fixedContIndent == null), compute the fixed
+            // continuation indent from the original line's indent. This indent
+            // is reused for ALL continuation segments so that 3+ segment
+            // splits do not cascade (parent+4 for every continuation line,
+            // matching Reindent's behaviour for continuation lines).
+            string contIndent = fixedContIndent ?? (indent +
+                new string(' ', IndentSize));
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
 
@@ -1151,7 +1240,7 @@ namespace GDScriptFormatter
                     if (first.Length > 0 && first.Length < line.Length)
                     {
                         var res = new List<string> { first };
-                        res.AddRange(SplitLongLine(rest));
+                        res.AddRange(SplitLongLine(rest, contIndent));
                         return res;
                     }
                 }
@@ -1171,7 +1260,7 @@ namespace GDScriptFormatter
                         string rest = contIndent +
                             line.Substring(breakAt).TrimStart();
                         var res = new List<string> { first };
-                        res.AddRange(SplitLongLine(rest));
+                        res.AddRange(SplitLongLine(rest, contIndent));
                         return res;
                     }
                 }
@@ -1188,9 +1277,14 @@ namespace GDScriptFormatter
                 {
                     string firstLine = beforeEq + " = (";
                     string rhsCont = contIndent + afterEq;
-                    string closeLine = indent + ")";
+                    // The close paren must sit at contIndent (parent+1) so
+                    // that Reindent — which treats any line inside an open
+                    // paren as a continuation and indents it parent+1 —
+                    // produces the same indent on a second pass, keeping the
+                    // split idempotent.
+                    string closeLine = contIndent + ")";
 
-                    var rhsSplit = SplitLongLine(rhsCont);
+                    var rhsSplit = SplitLongLine(rhsCont, contIndent);
                     var res2 = new List<string> { firstLine };
                     res2.AddRange(rhsSplit);
                     res2.Add(closeLine);
@@ -1211,7 +1305,7 @@ namespace GDScriptFormatter
                         if (first2.Length > 0 && first2.Length < line.Length)
                         {
                             var res3 = new List<string> { first2 };
-                            res3.AddRange(SplitLongLine(rest2));
+                            res3.AddRange(SplitLongLine(rest2, contIndent));
                             return res3;
                         }
                     }

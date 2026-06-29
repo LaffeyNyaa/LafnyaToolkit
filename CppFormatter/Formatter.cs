@@ -43,14 +43,35 @@ namespace CppFormatter
             var lines = SplitLines(text);
             lines = Reindent(lines, text, tokens, isCode);
             lines = TrimNamespaceBodyBlankLines(lines, text, tokens, isCode);
+            // Compute continuation flags from the post-Reindent (pre-split)
+            // line structure so that LineLengthProcessor can detect
+            // continuation lines and avoid cascading indents when splitting
+            // them (a continuation line split at parent+4 must keep its
+            // segments at parent+4, not parent+8).
+            string textForLimit = string.Join("\n", lines);
+            var tokensForLimit = Tokenizer.Tokenize(textForLimit);
+            bool[] isCodeForLimit = Tokenizer.BuildCodeMask(textForLimit,
+                tokensForLimit);
+            int[] lineStartsForLimit = Tokenizer.ComputeLineStarts(lines);
+            var preSplitContinues = new bool[lines.Count];
+            for (int i = 0; i < lines.Count; i++)
+            {
+                preSplitContinues[i] = IsContinuationIndicator(lines[i],
+                    lineStartsForLimit[i], textForLimit, isCodeForLimit);
+            }
+            // Split long lines BEFORE applying blank-line rules so that the
+            // preSplitContinues flags (computed above) stay aligned with the
+            // line list. Running BlankLineProcessor first would insert blank
+            // lines and shift indices, causing LineLengthProcessor to read
+            // the wrong continuation flag for each line.
+            lines = ApplyLineLengthLimit(lines, textForLimit,
+                preSplitContinues);
             string textForBlank = string.Join("\n", lines);
             lines = ApplyBlankLineRules(lines, textForBlank);
             string textForCollapse = string.Join("\n", lines);
             lines = CollapseBlankLines(lines, textForCollapse);
             string textForTrim = string.Join("\n", lines);
             lines = TrimTrailingWhitespace(lines, textForTrim);
-            string textForLimit = string.Join("\n", lines);
-            lines = ApplyLineLengthLimit(lines, textForLimit);
             string result = string.Join("\n", lines);
             result = EnsureSingleTrailingNewline(result);
             return result;
@@ -731,57 +752,85 @@ namespace CppFormatter
 
         /// <summary>
         /// Determines whether the given line ends with a continuation indicator.
-        /// Only treats it as continuation when the trailing indicator character is in a code region.
+        /// Scans backward for the last code-region non-whitespace character so
+        /// that trailing comments do not mask the real indicator. Recognized
+        /// operators: <c>,</c>, <c>+</c>, <c>-</c>, <c>*</c>, <c>/</c>,
+        /// <c>%</c>, <c>(</c>, <c>=</c>, <c>?</c>, <c>&lt;</c>, <c>&gt;</c>,
+        /// <c>:</c> (unless a label), <c>&amp;&amp;</c>, <c>||</c>.
         /// </summary>
         private static bool IsContinuationIndicator(string line, int lineStart,
             string text, bool[] isCode)
         {
-            string trimmed = line.TrimEnd();
+            int lastCodeIdx = LastCodeCharIndex(line, lineStart, text,
+                isCode);
 
-            if (trimmed.Length == 0)
+            if (lastCodeIdx < 0)
             {
                 return false;
             }
 
-            int lastIdxInText = lineStart + trimmed.Length - 1;
+            char last = line[lastCodeIdx];
 
-            if (lastIdxInText < 0 || lastIdxInText >= isCode.Length ||
-                !isCode[lastIdxInText])
-            {
-                return false;
-            }
-
-            char last = trimmed[trimmed.Length - 1];
-
-            if (last == ',' || last == '+' || last == '(' || last == '=' ||
-                last == '?')
+            if (last == ',' || last == '+' || last == '-' || last == '*' ||
+                last == '/' || last == '%' || last == '(' || last == '=' ||
+                last == '?' || last == '<' || last == '>')
             {
                 return true;
             }
 
             if (last == ':')
             {
-                return !IsLabelLine(trimmed);
+                return !IsLabelLine(line.Substring(0, lastCodeIdx + 1));
             }
 
-            if (trimmed.Length >= 2)
+            if (lastCodeIdx < 1)
             {
-                int secondLastIdxInText = lineStart + trimmed.Length - 2;
-
-                if (secondLastIdxInText >= 0 &&
-                    secondLastIdxInText < isCode.Length &&
-                    isCode[secondLastIdxInText])
-                {
-                    string last2 = trimmed.Substring(trimmed.Length - 2);
-
-                    if (last2 == "&&" || last2 == "||")
-                    {
-                        return true;
-                    }
-                }
+                return false;
             }
 
-            return false;
+            int prevTextPos = lineStart + lastCodeIdx - 1;
+
+            if (prevTextPos < 0 || prevTextPos >= isCode.Length ||
+                !isCode[prevTextPos])
+            {
+                return false;
+            }
+
+            string last2 = line.Substring(lastCodeIdx - 1, 2);
+            return last2 == "&&" || last2 == "||";
+        }
+
+        /// <summary>
+        /// Finds the index of the last non-whitespace code-region character in
+        /// the line. Scans backward from the end of <paramref name="line"/>,
+        /// skipping positions whose corresponding <paramref name="isCode"/>
+        /// entry is false and skipping space/tab characters. Correctly handles
+        /// trailing comments (e.g., <c>code, // comment</c>).
+        /// </summary>
+        private static int LastCodeCharIndex(string line, int lineStart,
+            string text, bool[] isCode)
+        {
+            for (int i = line.Length - 1; i >= 0; i--)
+            {
+                int textPos = lineStart + i;
+
+                if (textPos < 0 || textPos >= isCode.Length ||
+                    !isCode[textPos])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if (c == ' ' || c == '\t')
+                {
+                    continue;
+                }
+
+                return i;
+            }
+
+            return -1;
         }
 
         /// <summary>
@@ -1402,9 +1451,14 @@ namespace CppFormatter
         /// continuation lines are indented one extra level. Lines entirely
         /// inside a multi-line string or comment token are preserved verbatim
         /// and never split.
+        /// <paramref name="lineContinuesNext"/> flags whether each line ends
+        /// with a continuation indicator; when a line is itself a continuation
+        /// of the previous line, its split segments reuse the line's current
+        /// indent (no extra level) so that splitting a continuation line does
+        /// not cascade into deeper indents on a second pass.
         /// </summary>
         private static List<string> ApplyLineLengthLimit(List<string> lines,
-            string text)
+            string text, bool[] lineContinuesNext)
         {
             var tokens = Tokenizer.Tokenize(text);
             bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
@@ -1427,7 +1481,32 @@ namespace CppFormatter
                     continue;
                 }
 
-                var split = SplitLongLine(line);
+                // If this line is itself a continuation of the previous line
+                // (previous line ends with a continuation indicator), the
+                // continuation indent equals this line's current indent — do
+                // NOT add another indent level. Otherwise, continuation
+                // segments are indented one level deeper than the statement
+                // base indent (handled by passing null to SplitLongLine).
+                bool isContinuation = lineContinuesNext != null &&
+                    i > 0 && i - 1 < lineContinuesNext.Length &&
+                    lineContinuesNext[i - 1];
+                string fixedContIndent;
+                if (isContinuation)
+                {
+                    int indentLen = 0;
+                    while (indentLen < line.Length &&
+                        line[indentLen] == ' ')
+                    {
+                        indentLen++;
+                    }
+                    fixedContIndent = line.Substring(0, indentLen);
+                }
+                else
+                {
+                    fixedContIndent = null;
+                }
+
+                var split = SplitLongLine(line, fixedContIndent);
                 result.AddRange(split);
             }
 
@@ -1435,9 +1514,14 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Recursively splits a single line so that each segment does not exceed 80 characters.
+        /// Recursively splits a single line so that each segment does not
+        /// exceed 80 characters. <paramref name="fixedContIndent"/> is the
+        /// fixed continuation indent reused across all continuation segments
+        /// so that 3+ segment splits do not cascade; pass null on the first
+        /// call to trigger computation from the original line's indent.
         /// </summary>
-        private static List<string> SplitLongLine(string line)
+        private static List<string> SplitLongLine(string line,
+            string fixedContIndent)
         {
             if (line.Length <= MaxLineLength)
             {
@@ -1457,7 +1541,17 @@ namespace CppFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            string contIndent = indent + new string(' ', IndentSize);
+
+            // On the first call (fixedContIndent == null), compute the fixed
+            // continuation indent from the original line's indent. This indent
+            // is reused for ALL continuation segments so that 3+ segment
+            // splits do not cascade (parent+4 for every continuation line,
+            // matching Reindent's behaviour).
+            if (fixedContIndent == null)
+            {
+                fixedContIndent = indent + new string(' ', IndentSize);
+            }
+
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
@@ -1468,7 +1562,7 @@ namespace CppFormatter
             }
 
             string first = line.Substring(0, breakAt).TrimEnd();
-            string rest = contIndent + line.Substring(breakAt).TrimStart();
+            string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
 
             if (first.Length == 0 || first.Length >= line.Length)
             {
@@ -1476,7 +1570,7 @@ namespace CppFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest));
+            result.AddRange(SplitLongLine(rest, fixedContIndent));
             return result;
         }
 

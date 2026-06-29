@@ -9,23 +9,60 @@ namespace JavaFormatter
     {
         /// <summary>
         /// Splits lines exceeding the maximum length at safe break points;
-        /// continuation lines are indented one level deeper than the statement base indent.
+        /// continuation lines are indented one level deeper than the statement
+        /// base indent.
+        /// <paramref name="lineContinuesNext"/> flags whether each line ends
+        /// with a continuation indicator; when a line is itself a continuation
+        /// of the previous line, its split segments reuse the line's current
+        /// indent (no extra level) so that splitting a continuation line does
+        /// not cascade into deeper indents on a second pass.
         /// </summary>
         /// <param name="lines">The current lines.</param>
+        /// <param name="lineContinuesNext">Per-line flags indicating whether
+        /// the line ends with a continuation indicator; entry i corresponds
+        /// to line i. May be null when continuation detection is not
+        /// available.</param>
         /// <returns>The lines with long lines split.</returns>
-        public static List<string> ApplyLineLengthLimit(List<string> lines)
+        public static List<string> ApplyLineLengthLimit(List<string> lines,
+            bool[] lineContinuesNext)
         {
             var result = new List<string>(lines.Count);
 
-            foreach (var line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
+                var line = lines[i];
                 if (line.Length <= Formatter.MaxLineLength)
                 {
                     result.Add(line);
                     continue;
                 }
 
-                var split = SplitLongLine(line);
+                // If this line is itself a continuation of the previous line
+                // (previous line ends with a continuation indicator), the
+                // continuation indent equals this line's current indent — do
+                // NOT add another indent level. Otherwise, continuation
+                // segments are indented one level deeper than the statement
+                // base indent (handled by passing null to SplitLongLine).
+                bool isContinuation = lineContinuesNext != null &&
+                    i > 0 && i - 1 < lineContinuesNext.Length &&
+                    lineContinuesNext[i - 1];
+                string fixedContIndent;
+                if (isContinuation)
+                {
+                    int indentLen = 0;
+                    while (indentLen < line.Length &&
+                        line[indentLen] == ' ')
+                    {
+                        indentLen++;
+                    }
+                    fixedContIndent = line.Substring(0, indentLen);
+                }
+                else
+                {
+                    fixedContIndent = null;
+                }
+
+                var split = SplitLongLine(line, fixedContIndent);
                 result.AddRange(split);
             }
 
@@ -37,10 +74,17 @@ namespace JavaFormatter
         /// maximum length; only breaks at Code token boundaries. Never breaks
         /// inside String/TextBlock/Char/Comment tokens. If no safe break point
         /// is found, the original line is preserved.
+        /// <paramref name="fixedContIndent"/> is the fixed continuation indent
+        /// reused across all continuation segments so that 3+ segment splits do
+        /// not cascade; pass null on the first call to trigger computation
+        /// from the original line's indent.
         /// </summary>
         /// <param name="line">The line to split.</param>
+        /// <param name="fixedContIndent">The fixed continuation indent, or null
+        /// to compute from the line's indent on the first split.</param>
         /// <returns>The list of split segments.</returns>
-        private static List<string> SplitLongLine(string line)
+        private static List<string> SplitLongLine(string line,
+            string fixedContIndent)
         {
             if (line.Length <= Formatter.MaxLineLength)
             {
@@ -60,7 +104,18 @@ namespace JavaFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            string contIndent = indent + new string(' ', Formatter.IndentSize);
+
+            // On the first call (fixedContIndent == null), compute the fixed
+            // continuation indent from the original line's indent. This indent
+            // is reused for ALL continuation segments so that 3+ segment
+            // splits do not cascade (parent+4 for every continuation line,
+            // matching IndentationProcessor's behaviour).
+            if (fixedContIndent == null)
+            {
+                fixedContIndent = indent +
+                    new string(' ', Formatter.IndentSize);
+            }
+
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
@@ -71,7 +126,7 @@ namespace JavaFormatter
             }
 
             string first = line.Substring(0, breakAt).TrimEnd();
-            string rest = contIndent + line.Substring(breakAt).TrimStart();
+            string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
 
             if (first.Length == 0 || first.Length >= line.Length)
             {
@@ -79,7 +134,7 @@ namespace JavaFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest));
+            result.AddRange(SplitLongLine(rest, fixedContIndent));
             return result;
         }
 

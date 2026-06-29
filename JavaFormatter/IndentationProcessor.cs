@@ -98,8 +98,8 @@ namespace JavaFormatter
                 int baseDepth = depths[i];
 
                 if (i > 0 && !inEnumBlock[i] &&
-                    IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
-                    text, isCode))
+                    TextUtils.IsContinuationIndicator(lines[i - 1],
+                    lineStarts[i - 1], text, isCode))
                 {
                     baseDepth++;
                 }
@@ -259,73 +259,6 @@ namespace JavaFormatter
             }
 
             return inEnumBlock;
-        }
-
-        /// <summary>
-        /// Determines whether the specified line ends with a continuation indicator.
-        /// Scans backwards from the end of the line, skipping non-code regions
-        /// (such as trailing comments), and inspects the last code-region character.
-        /// </summary>
-        /// <param name="line">The line text to check.</param>
-        /// <param name="lineStart">The starting offset of this line in <paramref name="text"/>.</param>
-        /// <param name="text">The full source text.</param>
-        /// <param name="isCode">The code mask of the same length as <paramref name="text"/>.</param>
-        /// <returns>True if the line ends with a code-region continuation indicator; otherwise false.</returns>
-        private static bool IsContinuationIndicator(string line, int lineStart,
-            string text, bool[] isCode)
-        {
-            int lastCodeIdxInLine = -1;
-
-            for (int i = line.Length - 1; i >= 0; i--)
-            {
-                int posInText = lineStart + i;
-
-                if (posInText >= 0 && posInText < isCode.Length &&
-                    isCode[posInText] && !char.IsWhiteSpace(line[i]))
-                {
-                    lastCodeIdxInLine = i;
-                    break;
-                }
-            }
-
-            if (lastCodeIdxInLine < 0)
-            {
-                return false;
-            }
-
-            char last = line[lastCodeIdxInLine];
-
-            if (last == ',' || last == '+' || last == '(' || last == '=' ||
-                last == '?')
-            {
-                return true;
-            }
-
-            if (lastCodeIdxInLine < 1)
-            {
-                return false;
-            }
-
-            char prev = line[lastCodeIdxInLine - 1];
-            int prevPosInText = lineStart + lastCodeIdxInLine - 1;
-
-            if (prevPosInText < 0 || prevPosInText >= isCode.Length ||
-                !isCode[prevPosInText])
-            {
-                return false;
-            }
-
-            if (prev == '&' && last == '&')
-            {
-                return true;
-            }
-
-            if (prev == '|' && last == '|')
-            {
-                return true;
-            }
-
-            return false;
         }
     }
 }
