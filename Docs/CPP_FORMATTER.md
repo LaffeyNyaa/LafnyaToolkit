@@ -107,6 +107,31 @@
   private const int MaxLineLength = 80;
   ```
 
+### Preserve blank lines between single-line statements
+
+- **General Rule**: After all other blank-line rules in `ApplyBlankLineRules` (`CppFormatter/BlankLineProcessor.cs`) have decided *not* to insert a blank line above the current line, this fallback rule preserves an author-inserted blank line when both the current line and the previous non-blank line are plain single-line statements. It keeps author-inserted blank separators between adjacent single-line statements at the same indentation level.
+- **Preserve Only**: The rule only **preserves** an existing blank line (detected via the original `HadBlankAbove` flag captured before collapsing); it never inserts a new blank line where the author did not place one.
+- **Idempotent**: Because the rule only preserves existing blanks and never introduces new ones, running the formatter repeatedly yields the same output as a single run.
+- **Definition of "Plain Single-line Statement"**: A line qualifies (helper `IsPlainSingleLineStatement(trimmed, isProtected)`) when **all** of the following hold:
+  - The line is **not protected** (i.e., not a line inside a multi-line raw string or comment token, and not a protected `#include`/preprocessor line flagged by the tokenizer).
+  - The trimmed line ends with `;`.
+  - The line is **not** a block-end line (not `}` or `};`, per `IsBlockEndLine`).
+  - The line is **not** a block-start line (per `IsBlockStartLine`).
+  - The line is **not** a comment line (`//`, `/*`, or `*` continuation).
+- *Example*:
+  ```cpp
+  int lineStarts[10];
+
+  std::vector<std::pair<int, int>> enumRanges;
+  int depth = 0;
+  int enumDepth = -1;
+  int enumStart = -1;
+  bool pendingEnum = false;
+
+  for (int i = 0; i < 10; i++) {
+  ```
+  The author-inserted blank between `lineStarts` and `enumRanges` is preserved. No blank is inserted between `enumRanges` / `depth` / `enumDepth` / `enumStart` / `pendingEnum`, because no blank existed there in the input.
+
 ### End of File (EOF) Newline
 
 - **Newline Rule**: Every file must end with exactly **one newline character**.

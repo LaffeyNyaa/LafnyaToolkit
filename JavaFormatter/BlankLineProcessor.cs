@@ -64,16 +64,22 @@ namespace JavaFormatter
 
                 bool lineStartsInCode = FirstNonWsInCode(line, lineStart,
                     isCode);
+
                 bool isBlockStart = lineStartsInCode &&
                     LineClassifier.IsBlockStartLine(trimmed);
+
                 bool currentIsImport = lineStartsInCode &&
                     LineClassifier.IsImportDirective(trimmed);
+
                 bool currentIsDoWhileTail = lineStartsInCode &&
                     LineClassifier.IsDoWhileTail(trimmed);
+
                 bool currentIsBlockCont = lineStartsInCode &&
                     LineClassifier.IsBlockContinuation(trimmed);
+
                 bool currentIsAnnotation = lineStartsInCode &&
                     trimmed.StartsWith("@");
+
                 bool currentStartsWithCloseBrace = lineStartsInCode &&
                     trimmed.StartsWith("}");
 
@@ -88,16 +94,22 @@ namespace JavaFormatter
 
                     bool prevStartsInCode = FirstNonWsInCode(prevLine,
                         prevLineStart, isCode);
+
                     bool prevEndsInCode = LastNonWsInCode(prevLine,
                         prevLineStart, isCode);
+
                     bool prevIsOpenBraceOnly = prevStartsInCode &&
                         prevTrimmed == "{";
+
                     bool prevEndsWithOpenBrace = prevEndsInCode &&
                         TextUtils.EndsWithOpenBrace(prevTrimmed);
+
                     bool prevIsBlockEnd = prevStartsInCode &&
                         LineClassifier.IsBlockEndLine(prevTrimmed);
+
                     bool prevIsImport = prevStartsInCode &&
                         LineClassifier.IsImportDirective(prevTrimmed);
+
                     bool prevIsPackage = prevStartsInCode &&
                         prevTrimmed.StartsWith("package ");
 
@@ -126,14 +138,16 @@ namespace JavaFormatter
 
                     bool currentIsDocCommentStart =
                         trimmed.StartsWith("/**");
+
                     if (!wantBlankAbove && currentIsDocCommentStart)
                     {
                         bool prevIsRegularComment =
                             prevTrimmed.StartsWith("//") ||
                             (prevTrimmed.StartsWith("/*") &&
-                                !prevTrimmed.StartsWith("/**")) ||
+                            !prevTrimmed.StartsWith("/**")) ||
                             (prevTrimmed.StartsWith("*") &&
-                                !prevTrimmed.EndsWith("*/"));
+                            !prevTrimmed.EndsWith("*/"));
+
                         bool prevIsBlockOpenBrace =
                             prevTrimmed == "{" ||
                             TextUtils.EndsWithOpenBrace(prevTrimmed);
@@ -141,6 +155,20 @@ namespace JavaFormatter
                         if (prevTrimmed.Length > 0 &&
                             !prevIsRegularComment &&
                             !prevIsBlockOpenBrace)
+                        {
+                            wantBlankAbove = true;
+                        }
+                    }
+
+                    if (!wantBlankAbove && entry.HadBlankAbove)
+                    {
+                        bool currentIsPlainStmt = IsPlainSingleLineStatement(
+                            trimmed, lineStartsInCode);
+
+                        bool prevIsPlainStmt = IsPlainSingleLineStatement(
+                            prevTrimmed, prevStartsInCode);
+
+                        if (currentIsPlainStmt && prevIsPlainStmt)
                         {
                             wantBlankAbove = true;
                         }
@@ -274,6 +302,64 @@ namespace JavaFormatter
 
             int p = lineStart + i;
             return p >= 0 && p < isCode.Length && isCode[p];
+        }
+
+        /// <summary>
+        /// Determines whether the trimmed line is a comment line: a line
+        /// comment, a block comment start, or a block comment continuation.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line.</param>
+        /// <returns>True if the line is a comment line; otherwise false.</returns>
+        private static bool IsCommentLine(string trimmed)
+        {
+            return trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
+                trimmed.StartsWith("*");
+        }
+
+        /// <summary>
+        /// Determines whether the line is a plain single-line statement:
+        /// code that ends with a semicolon and is not a block boundary,
+        /// do-while tail, or comment.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line.</param>
+        /// <param name="startsInCode">Whether the line's first non-whitespace
+        /// character is in a code region.</param>
+        /// <returns>True if the line is a plain single-line statement;
+        /// otherwise false.</returns>
+        private static bool IsPlainSingleLineStatement(string trimmed,
+            bool startsInCode)
+        {
+            if (!startsInCode)
+            {
+                return false;
+            }
+
+            if (trimmed.Length == 0 || !trimmed.EndsWith(";"))
+            {
+                return false;
+            }
+
+            if (LineClassifier.IsBlockEndLine(trimmed))
+            {
+                return false;
+            }
+
+            if (LineClassifier.IsBlockStartLine(trimmed))
+            {
+                return false;
+            }
+
+            if (LineClassifier.IsDoWhileTail(trimmed))
+            {
+                return false;
+            }
+
+            if (IsCommentLine(trimmed))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>

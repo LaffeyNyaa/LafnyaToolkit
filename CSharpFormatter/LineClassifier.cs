@@ -138,6 +138,7 @@ namespace CSharpFormatter
                 if (firstNonWs < line.Length)
                 {
                     int textPos = lineStarts[i] + firstNonWs;
+
                     isCodeLine[i] = textPos < isCode.Length &&
                         isCode[textPos];
                 }
@@ -166,6 +167,7 @@ namespace CSharpFormatter
             for (int i = line.Length - 1; i >= 0; i--)
             {
                 int textPos = lineStart + i;
+
                 if (textPos < 0 || textPos >= isCode.Length ||
                     !isCode[textPos])
                 {
@@ -173,6 +175,7 @@ namespace CSharpFormatter
                 }
 
                 char c = line[i];
+
                 if (c == ' ' || c == '\t')
                 {
                     continue;
@@ -199,6 +202,7 @@ namespace CSharpFormatter
             string text, bool[] isCode)
         {
             int idx = LastCodeCharIndex(line, lineStart, text, isCode);
+
             if (idx < 0)
             {
                 return false;
@@ -229,6 +233,7 @@ namespace CSharpFormatter
         {
             int lastCodeIdx = LastCodeCharIndex(line, lineStart, text,
                 isCode);
+
             if (lastCodeIdx < 0)
             {
                 return false;
@@ -249,6 +254,7 @@ namespace CSharpFormatter
             }
 
             int prevTextPos = lineStart + lastCodeIdx - 1;
+
             if (prevTextPos < 0 || prevTextPos >= isCode.Length ||
                 !isCode[prevTextPos])
             {

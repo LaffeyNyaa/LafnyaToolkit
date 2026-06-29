@@ -204,7 +204,8 @@ namespace JavaFormatter
 
                 char c = text[i];
 
-                if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) &&
+                if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i -
+                    1])) &&
                     TextUtils.MatchesWord(text, i, "enum"))
                 {
                     pendingEnum = true;
@@ -235,6 +236,7 @@ namespace JavaFormatter
                     {
                         enumRanges.Add(new KeyValuePair<int, int>(enumStart,
                             i));
+
                         enumStart = -1;
                         enumDepth = -1;
                     }

@@ -11,12 +11,14 @@ namespace CppFormatter
     {
         /// <summary>Indentation uses 4 spaces per level.</summary>
         public const int IndentSize = 4;
+
         /// <summary>Maximum length of a single line.</summary>
         public const int MaxLineLength = 80;
+
         /// <summary>Keywords that introduce a brace-delimited block.</summary>
         private static readonly string[] BlockStartKeywords =
             { "namespace", "struct", "switch", "catch", "class", "while",
-              "union", "enum", "else", "for", "try", "do", "if" };
+            "union", "enum", "else", "for", "try", "do", "if" };
 
         /// <summary>
         /// Represents a text insertion point used by brace enforcement.
@@ -25,8 +27,10 @@ namespace CppFormatter
         {
             /// <summary>The character position at which to insert.</summary>
             public int Position;
+
             /// <summary>The text to insert.</summary>
             public string Text;
+
             /// <summary>
             /// Creates a new insertion record.
             /// </summary>
@@ -46,10 +50,13 @@ namespace CppFormatter
         {
             /// <summary>The start position (inclusive).</summary>
             public int Start;
+
             /// <summary>The end position (exclusive).</summary>
             public int End;
+
             /// <summary>The replacement text.</summary>
             public string NewText;
+
             /// <summary>
             /// Creates a new replacement record.
             /// </summary>
@@ -96,7 +103,7 @@ namespace CppFormatter
         internal static int SkipWhitespace(string text, int pos)
         {
             while (pos < text.Length && (text[pos] == ' ' || text[pos] == '\t'
-            || text[pos] == '\n' || text[pos] == '\r'))
+                || text[pos] == '\n' || text[pos] == '\r'))
             {
                 pos++;
             }
@@ -311,6 +318,7 @@ namespace CppFormatter
                 if (trimmed == "{" && i > 0 && result.Count > 0)
                 {
                     int bracePos = pos + lines[i].IndexOf('{');
+
                     bool isCodeBrace = bracePos < isCode.Length &&
                         isCode[bracePos];
 
@@ -398,6 +406,7 @@ namespace CppFormatter
                             {
                                 result.Add(lines[i].TrimEnd() + " " +
                                     lines[j].Trim());
+
                                 merged[j] = true;
                                 continue;
                             }
@@ -430,6 +439,7 @@ namespace CppFormatter
                     {
                         depth++;
                     }
+
                     else if (text[i] == '{')
                     {
                         depth--;

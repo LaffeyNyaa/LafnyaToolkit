@@ -65,6 +65,7 @@ namespace CppFormatter
                 {
                     includes.Add(new IncludeEntry(
                         new List<string>(pendingComments), trimmed));
+
                     pendingComments.Clear();
                     continue;
                 }
@@ -109,11 +110,13 @@ namespace CppFormatter
             thirdPartyGroup.Sort(CompareEntryByPath);
             projectModuleGroup.Sort(CompareEntryByPath);
             currentModuleGroup.Sort(CompareEntryByPath);
+
             var newBlock = new List<string>();
             AppendGroup(newBlock, systemGroup);
             AppendGroup(newBlock, thirdPartyGroup);
             AppendGroup(newBlock, projectModuleGroup);
             AppendGroup(newBlock, currentModuleGroup);
+
             var result = new StringBuilder();
 
             for (int i = 0; i < firstInclude; i++)
@@ -163,7 +166,8 @@ namespace CppFormatter
         /// </summary>
         /// <param name="block">The result block being built.</param>
         /// <param name="group">The list of include entries for the bucket.</param>
-        private static void AppendGroup(List<string> block, List<IncludeEntry> group)
+        private static void AppendGroup(List<string> block, List<IncludeEntry>
+            group)
         {
             if (group.Count == 0)
             {
@@ -221,7 +225,8 @@ namespace CppFormatter
 
             if (form == '<')
             {
-                if (!path.Contains(".") && !path.Contains("/") && !path.Contains("\\"))
+                if (!path.Contains(".") && !path.Contains("/") &&
+                    !path.Contains("\\"))
                 {
                     return 0;
                 }
@@ -229,7 +234,8 @@ namespace CppFormatter
                 return 1;
             }
 
-            if (path.Contains("..") || path.StartsWith("/") || IsWindowsAbsolutePath(path))
+            if (path.Contains("..") || path.StartsWith("/") ||
+                IsWindowsAbsolutePath(path))
             {
                 return 2;
             }
@@ -327,7 +333,8 @@ namespace CppFormatter
 
                 if (blockEnd >= 0)
                 {
-                    s = s.Substring(0, blockComment) + s.Substring(blockEnd + 2);
+                    s = s.Substring(0, blockComment) + s.Substring(blockEnd +
+                        2);
                 }
 
                 else
@@ -394,17 +401,24 @@ namespace CppFormatter
         private class IncludeEntry
         {
             /// <summary>Gets the comment lines directly above this include.</summary>
-            public List<string> LeadingComments { get; }
+            public List<string> LeadingComments
+            {
+                get;
+            }
 
             /// <summary>Gets the trimmed #include directive line.</summary>
-            public string IncludeLine { get; }
+            public string IncludeLine
+            {
+                get;
+            }
 
             /// <summary>
             /// Initializes a new instance of the IncludeEntry class.
             /// </summary>
             /// <param name="leadingComments">The preceding comment lines.</param>
             /// <param name="includeLine">The include directive line.</param>
-            public IncludeEntry(List<string> leadingComments, string includeLine)
+            public IncludeEntry(List<string> leadingComments,
+                string includeLine)
             {
                 LeadingComments = leadingComments;
                 IncludeLine = includeLine;

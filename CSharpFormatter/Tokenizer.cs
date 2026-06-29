@@ -11,17 +11,23 @@ namespace CSharpFormatter
         /// <summary>Ordinary code (identifiers, keywords, operators,
         /// punctuation, etc.).</summary>
         Code,
+
         /// <summary>Regular string literal "..." (with escapes).</summary>
         String,
+
         /// <summary>Verbatim string literal @"..." ("" represents an embedded
         /// quote).</summary>
         VerbatimString,
+
         /// <summary>Character literal '...' (with escapes).</summary>
         Char,
+
         /// <summary>Single-line comment //... to end of line.</summary>
         SingleLineComment,
+
         /// <summary>Multi-line comment /* ... */.</summary>
         MultiLineComment,
+
         /// <summary>Preprocessor directive #... covering the entire line
         /// (including backslash line continuations).</summary>
         Preprocessor
@@ -34,6 +40,7 @@ namespace CSharpFormatter
     {
         /// <summary>The token kind.</summary>
         public TokenKind Kind;
+
         /// <summary>The original text of the token (without any
         /// normalization).</summary>
         public string Text;
@@ -73,6 +80,7 @@ namespace CSharpFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.SingleLineComment,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -96,6 +104,7 @@ namespace CSharpFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.MultiLineComment,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -104,6 +113,7 @@ namespace CSharpFormatter
                     FlushCode(tokens, code);
                     int start = i;
                     i += 2;
+
                     while (i < n)
                     {
                         if (source[i] == '"')
@@ -123,6 +133,7 @@ namespace CSharpFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.VerbatimString,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -160,6 +171,7 @@ namespace CSharpFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.String,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -197,6 +209,7 @@ namespace CSharpFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.Char,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -231,6 +244,7 @@ namespace CSharpFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.Preprocessor,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -251,6 +265,7 @@ namespace CSharpFormatter
         public static string Reconstruct(List<Token> tokens)
         {
             var sb = new StringBuilder();
+
             foreach (var t in tokens)
             {
                 sb.Append(t.Text);
@@ -295,6 +310,7 @@ namespace CSharpFormatter
             {
                 tokens.Add(new Token { Kind = TokenKind.Code,
                     Text = code.ToString() });
+
                 code.Clear();
             }
         }
@@ -302,9 +318,11 @@ namespace CSharpFormatter
         private static bool IsLineStart(string source, int index)
         {
             int j = index - 1;
+
             while (j >= 0)
             {
                 char ch = source[j];
+
                 if (ch == '\n')
                 {
                     return true;

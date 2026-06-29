@@ -18,7 +18,8 @@ namespace JavaFormatter
         /// <param name="targetRoot">The target root directory path (used as fallback).</param>
         /// <param name="currentModule">Output: the fully qualified package name, or null if no package.</param>
         /// <param name="projectRoot">Output: the project root prefix.</param>
-        public static void ResolveCurrentModule(string source, string targetRoot,
+        public static void ResolveCurrentModule(string source,
+            string targetRoot,
             out string currentModule, out string projectRoot)
         {
             currentModule = null;
@@ -84,6 +85,7 @@ namespace JavaFormatter
         {
             string currentModule;
             string projectRoot;
+
             ResolveCurrentModule(source, targetRoot, out currentModule,
                 out projectRoot);
 
@@ -136,10 +138,12 @@ namespace JavaFormatter
                 {
                     currentSegment.Add(trimmed);
                 }
+
                 else if (IsCommentLine(trimmed))
                 {
                     AppendSortedSegment(newBlock, currentSegment, currentModule,
                         projectRoot);
+
                     currentSegment.Clear();
                     newBlock.Add(trimmed);
                 }
@@ -214,7 +218,8 @@ namespace JavaFormatter
 
                 else if (!string.IsNullOrEmpty(projectRoot) &&
                     ns.StartsWith(projectRoot + ".") &&
-                    (string.IsNullOrEmpty(currentModule) || ns != currentModule))
+                    (string.IsNullOrEmpty(currentModule) || ns !=
+                    currentModule))
                 {
                     projectModuleGroup.Add(imp);
                 }

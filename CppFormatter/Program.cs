@@ -30,6 +30,7 @@ namespace CppFormatter
             {
                 Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
                     targetPath);
+
                 Environment.Exit(2);
                 return;
             }
@@ -60,6 +61,7 @@ namespace CppFormatter
             }
 
             int total = formattedCount + skippedCount;
+
             Console.WriteLine("Total: " + total + ", Formatted: " +
                 formattedCount + ", Skipped: " + skippedCount);
         }
@@ -72,7 +74,8 @@ namespace CppFormatter
         /// <returns>A sorted list of full paths to C++ files.</returns>
         private static List<string> DiscoverCppFiles(string root)
         {
-            var extensions = new[] { ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h" };
+            var extensions = new[] { ".cpp", ".cc", ".cxx", ".hpp", ".hh",
+                ".hxx", ".h" };
             var files = new List<string>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -83,6 +86,7 @@ namespace CppFormatter
                 {
                     string fileExt = Path.GetExtension(file);
                     bool match = false;
+
                     foreach (var e in extensions)
                     {
                         if (string.Equals(fileExt, e,
@@ -119,6 +123,7 @@ namespace CppFormatter
         {
             string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
                 Path.AltDirectorySeparatorChar);
+
             string normalizedFile = file;
             string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
 

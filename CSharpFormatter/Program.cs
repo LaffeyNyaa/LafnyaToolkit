@@ -20,10 +20,12 @@ namespace CSharpFormatter
             /// The file was reformatted and its content changed.
             /// </summary>
             Formatted,
+
             /// <summary>
             /// The file content was already formatted and unchanged.
             /// </summary>
             Skipped,
+
             /// <summary>
             /// Processing the file raised an exception.
             /// </summary>
@@ -45,10 +47,12 @@ namespace CSharpFormatter
             }
 
             string targetPath = args[0];
+
             if (!Directory.Exists(targetPath))
             {
                 Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
                     targetPath);
+
                 Environment.Exit(2);
                 return;
             }
@@ -62,6 +66,7 @@ namespace CSharpFormatter
             {
                 string relative = GetRelativePath(targetPath, file);
                 var result = ProcessFile(file, targetPath, relative);
+
                 switch (result)
                 {
                     case FileProcessResult.Formatted:
@@ -104,6 +109,7 @@ namespace CSharpFormatter
             {
                 string rootNamespace =
                     UsingSorter.ResolveRootNamespace(file, targetPath);
+
                 string original = File.ReadAllText(file, Encoding.UTF8);
                 string formatted = Formatter.Format(original, rootNamespace);
 
@@ -112,6 +118,7 @@ namespace CSharpFormatter
                 {
                     File.WriteAllText(file, formatted,
                         new UTF8Encoding(false));
+
                     Console.WriteLine("Formatting: " + relativePath);
                     return FileProcessResult.Formatted;
                 }
@@ -119,11 +126,11 @@ namespace CSharpFormatter
                 Console.WriteLine("Skipped: " + relativePath);
                 return FileProcessResult.Skipped;
             }
-
             catch (Exception ex)
             {
                 Console.Error.WriteLine("Error: " + relativePath + ": " +
                     ex.Message);
+
                 return FileProcessResult.Failed;
             }
         }
@@ -143,6 +150,7 @@ namespace CSharpFormatter
             int failedCount)
         {
             int total = formattedCount + skippedCount + failedCount;
+
             Console.WriteLine("Total: " + total + ", Formatted: " +
                 formattedCount + ", Skipped: " + skippedCount + ", Failed: " +
                 failedCount);
@@ -158,6 +166,7 @@ namespace CSharpFormatter
         {
             var files = new List<string>(Directory.EnumerateFiles(root, "*.cs",
                 SearchOption.AllDirectories));
+
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return files;
         }
@@ -173,8 +182,10 @@ namespace CSharpFormatter
         {
             string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
                 Path.AltDirectorySeparatorChar);
+
             string normalizedFile = file;
             string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
+
             if (normalizedFile.StartsWith(rootWithSep,
                 StringComparison.OrdinalIgnoreCase))
             {

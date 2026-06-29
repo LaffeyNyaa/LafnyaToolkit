@@ -7,6 +7,7 @@ namespace CppFormatter
     {
         /// <summary>The token kind.</summary>
         public TokenKind Kind;
+
         /// <summary>The original text of the token (not normalized in any way).</summary>
         public string Text;
     }

@@ -36,8 +36,10 @@ namespace CppFormatter
             string text, bool[] lineContinuesNext)
         {
             var tokens = Tokenizer.Tokenize(text);
+
             bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
                 tokens, lines.Count);
+
             var result = new List<string>(lines.Count);
 
             for (int i = 0; i < lines.Count; i++)
@@ -65,17 +67,22 @@ namespace CppFormatter
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
+
                 string fixedContIndent;
+
                 if (isContinuation)
                 {
                     int indentLen = 0;
+
                     while (indentLen < line.Length &&
                         line[indentLen] == ' ')
                     {
                         indentLen++;
                     }
+
                     fixedContIndent = line.Substring(0, indentLen);
                 }
+
                 else
                 {
                     fixedContIndent = null;
@@ -116,12 +123,12 @@ namespace CppFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-
             // On the first call (fixedContIndent == null), compute the fixed
             // continuation indent from the original line's indent. This indent
             // is reused for ALL continuation segments so that 3+ segment
             // splits do not cascade (parent+4 for every continuation line,
             // matching Reindent's behaviour).
+
             if (fixedContIndent == null)
             {
                 fixedContIndent = indent + new string(' ',
@@ -174,6 +181,7 @@ namespace CppFormatter
                 if (i + 1 < line.Length)
                 {
                     string pair = line.Substring(i, 2);
+
                     foreach (var op in TwoCharBreakOps)
                     {
                         if (pair == op)
@@ -275,6 +283,7 @@ namespace CppFormatter
             }
 
             char pc = line[prev];
+
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"' || pc == '\'';
         }
@@ -298,6 +307,7 @@ namespace CppFormatter
             }
 
             char pc = line[prev];
+
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"';
         }

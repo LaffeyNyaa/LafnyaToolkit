@@ -10,14 +10,19 @@ namespace JavaFormatter
     {
         /// <summary>Plain code (identifiers, keywords, operators, punctuation, etc.).</summary>
         Code,
+
         /// <summary>Regular string literal "..." (with backslash escapes).</summary>
         String,
+
         /// <summary>Text block literal """...""" (Java 13+, with incidental whitespace removal).</summary>
         TextBlock,
+
         /// <summary>Character constant '...' (with backslash escapes).</summary>
         Char,
+
         /// <summary>Single-line comment //... up to end of line.</summary>
         SingleLineComment,
+
         /// <summary>Multi-line comment /* ... */ (supports nested comments).</summary>
         MultiLineComment
     }
@@ -29,6 +34,7 @@ namespace JavaFormatter
     {
         /// <summary>The token kind.</summary>
         public TokenKind Kind;
+
         /// <summary>The original token text (without any normalization).</summary>
         public string Text;
     }
@@ -67,6 +73,7 @@ namespace JavaFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.SingleLineComment,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -79,14 +86,16 @@ namespace JavaFormatter
 
                     while (i < n && depth > 0)
                     {
-                        if (source[i] == '/' && i + 1 < n && source[i + 1] == '*')
+                        if (source[i] == '/' && i + 1 < n && source[i + 1] ==
+                            '*')
                         {
                             depth++;
                             i += 2;
                             continue;
                         }
 
-                        if (source[i] == '*' && i + 1 < n && source[i + 1] == '/')
+                        if (source[i] == '*' && i + 1 < n && source[i + 1] ==
+                            '/')
                         {
                             depth--;
                             i += 2;
@@ -98,10 +107,12 @@ namespace JavaFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.MultiLineComment,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
-                if (c == '"' && i + 2 < n && source[i + 1] == '"' && source[i + 2] == '"')
+                if (c == '"' && i + 2 < n && source[i + 1] == '"' && source[i +
+                    2] == '"')
                 {
                     FlushCode(tokens, code);
                     int start = i;
@@ -111,7 +122,8 @@ namespace JavaFormatter
                     {
                         if (source[i] == '"')
                         {
-                            if (i + 2 < n && source[i + 1] == '"' && source[i + 2] == '"')
+                            if (i + 2 < n && source[i + 1] == '"' && source[i +
+                                2] == '"')
                             {
                                 i += 3;
                                 break;
@@ -129,7 +141,8 @@ namespace JavaFormatter
                                 continue;
                             }
 
-                            if (i + 2 < n && source[i + 1] == '\r' && source[i + 2] == '\n')
+                            if (i + 2 < n && source[i + 1] == '\r' && source[i +
+                                2] == '\n')
                             {
                                 i += 3;
                                 continue;
@@ -144,6 +157,7 @@ namespace JavaFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.TextBlock,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -181,6 +195,7 @@ namespace JavaFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.String,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -218,6 +233,7 @@ namespace JavaFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.Char,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -279,6 +295,7 @@ namespace JavaFormatter
             {
                 tokens.Add(new Token { Kind = TokenKind.Code,
                     Text = code.ToString() });
+
                 code.Clear();
             }
         }

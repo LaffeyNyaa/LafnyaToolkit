@@ -85,6 +85,7 @@ namespace CSharpFormatter
                 {
                     CollectOptionalParenBody(text, isCode, i + 7,
                         insertions);
+
                     continue;
                 }
 
@@ -92,6 +93,7 @@ namespace CSharpFormatter
                 {
                     CollectOptionalParenBody(text, isCode, i + 9,
                         insertions);
+
                     continue;
                 }
 
@@ -173,6 +175,7 @@ namespace CSharpFormatter
         {
             int afterElse = keywordPos + 4;
             int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
+
             if (TextUtils.MatchesWord(text, nextNonWs, "if"))
             {
                 return;
@@ -190,6 +193,7 @@ namespace CSharpFormatter
             List<TextUtils.Insertion> insertions)
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
+
             if (i >= text.Length)
             {
                 return;
@@ -213,6 +217,7 @@ namespace CSharpFormatter
                 }
 
                 char c = text[j];
+
                 if (c == '(' || c == '[')
                 {
                     depth++;
@@ -254,6 +259,7 @@ namespace CSharpFormatter
             List<TextUtils.Insertion> insertions)
         {
             int next = TextUtils.SkipWhitespace(text, start);
+
             if (next < text.Length && isCode[next] && text[next] == '(')
             {
                 int afterParen = SkipParen(text, isCode, next);
@@ -286,6 +292,7 @@ namespace CSharpFormatter
 
             int depth = 1;
             i++;
+
             while (i < text.Length && depth > 0)
             {
                 if (isCode[i])

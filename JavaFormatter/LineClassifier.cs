@@ -10,11 +10,11 @@ namespace JavaFormatter
     {
         /// <summary>Keywords that introduce a block-start line.</summary>
         private static readonly string[] BlockStartKeywords =
-        {
+            {
             "package", "interface", "synchronized", "finally", "abstract",
-            "implements", "extends", "throws", "class", "switch", "catch",
-            "enum", "while", "else", "for", "try", "do", "if"
-        };
+                "implements", "extends", "throws", "class", "switch", "catch",
+                "enum", "while", "else", "for", "try", "do", "if"
+            };
 
         /// <summary>
         /// Determines whether the trimmed line is a block start line: a non-empty,
@@ -149,6 +149,7 @@ namespace JavaFormatter
             for (int i = line.Length - 1; i >= 0; i--)
             {
                 int textPos = lineStart + i;
+
                 if (textPos < 0 || textPos >= isCode.Length ||
                     !isCode[textPos])
                 {
@@ -156,6 +157,7 @@ namespace JavaFormatter
                 }
 
                 char c = line[i];
+
                 if (c == ' ' || c == '\t')
                 {
                     continue;
@@ -189,6 +191,7 @@ namespace JavaFormatter
             string text, bool[] isCode)
         {
             int lastCodeIdx = LastCodeCharIndex(line, lineStart, text, isCode);
+
             if (lastCodeIdx < 0)
             {
                 return false;
@@ -209,6 +212,7 @@ namespace JavaFormatter
             }
 
             int prevTextPos = lineStart + lastCodeIdx - 1;
+
             if (prevTextPos < 0 || prevTextPos >= isCode.Length ||
                 !isCode[prevTextPos])
             {

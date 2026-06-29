@@ -15,15 +15,14 @@ namespace JsonFormatter
         private int _index;
         private int _line;
         private int _column;
-
         private JsonParser(string text)
         {
             _text = text;
             _index = 0;
             _line = 1;
             _column = 1;
-
             // Skip a single UTF-8 BOM if present.
+
             if (_text.Length > 0 && _text[0] == '\uFEFF')
             {
                 _index = 1;
@@ -72,10 +71,12 @@ namespace JsonFormatter
             while (_index < _text.Length)
             {
                 char c = _text[_index];
+
                 if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
                 {
                     ReadChar();
                 }
+
                 else
                 {
                     break;
@@ -96,27 +97,33 @@ namespace JsonFormatter
             {
                 throw new InvalidOperationException("ReadChar past end of input.");
             }
+
             char c = _text[_index];
             _index++;
+
             if (c == '\r')
             {
                 _line++;
                 _column = 1;
                 // Treat \r\n as a single line break by consuming the \n.
+
                 if (_index < _text.Length && _text[_index] == '\n')
                 {
                     _index++;
                 }
             }
+
             else if (c == '\n')
             {
                 _line++;
                 _column = 1;
             }
+
             else
             {
                 _column++;
             }
+
             return c;
         }
 
@@ -128,6 +135,7 @@ namespace JsonFormatter
             }
 
             char c = _text[_index];
+
             switch (c)
             {
                 case '{':
@@ -174,37 +182,48 @@ namespace JsonFormatter
             while (true)
             {
                 SkipWhitespace();
+
                 if (_index >= _text.Length || _text[_index] != '"')
                 {
                     throw Error("expected string key");
                 }
+
                 JsonValue key = ParseString();
                 SkipWhitespace();
+
                 if (_index >= _text.Length || _text[_index] != ':')
                 {
                     throw Error("expected ':'");
                 }
+
                 ReadChar(); // Consume ':'
                 SkipWhitespace();
                 JsonValue value = ParseValue();
+
                 obj.Properties.Add(
                     new KeyValuePair<string, JsonValue>(key.RawText, value));
+
                 SkipWhitespace();
+
                 if (_index >= _text.Length)
                 {
                     throw Error("unexpected end of input");
                 }
+
                 char c = _text[_index];
+
                 if (c == ',')
                 {
                     ReadChar();
                     continue;
                 }
+
                 if (c == '}')
                 {
                     ReadChar();
                     break;
                 }
+
                 throw Error("expected ',' or '}'");
             }
 
@@ -229,21 +248,26 @@ namespace JsonFormatter
                 JsonValue value = ParseValue();
                 arr.Elements.Add(value);
                 SkipWhitespace();
+
                 if (_index >= _text.Length)
                 {
                     throw Error("unexpected end of input");
                 }
+
                 char c = _text[_index];
+
                 if (c == ',')
                 {
                     ReadChar();
                     continue;
                 }
+
                 if (c == ']')
                 {
                     ReadChar();
                     break;
                 }
+
                 throw Error("expected ',' or ']'");
             }
 
@@ -262,22 +286,28 @@ namespace JsonFormatter
             while (_index < _text.Length)
             {
                 char c = _text[_index];
+
                 if (c == '\\')
                 {
                     ReadChar(); // Consume '\'
+
                     if (_index >= _text.Length)
                     {
                         throw Error("unterminated string");
                     }
+
                     ReadChar(); // Consume the character following the escape
                     continue;
                 }
+
                 if (c == '"')
                 {
                     ReadChar(); // Consume closing '"'
+
                     return JsonValue.FromScalar(JsonType.String,
                         _text.Substring(start, _index - start));
                 }
+
                 ReadChar();
             }
 
@@ -291,8 +321,8 @@ namespace JsonFormatter
         private JsonValue ParseNumber()
         {
             int start = _index;
-
             // Optional '-'
+
             if (_index < _text.Length && _text[_index] == '-')
             {
                 ReadChar();
@@ -305,33 +335,40 @@ namespace JsonFormatter
 
             // Integer part
             char c = _text[_index];
+
             if (c == '0')
             {
                 ReadChar();
             }
+
             else if (c >= '1' && c <= '9')
             {
                 ReadChar();
+
                 while (_index < _text.Length &&
                     _text[_index] >= '0' && _text[_index] <= '9')
                 {
                     ReadChar();
                 }
             }
+
             else
             {
                 throw Error("invalid number");
             }
 
             // Optional fractional part
+
             if (_index < _text.Length && _text[_index] == '.')
             {
                 ReadChar();
+
                 if (_index >= _text.Length ||
                     _text[_index] < '0' || _text[_index] > '9')
                 {
                     throw Error("invalid number");
                 }
+
                 while (_index < _text.Length &&
                     _text[_index] >= '0' && _text[_index] <= '9')
                 {
@@ -340,20 +377,24 @@ namespace JsonFormatter
             }
 
             // Optional exponent part
+
             if (_index < _text.Length &&
                 (_text[_index] == 'e' || _text[_index] == 'E'))
             {
                 ReadChar();
+
                 if (_index < _text.Length &&
                     (_text[_index] == '+' || _text[_index] == '-'))
                 {
                     ReadChar();
                 }
+
                 if (_index >= _text.Length ||
                     _text[_index] < '0' || _text[_index] > '9')
                 {
                     throw Error("invalid number");
                 }
+
                 while (_index < _text.Length &&
                     _text[_index] >= '0' && _text[_index] <= '9')
                 {
@@ -378,8 +419,10 @@ namespace JsonFormatter
                 {
                     throw Error("invalid keyword '" + expected + "'");
                 }
+
                 ReadChar();
             }
+
             return JsonValue.FromScalar(kind, expected);
         }
 

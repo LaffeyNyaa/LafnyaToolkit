@@ -297,7 +297,8 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) &&
+                if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i -
+                    1])) &&
                     TextUtils.MatchesWord(text, i, "enum"))
                 {
                     pendingEnum = true;
@@ -328,6 +329,7 @@ namespace CppFormatter
                     {
                         enumRanges.Add(new KeyValuePair<int, int>(enumStart,
                             i));
+
                         enumStart = -1;
                         enumDepth = -1;
                     }
@@ -376,7 +378,8 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 's' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) &&
+                if (c == 's' && (i == 0 || !TextUtils.IsWordChar(text[i -
+                    1])) &&
                     TextUtils.MatchesWord(text, i, "switch"))
                 {
                     pendingSwitch = true;
@@ -386,6 +389,7 @@ namespace CppFormatter
                 {
                     braceStack.Push(new KeyValuePair<bool, int>(pendingSwitch,
                         i));
+
                     pendingSwitch = false;
                 }
 
@@ -556,7 +560,8 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) &&
+                if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i -
+                    1])) &&
                     TextUtils.MatchesWord(text, i, "namespace"))
                 {
                     pendingNamespace = true;
@@ -569,6 +574,7 @@ namespace CppFormatter
                         nsBlocks.Add(new KeyValuePair<int, int>(i, -1));
                         braceStack.Push(nsBlocks.Count - 1);
                     }
+
                     else
                     {
                         braceStack.Push(-1);

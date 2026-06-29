@@ -32,14 +32,17 @@ namespace CSharpFormatter
             int[] depths = new int[lines.Count];
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
             bool[] inEnumBlock = ComputeInEnumBlock(lines, text, isCode);
+
             bool[] caseBody = ComputeCaseScope(lines, text, isCode,
                 isCodeLine);
+
             int depth = 0;
             int lineIdx = 0;
 
             for (int i = 0; i < text.Length; i++)
             {
                 char c = text[i];
+
                 if (c == '\n')
                 {
                     lineIdx++;
@@ -85,6 +88,7 @@ namespace CSharpFormatter
                 }
 
                 string content = lines[i].TrimStart();
+
                 if (content.Length == 0)
                 {
                     result.Add(string.Empty);
@@ -203,6 +207,7 @@ namespace CSharpFormatter
                     {
                         enumRanges.Add(new KeyValuePair<int, int>(
                             enumStart, i));
+
                         enumStart = -1;
                         enumDepth = -1;
                     }
@@ -264,6 +269,7 @@ namespace CSharpFormatter
                 {
                     braceStack.Push(new KeyValuePair<bool, int>(
                         pendingSwitch, i));
+
                     pendingSwitch = false;
                 }
 
@@ -272,6 +278,7 @@ namespace CSharpFormatter
                     if (braceStack.Count > 0)
                     {
                         var top = braceStack.Pop();
+
                         if (top.Key)
                         {
                             switchRanges.Add(new KeyValuePair<int, int>(
@@ -293,6 +300,7 @@ namespace CSharpFormatter
                 int braceStart = range.Key;
                 int braceEnd = range.Value;
                 var innerRanges = new List<KeyValuePair<int, int>>();
+
                 foreach (var r in switchRanges)
                 {
                     if (r.Key > braceStart && r.Value < braceEnd)

@@ -108,6 +108,33 @@ Maintain exactly one blank line above and below declarations such as classes, me
   private final int y = 1;
   ```
 
+### Preserve blank lines between single-line statements
+
+When all other blank-line rules decide `wantBlankAbove = false` for a given line, the formatter falls back to preserving author-inserted blank lines between adjacent plain single-line statements at the same indentation level.
+
+- **Preserve-only**: This rule only preserves existing blanks (based on whether the original input had a blank line above the current line). It never inserts a new blank line where the original had none.
+- **Idempotent**: Re-running the formatter on already-formatted output does not add or remove any further blanks governed by this rule.
+- **Definition of "plain single-line statement"**: A line qualifies as a plain single-line statement only when all of the following conditions hold:
+  - The line starts in code (not inside a string, text block, char literal, or comment).
+  - The trimmed line ends with `;`.
+  - The line is **not** a block-end line (e.g., `}` or `};`).
+  - The line is **not** a block-start line (e.g., a line ending with `{`).
+  - The line is **not** a `do/while` tail (e.g., `} while (...);`).
+  - The line is **not** a comment line.
+- **Example**:
+  ```java
+  int[] lineStarts = new int[10];
+
+  List<Integer> enumRanges = new ArrayList<>();
+  int depth = 0;
+  int enumDepth = -1;
+  int enumStart = -1;
+  boolean pendingEnum = false;
+
+  for (int i = 0; i < lineStarts.length; i++) {
+  ```
+  The blank between `lineStarts` and `enumRanges` is preserved because the original input had a blank there. No blank is inserted between `enumRanges`, `depth`, `enumDepth`, `enumStart`, and `pendingEnum`, because the original input had no blank between them.
+
 ### Indentation
 
 Use exactly **4 spaces** for each indentation level.

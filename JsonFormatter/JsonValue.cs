@@ -53,24 +53,36 @@ namespace JsonFormatter
         /// <summary>
         /// Gets the type of the value.
         /// </summary>
-        public JsonType Kind { get; }
+        public JsonType Kind
+        {
+            get;
+        }
 
         /// <summary>
         /// Gets the raw literal of a scalar value. Used only for
         /// String/Number/True/False/Null types; null for object and array types.
         /// </summary>
-        public string RawText { get; }
+        public string RawText
+        {
+            get;
+        }
 
         /// <summary>
         /// Gets the property list of an object value, preserving insertion order
         /// and duplicate keys. Null for non-object types.
         /// </summary>
-        public List<KeyValuePair<string, JsonValue>> Properties { get; }
+        public List<KeyValuePair<string, JsonValue>> Properties
+        {
+            get;
+        }
 
         /// <summary>
         /// Gets the element list of an array value. Null for non-array types.
         /// </summary>
-        public List<JsonValue> Elements { get; }
+        public List<JsonValue> Elements
+        {
+            get;
+        }
 
         private JsonValue(JsonType kind, string rawText,
             List<KeyValuePair<string, JsonValue>> properties,

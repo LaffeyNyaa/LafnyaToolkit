@@ -41,12 +41,19 @@ namespace GDScriptFormatter
             // segments at parent+4, not parent+8).
             string textForLimit = string.Join("\n", lines);
             var tokensForLimit = Tokenizer.Tokenize(textForLimit);
+
             bool[] isCodeForLimit = Tokenizer.BuildCodeMask(textForLimit,
                 tokensForLimit);
-            int[] lineStartsForLimit = IndentationProcessor.ComputeLineStarts(lines);
-            var lineInfoForLimit = IndentationProcessor.ComputeLineInfo(lines, textForLimit,
+
+            int[] lineStartsForLimit =
+                IndentationProcessor.ComputeLineStarts(lines);
+
+            var lineInfoForLimit = IndentationProcessor.ComputeLineInfo(lines,
+                textForLimit,
                 isCodeForLimit, lineStartsForLimit);
+
             var preSplitContinues = new bool[lines.Count];
+
             for (int i = 0; i < lines.Count; i++)
             {
                 // Line i "continues to next" when line i+1 is detected as a
@@ -55,12 +62,15 @@ namespace GDScriptFormatter
                 preSplitContinues[i] = i + 1 < lines.Count &&
                     lineInfoForLimit[i + 1].IsContinuation;
             }
+
             // Split long lines BEFORE applying blank-line rules so that the
             // preSplitContinues flags (computed above) stay aligned with the
             // line list. Running BlankLineProcessor first would insert blank
             // lines and shift indices, causing LineLengthProcessor to read
             // the wrong continuation flag for each line.
-            lines = LineLengthProcessor.ApplyLineLengthLimit(lines, preSplitContinues);
+            lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
+                preSplitContinues);
+
             lines = BlankLineProcessor.ApplyBlankLineRules(lines);
             lines = BlankLineProcessor.CollapseBlankLines(lines);
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines);

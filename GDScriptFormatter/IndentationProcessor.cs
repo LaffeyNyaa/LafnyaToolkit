@@ -15,12 +15,16 @@ namespace GDScriptFormatter
         {
             /// <summary>Whether the line ends with a colon (not inside brackets).</summary>
             public bool ColonTerminated;
+
             /// <summary>Whether the line ends with { (not inside a string/comment) and the brace is not closed on the same line.</summary>
             public bool BraceTerminated;
+
             /// <summary>Whether the line starts with } (close-brace line).</summary>
             public bool IsCloseBrace;
+
             /// <summary>Whether the line is a continuation (bracket depth &gt; 0 or the previous line ended with \).</summary>
             public bool IsContinuation;
+
             /// <summary>The line's original indentation level (leading spaces / IndentSize).</summary>
             public int OriginalDepth;
         }
@@ -70,7 +74,8 @@ namespace GDScriptFormatter
                     baseDepth++;
                 }
 
-                result.Add(new string(' ', baseDepth * TextUtils.IndentSize) + content);
+                result.Add(new string(' ', baseDepth * TextUtils.IndentSize) +
+                    content);
             }
 
             return result;
@@ -173,8 +178,8 @@ namespace GDScriptFormatter
                 }
 
                 for (int ci = lineStarts[i];
-                    ci < lineStarts[i] + line.Length && ci < isCode.Length;
-                    ci++)
+                ci < lineStarts[i] + line.Length && ci < isCode.Length;
+                ci++)
                 {
                     if (!isCode[ci])
                     {
@@ -182,11 +187,11 @@ namespace GDScriptFormatter
                     }
 
                     char c = text[ci];
-
                     // Skip the trailing { on BraceTerminated lines — it is
                     // handled by the stack via BraceTerminated, so counting
                     // it here would double-indent the body of a block-style
                     // dict.
+
                     if (info[i].BraceTerminated && ci == lastCodeIdx)
                     {
                         continue;
@@ -196,6 +201,7 @@ namespace GDScriptFormatter
                     {
                         parenBracketDepth++;
                     }
+
                     else if (c == ')' || c == ']' || c == '}')
                     {
                         if (parenBracketDepth > 0)

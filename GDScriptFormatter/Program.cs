@@ -29,6 +29,7 @@ namespace GDScriptFormatter
             {
                 Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
                     targetPath);
+
                 Environment.Exit(2);
                 return;
             }
@@ -64,19 +65,23 @@ namespace GDScriptFormatter
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine("Error: failed to process " + relative +
+                    Console.Error.WriteLine("Error: failed to process " +
+                        relative +
                         ": " + ex.Message);
                     failedCount++;
                 }
             }
 
             int total = formattedCount + skippedCount + failedCount;
+
             string summary = "Total: " + total + ", Formatted: " +
                 formattedCount + ", Skipped: " + skippedCount;
+
             if (failedCount > 0)
             {
                 summary += ", Failed: " + failedCount;
             }
+
             Console.WriteLine(summary);
             Environment.Exit(failedCount);
         }
@@ -93,12 +98,14 @@ namespace GDScriptFormatter
             Encoding encoding)
         {
             string directory = Path.GetDirectoryName(finalPath);
+
             string tempPath = Path.Combine(directory,
                 Path.GetFileName(finalPath) + ".tmp");
 
             try
             {
                 File.WriteAllText(tempPath, content, encoding);
+
                 try
                 {
                     File.Replace(tempPath, finalPath, null);
@@ -133,6 +140,7 @@ namespace GDScriptFormatter
         {
             var files = new List<string>(Directory.EnumerateFiles(root, "*.gd",
                 SearchOption.AllDirectories));
+
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return files;
         }
@@ -147,6 +155,7 @@ namespace GDScriptFormatter
         {
             string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
                 Path.AltDirectorySeparatorChar);
+
             string normalizedFile = file;
             string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
 

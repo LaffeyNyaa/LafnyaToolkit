@@ -19,6 +19,7 @@ namespace CSharpFormatter
         {
             var tokens = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+
             var replacements =
                 new List<TextUtils.Replacement>();
 
@@ -63,12 +64,14 @@ namespace CSharpFormatter
 
                 string content = text.Substring(braceStart + 1,
                     braceEnd - braceStart - 1);
+
                 if (content.IndexOf('\n') >= 0)
                 {
                     continue;
                 }
 
                 var members = SplitEnumMembers(content);
+
                 if (members.Count == 0)
                 {
                     continue;
@@ -81,6 +84,7 @@ namespace CSharpFormatter
                 {
                     sb.Append(new string(' ', TextUtils.IndentSize));
                     sb.Append(members[k].Trim());
+
                     if (k < members.Count - 1)
                     {
                         sb.Append(',');

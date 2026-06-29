@@ -16,11 +16,12 @@ namespace GDScriptFormatter
         {
             /// <summary>The start position (inclusive).</summary>
             public int Start;
+
             /// <summary>The end position (exclusive).</summary>
             public int End;
+
             /// <summary>The replacement text.</summary>
             public string NewText;
-
             public Replacement(int start, int end, string newText)
             {
                 Start = start;
@@ -57,18 +58,21 @@ namespace GDScriptFormatter
 
                 int afterEnum = i + 4;
 
-                if (afterEnum < text.Length && TextUtils.IsWordChar(text[afterEnum]))
+                if (afterEnum < text.Length &&
+                    TextUtils.IsWordChar(text[afterEnum]))
                 {
                     continue;
                 }
 
                 int braceStart = FindOpenBrace(text, isCode, afterEnum);
+
                 if (braceStart < 0)
                 {
                     continue;
                 }
 
                 int braceEnd = FindMatchingClose(text, isCode, braceStart);
+
                 if (braceEnd < 0)
                 {
                     continue;
@@ -76,7 +80,9 @@ namespace GDScriptFormatter
 
                 string content = text.Substring(braceStart + 1,
                     braceEnd - braceStart - 1);
+
                 var members = SplitEnumMembers(content);
+
                 if (members.Count == 0)
                 {
                     continue;
@@ -225,6 +231,7 @@ namespace GDScriptFormatter
                     {
                         depth++;
                     }
+
                     else if (text[i] == '}')
                     {
                         depth--;

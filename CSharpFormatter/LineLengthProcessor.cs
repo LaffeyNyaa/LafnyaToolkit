@@ -30,6 +30,7 @@ namespace CSharpFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
+
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     result.Add(line);
@@ -45,17 +46,22 @@ namespace CSharpFormatter
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
+
                 string fixedContIndent;
+
                 if (isContinuation)
                 {
                     int indentLen = 0;
+
                     while (indentLen < line.Length &&
                         line[indentLen] == ' ')
                     {
                         indentLen++;
                     }
+
                     fixedContIndent = line.Substring(0, indentLen);
                 }
+
                 else
                 {
                     fixedContIndent = null;
@@ -97,12 +103,12 @@ namespace CSharpFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-
             // On the first call (fixedContIndent == null), compute the fixed
             // continuation indent from the original line's indent. This indent
             // is reused for ALL continuation segments so that 3+ segment splits
             // do not cascade (parent+4 for every continuation line, matching
             // IndentationProcessor's behaviour).
+
             if (fixedContIndent == null)
             {
                 fixedContIndent = indent +
@@ -112,6 +118,7 @@ namespace CSharpFormatter
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
+
             if (breakAt < 0 || breakAt >= line.Length)
             {
                 return new List<string> { line };
@@ -141,6 +148,7 @@ namespace CSharpFormatter
             int bestInRange = -1;
             int firstOutOfRange = -1;
             int i = startIdx;
+
             while (i < line.Length)
             {
                 if (!isCode[i])
@@ -283,6 +291,7 @@ namespace CSharpFormatter
             int startIdx)
         {
             int prev = i - 1;
+
             while (prev >= startIdx && line[prev] == ' ')
             {
                 prev--;
@@ -294,6 +303,7 @@ namespace CSharpFormatter
             }
 
             char pc = line[prev];
+
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"';
         }

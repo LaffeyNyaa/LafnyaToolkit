@@ -34,8 +34,10 @@ namespace CSharpFormatter
             var tokenized = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokenized);
             bool[] isCodeLine = LineClassifier.ComputeIsCodeLine(lines, isCode);
+
             lines = IndentationProcessor.Reindent(lines, text, tokenized,
                 isCode, isCodeLine);
+
             // Compute continuation flags from the post-Reindent (pre-split)
             // line structure so that LineLengthProcessor can detect
             // continuation lines and avoid cascading indents when splitting
@@ -46,11 +48,13 @@ namespace CSharpFormatter
             isCode = Tokenizer.BuildCodeMask(text, tokenized);
             int[] lineStarts = TextUtils.ComputeLineStarts(lines);
             var preSplitContinues = new bool[lines.Count];
+
             for (int i = 0; i < lines.Count; i++)
             {
                 preSplitContinues[i] = LineClassifier.IsContinuationIndicator(
                     lines[i], lineStarts[i], text, isCode);
             }
+
             // Split long lines BEFORE applying blank-line rules so that
             // multi-line statements produced by line-length splitting are
             // visible to the blank-line rules on the first pass. This is
@@ -59,6 +63,7 @@ namespace CSharpFormatter
             // a new blank line above the first segment.
             lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
                 preSplitContinues);
+
             // Recompute text, tokens, code mask, and per-line flags from the
             // post-split lines so that continuation/statement-end detection
             // reflects the actual (possibly split) line structure.
@@ -69,15 +74,19 @@ namespace CSharpFormatter
             lineStarts = TextUtils.ComputeLineStarts(lines);
             var lineContinuesNext = new bool[lines.Count];
             var lineEndsStatement = new bool[lines.Count];
+
             for (int i = 0; i < lines.Count; i++)
             {
                 lineContinuesNext[i] = LineClassifier.IsContinuationIndicator(
                     lines[i], lineStarts[i], text, isCode);
+
                 lineEndsStatement[i] = LineClassifier.EndsStatement(
                     lines[i], lineStarts[i], text, isCode);
             }
+
             lines = BlankLineProcessor.ApplyBlankLineRules(lines, isCodeLine,
                 lineContinuesNext, lineEndsStatement);
+
             lines = BlankLineProcessor.CollapseBlankLines(lines);
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines);
             string result = string.Join("\n", lines);

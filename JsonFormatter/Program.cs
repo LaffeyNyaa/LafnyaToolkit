@@ -14,7 +14,8 @@ namespace JsonFormatter
         /// <summary>
         /// UTF-8 encoding without BOM, reused across all file writes.
         /// </summary>
-        private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
+        private static readonly UTF8Encoding Utf8NoBom =
+            new UTF8Encoding(false);
 
         /// <summary>
         /// Result of processing a single JSON file.
@@ -45,6 +46,7 @@ namespace JsonFormatter
             {
                 Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
                     targetPath);
+
                 Environment.Exit(2);
                 return;
             }
@@ -57,6 +59,7 @@ namespace JsonFormatter
             foreach (var file in files)
             {
                 ProcessFileResult result = ProcessFile(file, targetPath);
+
                 switch (result)
                 {
                     case ProcessFileResult.Formatted:
@@ -84,22 +87,28 @@ namespace JsonFormatter
         private static ProcessFileResult ProcessFile(string file, string root)
         {
             string relative = GetRelativePath(root, file);
+
             try
             {
                 string original = File.ReadAllText(file, Encoding.UTF8);
                 string formatted = JsonFormatter.Format(original);
-                if (!string.Equals(original, formatted, StringComparison.Ordinal))
+
+                if (!string.Equals(original, formatted,
+                    StringComparison.Ordinal))
                 {
                     File.WriteAllText(file, formatted, Utf8NoBom);
                     Console.WriteLine("Formatting: " + relative);
                     return ProcessFileResult.Formatted;
                 }
+
                 Console.WriteLine("Skipped: " + relative);
                 return ProcessFileResult.Skipped;
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("Error: " + relative + ": " + ex.Message);
+                Console.Error.WriteLine("Error: " + relative + ": " +
+                    ex.Message);
+
                 return ProcessFileResult.Failed;
             }
         }
@@ -110,6 +119,7 @@ namespace JsonFormatter
         private static void PrintSummary(int formatted, int skipped, int failed)
         {
             int total = formatted + skipped + failed;
+
             Console.WriteLine("Total: " + total + ", Formatted: " +
                 formatted + ", Skipped: " + skipped + ", Failed: " + failed);
         }
@@ -132,52 +142,62 @@ namespace JsonFormatter
                 string current = stack.Pop();
 
                 string[] currentFiles;
+
                 try
                 {
-                    currentFiles = Directory.GetFiles(current, "*.json", SearchOption.TopDirectoryOnly);
+                    currentFiles = Directory.GetFiles(current, "*.json",
+                        SearchOption.TopDirectoryOnly);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
                         current + " (" + ex.Message + ")");
+
                     continue;
                 }
                 catch (PathTooLongException ex)
                 {
                     Console.Error.WriteLine("Warning: skipping directory with path too long: " +
                         current + " (" + ex.Message + ")");
+
                     continue;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
                     Console.Error.WriteLine("Warning: skipping missing directory: " +
                         current + " (" + ex.Message + ")");
+
                     continue;
                 }
 
                 files.AddRange(currentFiles);
 
                 string[] subdirs;
+
                 try
                 {
-                    subdirs = Directory.GetDirectories(current, "*", SearchOption.TopDirectoryOnly);
+                    subdirs = Directory.GetDirectories(current, "*",
+                        SearchOption.TopDirectoryOnly);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
                         current + " (" + ex.Message + ")");
+
                     continue;
                 }
                 catch (PathTooLongException ex)
                 {
                     Console.Error.WriteLine("Warning: skipping directory with path too long: " +
                         current + " (" + ex.Message + ")");
+
                     continue;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
                     Console.Error.WriteLine("Warning: skipping missing directory: " +
                         current + " (" + ex.Message + ")");
+
                     continue;
                 }
 
@@ -202,6 +222,7 @@ namespace JsonFormatter
         {
             string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
                 Path.AltDirectorySeparatorChar);
+
             string normalizedFile = file;
             string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
 

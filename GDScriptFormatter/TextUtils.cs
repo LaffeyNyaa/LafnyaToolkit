@@ -11,6 +11,7 @@ namespace GDScriptFormatter
     {
         /// <summary>4 spaces per indentation level.</summary>
         public const int IndentSize = 4;
+
         /// <summary>Maximum line length.</summary>
         public const int MaxLineLength = 80;
 
@@ -38,6 +39,7 @@ namespace GDScriptFormatter
                 {
                     sb.Append("    ");
                 }
+
                 else
                 {
                     sb.Append(c);
@@ -225,7 +227,8 @@ namespace GDScriptFormatter
                 return true;
             }
 
-            if (trimmed.StartsWith("class ") && !trimmed.StartsWith("class_name"))
+            if (trimmed.StartsWith("class ") &&
+                !trimmed.StartsWith("class_name"))
             {
                 return true;
             }

@@ -11,8 +11,10 @@ namespace CSharpFormatter
     {
         /// <summary>Number of spaces per indentation level.</summary>
         public const int IndentSize = 4;
+
         /// <summary>Maximum allowed line length.</summary>
         public const int MaxLineLength = 80;
+
         /// <summary>
         /// Represents a text insertion point used by brace enforcement.
         /// </summary>
@@ -20,8 +22,10 @@ namespace CSharpFormatter
         {
             /// <summary>The character position at which to insert.</summary>
             public int Position;
+
             /// <summary>The text to insert.</summary>
             public string Text;
+
             /// <summary>
             /// Creates a new insertion record.
             /// </summary>
@@ -42,10 +46,13 @@ namespace CSharpFormatter
         {
             /// <summary>The start position (inclusive).</summary>
             public int Start;
+
             /// <summary>The end position (exclusive).</summary>
             public int End;
+
             /// <summary>The replacement text.</summary>
             public string NewText;
+
             /// <summary>
             /// Creates a new replacement record.
             /// </summary>
@@ -135,6 +142,7 @@ namespace CSharpFormatter
             int start)
         {
             int i = start;
+
             while (i < text.Length)
             {
                 if (isCode[i] && text[i] == '{')
@@ -167,6 +175,7 @@ namespace CSharpFormatter
         {
             int depth = 1;
             int i = openPos + 1;
+
             while (i < text.Length)
             {
                 if (isCode[i])
@@ -210,6 +219,7 @@ namespace CSharpFormatter
             replacements.Sort((a, b) => a.Start.CompareTo(b.Start));
             var sb = new StringBuilder(text.Length);
             int pos = 0;
+
             foreach (var r in replacements)
             {
                 if (r.Start < pos)
@@ -292,6 +302,7 @@ namespace CSharpFormatter
         {
             var lineStarts = new int[lines.Count];
             int pos = 0;
+
             for (int i = 0; i < lines.Count; i++)
             {
                 lineStarts[i] = pos;
@@ -363,6 +374,7 @@ namespace CSharpFormatter
                     {
                         string beforeBrace = trimmedEnd.Substring(0,
                             trimmedEnd.Length - 1).TrimEnd();
+
                         if (beforeBrace.Length > 0)
                         {
                             result.Add(beforeBrace);

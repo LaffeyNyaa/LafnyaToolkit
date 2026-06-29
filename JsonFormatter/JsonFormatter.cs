@@ -62,6 +62,7 @@ namespace JsonFormatter
                     sb.Append("null");
                     break;
                 default:
+
                     throw new InvalidOperationException(
                         "Unknown JSON type: " + value.Kind);
             }
@@ -77,6 +78,7 @@ namespace JsonFormatter
             }
 
             sb.Append("{\n");
+
             for (int i = 0; i < value.Properties.Count; i++)
             {
                 KeyValuePair<string, JsonValue> pair = value.Properties[i];
@@ -84,12 +86,15 @@ namespace JsonFormatter
                 sb.Append(pair.Key);
                 sb.Append(": ");
                 SerializeValue(pair.Value, indent + 1, sb);
+
                 if (i < value.Properties.Count - 1)
                 {
                     sb.Append(',');
                 }
+
                 sb.Append('\n');
             }
+
             AppendIndent(sb, indent);
             sb.Append('}');
         }
@@ -104,16 +109,20 @@ namespace JsonFormatter
             }
 
             sb.Append("[\n");
+
             for (int i = 0; i < value.Elements.Count; i++)
             {
                 AppendIndent(sb, indent + 1);
                 SerializeValue(value.Elements[i], indent + 1, sb);
+
                 if (i < value.Elements.Count - 1)
                 {
                     sb.Append(',');
                 }
+
                 sb.Append('\n');
             }
+
             AppendIndent(sb, indent);
             sb.Append(']');
         }

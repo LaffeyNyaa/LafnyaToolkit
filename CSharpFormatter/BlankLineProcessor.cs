@@ -21,9 +21,11 @@ namespace CSharpFormatter
             /// <summary>The original index of this line in the input
             /// list.</summary>
             public int OriginalIndex;
+
             /// <summary>Whether a blank line immediately preceded this
             /// line in the input.</summary>
             public bool HadBlankAbove;
+
             /// <summary>The line text.</summary>
             public string Line;
 
@@ -71,6 +73,7 @@ namespace CSharpFormatter
             for (int idx = 0; idx < lines.Count; idx++)
             {
                 string line = lines[idx];
+
                 if (line.Trim().Length == 0)
                 {
                     prevWasBlank = true;
@@ -84,16 +87,20 @@ namespace CSharpFormatter
             }
 
             var result = new List<string>(nonBlank.Count);
+
             for (int i = 0; i < nonBlank.Count; i++)
             {
                 NonBlankEntry entry = nonBlank[i];
                 string line = entry.Line;
                 string trimmed = line.Trim();
                 int origIdx = entry.OriginalIndex;
+
                 bool lineIsCode = origIdx < isCodeLine.Length &&
                     isCodeLine[origIdx];
+
                 bool isBlockStart = lineIsCode &&
                     LineClassifier.IsBlockStartLine(trimmed);
+
                 bool wantBlankAbove = false;
 
                 if (result.Count > 0)
@@ -102,16 +109,20 @@ namespace CSharpFormatter
                     int prevOrigIdx = prevEntry.OriginalIndex;
                     string prevLine = prevEntry.Line;
                     string prevTrimmed = prevLine.Trim();
+
                     bool prevIsCode = prevOrigIdx < isCodeLine.Length &&
                         isCodeLine[prevOrigIdx];
 
-                    bool prevIsBlockEnd = LineClassifier.IsBlockEndLine(prevTrimmed);
+                    bool prevIsBlockEnd =
+                        LineClassifier.IsBlockEndLine(prevTrimmed);
+
                     bool prevIsBlockStartBrace = prevTrimmed == "{" ||
                         TextUtils.EndsWithOpenBrace(prevTrimmed);
-                    bool prevIsComment = IsCommentLine(prevTrimmed);
 
+                    bool prevIsComment = IsCommentLine(prevTrimmed);
                     // Existing rule: block-start gets a blank above unless the
                     // previous line opens a block.
+
                     if (isBlockStart && prevTrimmed.Length > 0 &&
                         !prevIsBlockStartBrace)
                     {
@@ -120,6 +131,7 @@ namespace CSharpFormatter
 
                     // Existing rule: after a block-end, add a blank above unless
                     // the current line is itself a block-end.
+
                     if (!wantBlankAbove && prevIsBlockEnd &&
                         trimmed.Length > 0 && trimmed != "}" &&
                         !trimmed.StartsWith("}"))
@@ -129,6 +141,7 @@ namespace CSharpFormatter
 
                     // Existing rule: preserve blank lines between using directives
                     // when the input already had one.
+
                     if (!wantBlankAbove &&
                         LineClassifier.IsUsingDirective(trimmed) &&
                         LineClassifier.IsUsingDirective(prevTrimmed) &&
@@ -154,7 +167,9 @@ namespace CSharpFormatter
                         lineEndsStatement[prevOrigIdx] &&
                         (prevOrigIdx - 1) < lineContinuesNext.Length &&
                         lineContinuesNext[prevOrigIdx - 1];
-                    bool currentIsBlockEnd = LineClassifier.IsBlockEndLine(trimmed);
+
+                    bool currentIsBlockEnd =
+                        LineClassifier.IsBlockEndLine(trimmed);
 
                     if (!wantBlankAbove && prevIsMultiLineEnd &&
                         !currentIsBlockEnd)
@@ -172,9 +187,11 @@ namespace CSharpFormatter
                     bool currentContinues = lineIsCode &&
                         origIdx < lineContinuesNext.Length &&
                         lineContinuesNext[origIdx];
+
                     bool prevLineContinuedIntoCurrent = origIdx > 0 &&
                         (origIdx - 1) < lineContinuesNext.Length &&
                         lineContinuesNext[origIdx - 1];
+
                     bool currentIsMultiLineStart = currentContinues &&
                         !prevLineContinuedIntoCurrent;
 
@@ -192,7 +209,7 @@ namespace CSharpFormatter
                     // directly adjacent to the preceding block's closing brace.
                     bool currentIsCatchOrFinally = lineIsCode &&
                         (TextUtils.StartsWithKeyword(trimmed, "catch") ||
-                         TextUtils.StartsWithKeyword(trimmed, "finally"));
+                        TextUtils.StartsWithKeyword(trimmed, "finally"));
 
                     if (currentIsCatchOrFinally && prevIsBlockEnd)
                     {
@@ -210,14 +227,40 @@ namespace CSharpFormatter
                     // must be checked first and excluded from the regular
                     // comment case.
                     bool currentIsDocComment = trimmed.StartsWith("///");
+
                     if (!wantBlankAbove && currentIsDocComment)
                     {
                         bool prevIsDocComment =
                             prevTrimmed.StartsWith("///");
+
                         bool prevIsRegularComment = !prevIsDocComment &&
                             prevIsComment;
+
                         if (prevTrimmed.Length > 0 && !prevIsDocComment &&
                             !prevIsRegularComment && !prevIsBlockStartBrace)
+                        {
+                            wantBlankAbove = true;
+                        }
+                    }
+
+                    // Preserve author-inserted blank lines between adjacent
+                    // single-line statements. This only PRESERVES an existing blank
+                    // (entry.HadBlankAbove); it never adds one. Both the current and
+                    // the previous non-blank line must be plain single-line
+                    // statements. Idempotent: on a second pass the preserved blank
+                    // is still present, so HadBlankAbove remains true and the blank
+                    // is kept.
+
+                    if (!wantBlankAbove && entry.HadBlankAbove)
+                    {
+                        bool currentIsPlainStmt = IsPlainSingleLineStatement(
+                            trimmed, origIdx, isCodeLine, lineEndsStatement);
+
+                        bool prevIsPlainStmt = IsPlainSingleLineStatement(
+                            prevTrimmed, prevOrigIdx, isCodeLine,
+                            lineEndsStatement);
+
+                        if (currentIsPlainStmt && prevIsPlainStmt)
                         {
                             wantBlankAbove = true;
                         }
@@ -248,6 +291,54 @@ namespace CSharpFormatter
         }
 
         /// <summary>
+        /// Determines whether a trimmed line is a plain single-line
+        /// statement: a code line that ends a statement (<c>;</c> or
+        /// <c>}</c>) and is neither a block-end, a block-start, nor a
+        /// comment line. Used by the author-blank-preservation rule.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line.</param>
+        /// <param name="origIdx">The line's original index in the input
+        /// list.</param>
+        /// <param name="isCodeLine">Per-line code-region flag
+        /// array.</param>
+        /// <param name="lineEndsStatement">Per-line statement-end flag
+        /// array.</param>
+        /// <returns>true if the line is a plain single-line
+        /// statement.</returns>
+        private static bool IsPlainSingleLineStatement(string trimmed,
+            int origIdx, bool[] isCodeLine, bool[] lineEndsStatement)
+        {
+            if (origIdx < 0 || origIdx >= isCodeLine.Length ||
+                !isCodeLine[origIdx])
+            {
+                return false;
+            }
+
+            if (origIdx >= lineEndsStatement.Length ||
+                !lineEndsStatement[origIdx])
+            {
+                return false;
+            }
+
+            if (LineClassifier.IsBlockEndLine(trimmed))
+            {
+                return false;
+            }
+
+            if (LineClassifier.IsBlockStartLine(trimmed))
+            {
+                return false;
+            }
+
+            if (IsCommentLine(trimmed))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Collapses 2 or more consecutive blank lines into 1.
         /// </summary>
         /// <param name="lines">The line list.</param>
@@ -262,6 +353,7 @@ namespace CSharpFormatter
                 if (line.Trim().Length == 0)
                 {
                     blankRun++;
+
                     if (blankRun <= 1)
                     {
                         result.Add(string.Empty);

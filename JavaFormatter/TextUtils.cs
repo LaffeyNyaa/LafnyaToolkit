@@ -80,7 +80,8 @@ namespace JavaFormatter
                 }
             }
 
-            if (pos + word.Length < text.Length && IsWordChar(text[pos + word.Length]))
+            if (pos + word.Length < text.Length && IsWordChar(text[pos +
+                word.Length]))
             {
                 return false;
             }
@@ -152,7 +153,8 @@ namespace JavaFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="openPos">The position of the open brace.</param>
         /// <returns>The index of the matching close brace, or -1 if unbalanced.</returns>
-        public static int FindMatchingClose(string text, bool[] isCode, int openPos)
+        public static int FindMatchingClose(string text, bool[] isCode,
+            int openPos)
         {
             int depth = 1;
             int i = openPos + 1;
@@ -336,8 +338,10 @@ namespace JavaFormatter
                 {
                     int braceIdxInLine = line.IndexOf('{');
                     int bracePosInText = lineStarts[i] + braceIdxInLine;
+
                     bool braceInCode = bracePosInText >= 0 &&
-                        bracePosInText < isCode.Length && isCode[bracePosInText];
+                        bracePosInText < isCode.Length &&
+                        isCode[bracePosInText];
 
                     if (braceInCode && lastNonEmptyLine != null &&
                         lastNonEmptyEndsInCode)
@@ -375,6 +379,7 @@ namespace JavaFormatter
                 {
                     int lastIdxInLine = trimmedEnd.Length - 1;
                     int lastPosInText = lineStarts[i] + lastIdxInLine;
+
                     lastNonEmptyEndsInCode = lastPosInText >= 0 &&
                         lastPosInText < isCode.Length && isCode[lastPosInText];
                 }
@@ -398,6 +403,7 @@ namespace JavaFormatter
         {
             var lineStarts = new int[lines.Count];
             int pos = 0;
+
             for (int i = 0; i < lines.Count; i++)
             {
                 lineStarts[i] = pos;

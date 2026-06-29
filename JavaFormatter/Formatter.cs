@@ -41,16 +41,20 @@ namespace JavaFormatter
             // segments at parent+4, not parent+8).
             string textForLimit = string.Join("\n", lines);
             var tokensForLimit = Tokenizer.Tokenize(textForLimit);
+
             bool[] isCodeForLimit = Tokenizer.BuildCodeMask(textForLimit,
                 tokensForLimit);
+
             int[] lineStartsForLimit = TextUtils.ComputeLineStarts(lines);
             var preSplitContinues = new bool[lines.Count];
+
             for (int i = 0; i < lines.Count; i++)
             {
                 preSplitContinues[i] = LineClassifier.IsContinuationIndicator(
                     lines[i], lineStartsForLimit[i], textForLimit,
                     isCodeForLimit);
             }
+
             // Split long lines BEFORE applying blank-line rules so that the
             // preSplitContinues flags (computed above) stay aligned with the
             // line list. Running BlankLineProcessor first would insert blank
@@ -58,6 +62,7 @@ namespace JavaFormatter
             // the wrong continuation flag for each line.
             lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
                 preSplitContinues);
+
             lines = BlankLineProcessor.ApplyBlankLineRules(lines);
             lines = BlankLineProcessor.CollapseBlankLines(lines);
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines);

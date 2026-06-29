@@ -30,6 +30,7 @@ namespace CSharpFormatter
             while (!string.IsNullOrEmpty(dir))
             {
                 string[] csprojs = Directory.GetFiles(dir, "*.csproj");
+
                 if (csprojs.Length > 0)
                 {
                     string rootNs = null;
@@ -37,6 +38,7 @@ namespace CSharpFormatter
                     try
                     {
                         var doc = XDocument.Load(csprojs[0]);
+
                         XNamespace ns =
                             "http://schemas.microsoft.com/developer/msbuild/2003";
 
@@ -47,7 +49,6 @@ namespace CSharpFormatter
                             break;
                         }
                     }
-
                     catch (Exception)
                     {
                         rootNs = null;
@@ -89,6 +90,7 @@ namespace CSharpFormatter
             int firstUsing = -1;
             int lastUsing = -1;
             int firstCodeLine = -1;
+
             for (int i = 0; i < lines.Length; i++)
             {
                 string trimmed = lines[i].Trim();
@@ -138,6 +140,7 @@ namespace CSharpFormatter
             foreach (var u in usings)
             {
                 string ns = ExtractNamespace(u);
+
                 if (ns == rootNamespace)
                 {
                     currentModuleGroup.Add(u);
@@ -163,11 +166,13 @@ namespace CSharpFormatter
             thirdPartyGroup.Sort(CompareByNamespace);
             projectModuleGroup.Sort(CompareByNamespace);
             currentModuleGroup.Sort(CompareByNamespace);
+
             var newBlock = new List<string>();
             AppendGroup(newBlock, systemGroup);
             AppendGroup(newBlock, thirdPartyGroup);
             AppendGroup(newBlock, projectModuleGroup);
             AppendGroup(newBlock, currentModuleGroup);
+
             var result = new StringBuilder();
 
             for (int i = 0; i < firstUsing; i++)
@@ -281,6 +286,7 @@ namespace CSharpFormatter
             }
 
             int sc = s.IndexOf(';');
+
             if (sc >= 0)
             {
                 s = s.Substring(0, sc);

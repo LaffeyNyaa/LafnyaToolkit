@@ -20,6 +20,7 @@ namespace CSharpFormatter
         {
             var tokens = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+
             var replacements =
                 new List<TextUtils.Replacement>();
 
@@ -38,12 +39,14 @@ namespace CSharpFormatter
                 }
 
                 string content = text.Substring(i + 1, braceEnd - i - 1);
+
                 if (!IsAccessorContent(content))
                 {
                     continue;
                 }
 
                 string replacement = ExpandAccessors(content, 1);
+
                 replacements.Add(new TextUtils.Replacement(i + 1, braceEnd,
                     replacement));
             }
@@ -61,6 +64,7 @@ namespace CSharpFormatter
         {
             int depth = 1;
             int j = openPos + 1;
+
             while (j < text.Length)
             {
                 if (text[j] == '\n')
@@ -107,9 +111,11 @@ namespace CSharpFormatter
             var sb = new StringBuilder();
             sb.Append('\n');
             string indent = new string(' ', indentLevel * TextUtils.IndentSize);
+
             foreach (var part in SplitAccessors(content))
             {
                 string trimmed = part.Trim();
+
                 if (trimmed.Length == 0)
                 {
                     continue;
@@ -130,11 +136,13 @@ namespace CSharpFormatter
                         {
                             string blockContent = after.Substring(1,
                                 braceEnd - 1).Trim();
+
                             sb.Append(indent);
                             sb.Append(keyword);
                             sb.Append('\n');
                             sb.Append(indent);
                             sb.Append("{\n");
+
                             if (blockContent.Length > 0)
                             {
                                 sb.Append(ExpandAccessors(blockContent,
@@ -217,6 +225,7 @@ namespace CSharpFormatter
         private static bool IsAccessorContent(string content)
         {
             string s = content.Trim();
+
             if (s.Length == 0)
             {
                 return false;
@@ -300,6 +309,7 @@ namespace CSharpFormatter
                 }
 
                 string part = content.Substring(start, i - start).Trim();
+
                 if (part.Length > 0)
                 {
                     parts.Add(part);

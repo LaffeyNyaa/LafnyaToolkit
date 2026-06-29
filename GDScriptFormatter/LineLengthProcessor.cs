@@ -28,6 +28,7 @@ namespace GDScriptFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
+
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     result.Add(line);
@@ -43,17 +44,22 @@ namespace GDScriptFormatter
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
+
                 string fixedContIndent;
+
                 if (isContinuation)
                 {
                     int indentLen = 0;
+
                     while (indentLen < line.Length &&
                         line[indentLen] == ' ')
                     {
                         indentLen++;
                     }
+
                     fixedContIndent = line.Substring(0, indentLen);
                 }
+
                 else
                 {
                     fixedContIndent = null;
@@ -106,6 +112,7 @@ namespace GDScriptFormatter
             // matching Reindent's behaviour for continuation lines).
             string contIndent = fixedContIndent ?? (indent +
                 new string(' ', TextUtils.IndentSize));
+
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
 
@@ -124,6 +131,7 @@ namespace GDScriptFormatter
                 {
                     bracketDepth++;
                 }
+
                 else if (c == ')' || c == ']' || c == '}')
                 {
                     if (bracketDepth > 0)
@@ -142,6 +150,7 @@ namespace GDScriptFormatter
                 if (breakAt > 0 && breakAt < line.Length)
                 {
                     string first = line.Substring(0, breakAt).TrimEnd();
+
                     string rest = contIndent +
                         line.Substring(breakAt).TrimStart();
 
@@ -162,11 +171,13 @@ namespace GDScriptFormatter
                 {
                     string first = line.Substring(0, breakAt).TrimEnd();
 
-                    if (first.Length > 0 && first.Length <= TextUtils.MaxLineLength &&
+                    if (first.Length > 0 && first.Length <=
+                        TextUtils.MaxLineLength &&
                         first.Length < line.Length)
                     {
                         string rest = contIndent +
                             line.Substring(breakAt).TrimStart();
+
                         var res = new List<string> { first };
                         res.AddRange(SplitLongLine(rest, contIndent));
                         return res;
@@ -207,6 +218,7 @@ namespace GDScriptFormatter
                     if (breakAt2 > 0 && breakAt2 < line.Length)
                     {
                         string first2 = line.Substring(0, breakAt2).TrimEnd();
+
                         string rest2 = contIndent +
                             line.Substring(breakAt2).TrimStart();
 
@@ -245,6 +257,7 @@ namespace GDScriptFormatter
                 {
                     depth++;
                 }
+
                 else if (c == ')' || c == ']' || c == '}')
                 {
                     if (depth > 0)
@@ -252,6 +265,7 @@ namespace GDScriptFormatter
                         depth--;
                     }
                 }
+
                 else if (c == ',' && depth > 0)
                 {
                     int bp = i + 1;
@@ -260,6 +274,7 @@ namespace GDScriptFormatter
                     {
                         best = bp;
                     }
+
                     else if (best < 0)
                     {
                         best = bp;
@@ -291,6 +306,7 @@ namespace GDScriptFormatter
                 {
                     depth++;
                 }
+
                 else if (c == ')' || c == ']' || c == '}')
                 {
                     if (depth > 0)
@@ -298,6 +314,7 @@ namespace GDScriptFormatter
                         depth--;
                     }
                 }
+
                 else if (c == '=' && depth == 0)
                 {
                     if (i > 0 && isCode[i - 1])

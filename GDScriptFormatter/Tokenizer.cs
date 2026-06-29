@@ -10,10 +10,13 @@ namespace GDScriptFormatter
     {
         /// <summary>Ordinary code (identifiers, keywords, operators, punctuation, annotations, node-path sigils, etc.).</summary>
         Code,
+
         /// <summary>Single-line string literal "..." or '...' (with escapes, terminated by a newline).</summary>
         String,
+
         /// <summary>Triple-quoted string literal """...""" or '''...''' (raw string, may span multiple lines).</summary>
         TripleString,
+
         /// <summary>Single-line comment #... to end of line (including ## doc comments).</summary>
         Comment
     }
@@ -25,6 +28,7 @@ namespace GDScriptFormatter
     {
         /// <summary>The token kind.</summary>
         public TokenKind Kind;
+
         /// <summary>The token's original text (without any normalization).</summary>
         public string Text;
     }
@@ -77,8 +81,10 @@ namespace GDScriptFormatter
                 if (IsRawStringPrefix(source, i, n, code))
                 {
                     FlushCode(tokens, code);
+
                     tokens.Add(new Token { Kind = TokenKind.Code,
                         Text = c.ToString() });
+
                     i++;
                     continue;
                 }
@@ -86,8 +92,10 @@ namespace GDScriptFormatter
                 if (IsStringSigilPrefix(source, i, n, c))
                 {
                     FlushCode(tokens, code);
+
                     tokens.Add(new Token { Kind = TokenKind.Code,
                         Text = c.ToString() });
+
                     i++;
                     continue;
                 }
@@ -110,6 +118,7 @@ namespace GDScriptFormatter
         private static bool IsTripleQuoteOpen(string source, int i, int n)
         {
             char c = source[i];
+
             return (c == '"' || c == '\'') && i + 2 < n &&
                 source[i + 1] == c && source[i + 2] == c;
         }
@@ -143,6 +152,7 @@ namespace GDScriptFormatter
 
             tokens.Add(new Token { Kind = TokenKind.TripleString,
                 Text = source.Substring(start, i - start) });
+
             return i;
         }
 
@@ -170,6 +180,7 @@ namespace GDScriptFormatter
                     {
                         i += 2;
                     }
+
                     else
                     {
                         i++;
@@ -194,6 +205,7 @@ namespace GDScriptFormatter
 
             tokens.Add(new Token { Kind = TokenKind.String,
                 Text = source.Substring(start, i - start) });
+
             return i;
         }
 
@@ -217,6 +229,7 @@ namespace GDScriptFormatter
 
             tokens.Add(new Token { Kind = TokenKind.Comment,
                 Text = source.Substring(start, i - start) });
+
             return i;
         }
 
@@ -234,6 +247,7 @@ namespace GDScriptFormatter
             StringBuilder code)
         {
             char c = source[i];
+
             if (c != 'r' && c != 'R')
             {
                 return false;
@@ -245,6 +259,7 @@ namespace GDScriptFormatter
             }
 
             char next = source[i + 1];
+
             if (next != '"' && next != '\'')
             {
                 return false;
@@ -349,6 +364,7 @@ namespace GDScriptFormatter
             {
                 tokens.Add(new Token { Kind = TokenKind.Code,
                     Text = code.ToString() });
+
                 code.Clear();
             }
         }

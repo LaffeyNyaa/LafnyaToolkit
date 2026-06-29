@@ -31,6 +31,7 @@ namespace JavaFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
+
                 if (line.Length <= Formatter.MaxLineLength)
                 {
                     result.Add(line);
@@ -46,17 +47,22 @@ namespace JavaFormatter
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
+
                 string fixedContIndent;
+
                 if (isContinuation)
                 {
                     int indentLen = 0;
+
                     while (indentLen < line.Length &&
                         line[indentLen] == ' ')
                     {
                         indentLen++;
                     }
+
                     fixedContIndent = line.Substring(0, indentLen);
                 }
+
                 else
                 {
                     fixedContIndent = null;
@@ -104,12 +110,12 @@ namespace JavaFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-
             // On the first call (fixedContIndent == null), compute the fixed
             // continuation indent from the original line's indent. This indent
             // is reused for ALL continuation segments so that 3+ segment
             // splits do not cascade (parent+4 for every continuation line,
             // matching IndentationProcessor's behaviour).
+
             if (fixedContIndent == null)
             {
                 fixedContIndent = indent +
@@ -246,6 +252,7 @@ namespace JavaFormatter
             }
 
             char pc = line[prev];
+
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"';
         }

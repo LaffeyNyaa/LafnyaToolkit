@@ -171,6 +171,36 @@ Maintain exactly one blank line above and below structural declarations, includi
   private const int MaxLineLength = 80;
   ```
 
+### Preserve blank lines between single-line statements
+
+Beyond the blank-line rules above (which *insert* blanks around blocks, multi-line statements, and declarations), the formatter also **preserves** author-inserted blank lines between adjacent plain single-line statements. This rule runs last in `ApplyBlankLineRules`: after every other rule has decided `wantBlankAbove = false`, if the original input had a blank line above the current line (`entry.HadBlankAbove`) and both the current line and the previous non-blank line are "plain single-line statements", then `wantBlankAbove` is set to `true` and the blank is kept.
+
+- **Preserve only, never insert:** The rule only retains blanks that already exist in the input (via `HadBlankAbove`). It never adds a new blank line where the original had none.
+- **Idempotent:** Because the rule only preserves existing blanks, a second run sees the same blank and preserves it again — no duplication, no removal.
+- **Definition of "plain single-line statement":** A line qualifies when **all** of the following hold (helper `IsPlainSingleLineStatement(trimmed, origIdx, isCodeLine, lineEndsStatement)`):
+  - It is a code line (`isCodeLine[origIdx]` is true).
+  - It ends a statement (`lineEndsStatement[origIdx]` is true, i.e., the last code character is `;` or `}`).
+  - It is **not** a block-end line (`LineClassifier.IsBlockEndLine` returns false, i.e., not `}` or `};`).
+  - It is **not** a block-start line (`LineClassifier.IsBlockStartLine` returns false).
+  - It is **not** a comment line.
+
+The blank is preserved only when **both** the current line and the previous non-blank line satisfy these conditions. Excluding block-start and block-end lines ensures this rule never interferes with the block-related blank-line rules.
+
+**Example:**
+```csharp
+int[] lineStarts = new int[10];
+
+var enumRanges = new List<KeyValuePair<int, int>>();
+int depth = 0;
+int enumDepth = -1;
+int enumStart = -1;
+bool pendingEnum = false;
+
+for (int i = 0; i < lineStarts.Length; i++)
+```
+
+The blank between `lineStarts` and `enumRanges` is preserved (both are plain single-line statements). No blank is inserted between `enumRanges`, `depth`, `enumDepth`, `enumStart`, and `pendingEnum`, because none existed in the input. The blank between `pendingEnum` and the `for` loop is also preserved — the block-start line has its own blank-line rule, and this rule does not interfere with it.
+
 ### End-of-File Newline
 
 Every file must end with exactly one newline character. 

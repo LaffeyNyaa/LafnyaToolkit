@@ -87,6 +87,38 @@ for n in numbers:
 - Every file must end with exactly **one newline character**.
 - If this rule conflicts with other spacing rules, the EOF newline takes priority, and there must be exactly one trailing newline.
 
+### Preserve blank lines between single-line statements
+
+- Preserves author-inserted blank lines between adjacent plain single-line statements that share the same indentation level. In `BlankLineProcessor.ComputeDesiredBlanksAbove`, after every other rule has left the desired count at `0`, if the original input had a blank line above the current line (`nonBlank[curIdx].HadBlankAbove`), the previous and current lines have equal indentation, and both are plain single-line statements, the desired count is set to `1`.
+- **Only preserves, never adds**: the rule fires only when `HadBlankAbove` is already true. It never inserts a blank where the author placed none; it solely prevents the "align downward" logic from stripping an existing author blank.
+- **Idempotent**: running the formatter again produces the same output, because the decision depends only on the original `HadBlankAbove` flag and the (unchanged) line contents.
+- **Plain single-line statement** — `IsPlainSingleLineStatement(trimmed)` returns `true` when the trimmed line is:
+  - non-empty;
+  - not a comment (does not start with `#`);
+  - not a block-start line (`TextUtils.IsBlockStartLine` returns `false`; in GDScript, block-starts end with `:`), so `func`/`class` declarations are excluded;
+  - not a file-header line (`TextUtils.IsFileHeaderLine` returns `false`; covers `class_name`, `extends`, etc.);
+  - not an annotation line (does not start with `@`).
+  - `var`/`const`/`signal`/`enum` declarations **are** treated as plain single-line statements, so author-inserted blanks between them are preserved (consistent with C# field initializers). `func`/`class` declarations end with `:` and are excluded as block-starts.
+
+**Example:**
+```gdscript
+func run():
+    var lineStarts = [0, 0, 0]
+
+    var enumRanges = []
+    var depth = 0
+    var enumDepth = -1
+    var enumStart = -1
+    var pendingEnum = false
+
+    for i in lineStarts:
+        print(i)
+    var a = 1
+    var b = 2
+    var c = 3
+```
+The blank between `lineStarts` and `enumRanges` is preserved. No blank is inserted between `enumRanges`/`depth`/`enumDepth`/`enumStart`/`pendingEnum`, nor between `var a`/`var b`/`var c`.
+
 ### Enum Formatting
 
 - Write each enum value on a separate line.

@@ -36,6 +36,7 @@ namespace CppFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.SingleLineComment,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -47,7 +48,8 @@ namespace CppFormatter
 
                     while (i < n)
                     {
-                        if (source[i] == '*' && i + 1 < n && source[i + 1] == '/')
+                        if (source[i] == '*' && i + 1 < n && source[i + 1] ==
+                            '/')
                         {
                             i += 2;
                             break;
@@ -58,10 +60,12 @@ namespace CppFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.MultiLineComment,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
                 int rawPrefixLen = TryMatchRawStringPrefix(source, i);
+
                 if (rawPrefixLen >= 0 && !IsPrevIdentChar(source, i))
                 {
                     FlushCode(tokens, code);
@@ -69,6 +73,7 @@ namespace CppFormatter
                     i += rawPrefixLen + 2;
 
                     int delimStart = i;
+
                     while (i < n && source[i] != '(')
                     {
                         i++;
@@ -78,12 +83,14 @@ namespace CppFormatter
                     {
                         tokens.Add(new Token { Kind = TokenKind.VerbatimString,
                             Text = source.Substring(start, i - start) });
+
                         continue;
                     }
 
                     string delim = source.Substring(delimStart, i - delimStart);
                     i++;
                     string terminator = ")" + delim + "\"";
+
                     int endIdx = source.IndexOf(terminator, i,
                         System.StringComparison.Ordinal);
 
@@ -91,6 +98,7 @@ namespace CppFormatter
                     {
                         i = n;
                     }
+
                     else
                     {
                         i = endIdx + terminator.Length;
@@ -98,11 +106,14 @@ namespace CppFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.VerbatimString,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
                 int strPrefixLen = TryMatchStringPrefix(source, i);
-                if (strPrefixLen >= 0 && (strPrefixLen == 0 || !IsPrevIdentChar(source, i)))
+
+                if (strPrefixLen >= 0 && (strPrefixLen == 0 ||
+                    !IsPrevIdentChar(source, i)))
                 {
                     FlushCode(tokens, code);
                     int start = i;
@@ -127,6 +138,7 @@ namespace CppFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.String,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -155,6 +167,7 @@ namespace CppFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.Char,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -165,7 +178,8 @@ namespace CppFormatter
 
                     while (i < n)
                     {
-                        if (source[i] == '\\' && i + 1 < n && source[i + 1] == '\n')
+                        if (source[i] == '\\' && i + 1 < n && source[i + 1] ==
+                            '\n')
                         {
                             i += 2;
                             continue;
@@ -188,6 +202,7 @@ namespace CppFormatter
 
                     tokens.Add(new Token { Kind = TokenKind.Preprocessor,
                         Text = source.Substring(start, i - start) });
+
                     continue;
                 }
 
@@ -298,6 +313,7 @@ namespace CppFormatter
             int n = lineCount < lines.Length ? lineCount : lines.Length;
 
             int pos = 0;
+
             foreach (var t in tokens)
             {
                 int tokenStart = pos;
@@ -351,6 +367,7 @@ namespace CppFormatter
             }
 
             int pos = 0;
+
             foreach (var t in tokens)
             {
                 int tokenStart = pos;
@@ -393,6 +410,7 @@ namespace CppFormatter
             {
                 tokens.Add(new Token { Kind = TokenKind.Code,
                     Text = code.ToString() });
+
                 code.Clear();
             }
         }
@@ -471,7 +489,8 @@ namespace CppFormatter
                 return 0;
             }
 
-            if (i + 2 < n && (source[i] == 'L' || source[i] == 'u' || source[i] == 'U') &&
+            if (i + 2 < n && (source[i] == 'L' || source[i] == 'u' ||
+                source[i] == 'U') &&
                 source[i + 1] == 'R' && source[i + 2] == '"')
             {
                 return 1;
@@ -502,7 +521,8 @@ namespace CppFormatter
                 return 0;
             }
 
-            if (i + 1 < n && (source[i] == 'L' || source[i] == 'u' || source[i] == 'U') &&
+            if (i + 1 < n && (source[i] == 'L' || source[i] == 'u' ||
+                source[i] == 'U') &&
                 source[i + 1] == '"')
             {
                 return 1;
