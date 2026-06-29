@@ -254,7 +254,7 @@ Backslashes inside comments or string literals do **not** trigger continuation. 
 Lines exceeding 80 characters are split, in priority order, by attempting:
 1. **Unclosed-bracket comma split**: if brackets are still open at the end of the line, split after the last comma inside brackets such that the first segment is ≤ 80 characters.
 2. **Closed-bracket comma split**: even when all brackets on the line are balanced, if a comma exists inside brackets, split after the last such comma that keeps the first segment ≤ 80 characters.
-3. **Top-level `=` wrap**: if a top-level `=` exists (excluding `==`, `!=`, `<=`, `>=`, `+=`, `-=`, `*=`, `/=`) and the right-hand side is not already parenthesized, wrap the RHS in `(...)` and recursively split.
+3. **Top-level `=` wrap**: if a top-level `=` exists (excluding `==`, `!=`, `<=`, `>=`, `+=`, `-=`, `*=`, `/=`, `:=`) and the right-hand side is not already parenthesized, wrap the RHS in `(...)` and recursively split.
 4. **No safe split**: if none of the above applies safely (e.g., a single over-long string literal), the line is left unchanged rather than emit invalid GDScript.
 
 Split continuation lines are indented one additional level, and splitting recurses until all segments are ≤ 80 characters or no safe split point remains.

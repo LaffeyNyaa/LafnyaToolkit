@@ -69,13 +69,21 @@ namespace GDScriptFormatter
 
                 int baseDepth = depths[i];
 
-                if (lineInfo[i].IsContinuation && baseDepth > 0)
+                if (lineInfo[i].IsContinuation)
                 {
-                    baseDepth++;
+                    // A line that starts with a closing bracket returns
+                    // to the parent indent level rather than continuing
+                    // at the continuation indent.
+                    if (content.Length == 0 ||
+                        (content[0] != ')' && content[0] != ']' &&
+                        content[0] != '}'))
+                    {
+                        baseDepth++;
+                    }
                 }
 
-                result.Add(new string(' ', baseDepth * TextUtils.IndentSize) +
-                    content);
+                result.Add(new string(' ',
+                    baseDepth * TextUtils.IndentSize) + content);
             }
 
             return result;
@@ -163,14 +171,6 @@ namespace GDScriptFormatter
                         info[i].IsCloseBrace = true;
                     }
 
-                    if (lastCodeIdx >= 0 && parenBracketDepth == 0)
-                    {
-                        if (text[lastCodeIdx] == ':')
-                        {
-                            info[i].ColonTerminated = true;
-                        }
-                    }
-
                     if (lastCodeIdx >= 0 && text[lastCodeIdx] == '{')
                     {
                         info[i].BraceTerminated = true;
@@ -208,6 +208,17 @@ namespace GDScriptFormatter
                         {
                             parenBracketDepth--;
                         }
+                    }
+                }
+
+                // Colon check must happen AFTER processing this line's
+                // brackets so that a closing )/]/} before the colon is
+                // properly accounted for.
+                if (lastCodeIdx >= 0 && parenBracketDepth == 0)
+                {
+                    if (text[lastCodeIdx] == ':')
+                    {
+                        info[i].ColonTerminated = true;
                     }
                 }
             }

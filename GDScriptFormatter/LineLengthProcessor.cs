@@ -196,12 +196,11 @@ namespace GDScriptFormatter
                 {
                     string firstLine = beforeEq + " = (";
                     string rhsCont = contIndent + afterEq;
-                    // The close paren must sit at contIndent (parent+1) so
-                    // that Reindent — which treats any line inside an open
-                    // paren as a continuation and indents it parent+1 —
-                    // produces the same indent on a second pass, keeping the
-                    // split idempotent.
-                    string closeLine = contIndent + ")";
+                    // The close paren must sit at the same level as the
+                    // opening line (indent) because Reindent treats a line
+                    // that starts with a closing bracket as returning to
+                    // the parent indent level in the next pass.
+                    string closeLine = indent + ")";
 
                     var rhsSplit = SplitLongLine(rhsCont, contIndent);
                     var res2 = new List<string> { firstLine };
@@ -323,7 +322,7 @@ namespace GDScriptFormatter
 
                         if (prev == '=' || prev == '!' || prev == '<' ||
                             prev == '>' || prev == '+' || prev == '-' ||
-                            prev == '*' || prev == '/')
+                            prev == '*' || prev == '/' || prev == ':')
                         {
                             continue;
                         }

@@ -20,12 +20,16 @@ namespace GDScriptFormatter
             public string Line;
             /// <summary>The indentation level.</summary>
             public int Indent;
+            /// <summary>Whether this line is a continuation of the previous line.</summary>
+            public bool IsContinuation;
 
-            public NonBlankEntry(bool hadBlankAbove, string line, int indent)
+            public NonBlankEntry(bool hadBlankAbove, string line, int indent,
+                bool isContinuation)
             {
                 HadBlankAbove = hadBlankAbove;
                 Line = line;
                 Indent = indent;
+                IsContinuation = isContinuation;
             }
         }
 
@@ -37,25 +41,33 @@ namespace GDScriptFormatter
         /// - one blank line between different variable groups
         /// - comments attached to the following declaration
         /// </summary>
-        internal static List<string> ApplyBlankLineRules(List<string> lines)
+        internal static List<string> ApplyBlankLineRules(List<string> lines,
+            bool[] isContinuation)
         {
             var nonBlank = new List<NonBlankEntry>(lines.Count);
             bool prevWasBlank = false;
             bool isFirst = true;
+            int lineIdx = 0;
 
             foreach (var line in lines)
             {
                 if (line.Trim().Length == 0)
                 {
                     prevWasBlank = true;
+                    lineIdx++;
                     continue;
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
                 int indent = IndentationProcessor.LineIndentLevel(line);
-                nonBlank.Add(new NonBlankEntry(hadBlankAbove, line, indent));
+                bool cont = isContinuation != null &&
+                    lineIdx < isContinuation.Length &&
+                    isContinuation[lineIdx];
+                nonBlank.Add(new NonBlankEntry(hadBlankAbove, line, indent,
+                    cont));
                 prevWasBlank = false;
                 isFirst = false;
+                lineIdx++;
             }
 
             var result = new List<string>(nonBlank.Count);
@@ -117,6 +129,14 @@ namespace GDScriptFormatter
                 return 0;
             }
 
+            // If the current line is a continuation of the previous line
+            // (unclosed bracket or backslash), never insert blank lines
+            // between them.
+            if (nonBlank[curIdx].IsContinuation)
+            {
+                return 0;
+            }
+
             if (IsAttachedComment(prevTrimmed, curTrimmed, nonBlank, curIdx))
             {
                 return 0;
@@ -126,7 +146,7 @@ namespace GDScriptFormatter
             bool deeperThanPrev = curIndent > prevIndent;
             int want = 0;
 
-            if (sameIndent && TextUtils.IsFuncOrClassDecl(curTrimmed))
+            if (TextUtils.IsFuncOrClassDecl(curTrimmed))
             {
                 want = 2;
             }
@@ -176,6 +196,15 @@ namespace GDScriptFormatter
                 }
             }
 
+            // When the current line is at a shallower indent than the
+            // previous non-blank line, we just exited one or more code
+            // blocks. Insert one blank line to satisfy the "one blank line
+            // below code blocks" rule.
+            if (want == 0 && curIndent < prevIndent)
+            {
+                want = 1;
+            }
+
             // Preserve author-inserted blank lines between adjacent
             // single-line statements at the same indent. Only PRESERVES an
             // existing blank (HadBlankAbove); never adds one. Prevents the
@@ -193,8 +222,8 @@ namespace GDScriptFormatter
 
         /// <summary>
         /// Determines whether a trimmed line is a plain single-line GDScript
-        /// statement: non-empty, not a comment, not a block-start, not a
-        /// declaration, not a func/class declaration, and not a file header.
+        /// statement: non-empty, not a comment, not a block-start, not an
+        /// annotation, not a func/class declaration, and not a file header.
         /// </summary>
         private static bool IsPlainSingleLineStatement(string trimmed)
         {
@@ -210,7 +239,7 @@ namespace GDScriptFormatter
             {
                 return false;
             }
-            if (TextUtils.IsDeclarationLine(trimmed))
+            if (trimmed.StartsWith("@"))
             {
                 return false;
             }

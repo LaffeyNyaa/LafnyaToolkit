@@ -12,6 +12,27 @@ namespace CppFormatter
     internal static class BlankLineProcessor
     {
         /// <summary>
+        /// Non-blank line entry: records whether there was a blank line above
+        /// in the original and whether the line is inside a multi-line token.
+        /// </summary>
+        private struct NonBlankEntry
+        {
+            /// <summary>Whether a blank line existed above this line in the original input.</summary>
+            public bool HadBlankAbove;
+            /// <summary>The line text.</summary>
+            public string Line;
+            /// <summary>Whether the line is inside a multi-line string or comment token.</summary>
+            public bool IsProtected;
+
+            public NonBlankEntry(bool hadBlankAbove, string line, bool isProtected)
+            {
+                HadBlankAbove = hadBlankAbove;
+                Line = line;
+                IsProtected = isProtected;
+            }
+        }
+
+        /// <summary>
         /// Ensures exactly one blank line above and below blocks/declarations
         /// (with start/end-of-parent-block exceptions). Lines entirely inside a
         /// multi-line string or comment token are preserved verbatim and never
@@ -77,7 +98,7 @@ namespace CppFormatter
                     }
 
                     if (!wantBlankAbove && TextUtils.IsIncludeDirective(trimmed) &&
-                        TextUtils.IsIncludeDirective(prevTrimmed) && nonBlank[i].Key)
+                        TextUtils.IsIncludeDirective(prevTrimmed) && nonBlank[i].HadBlankAbove)
                     {
                         wantBlankAbove = true;
                     }
@@ -97,6 +118,18 @@ namespace CppFormatter
                             wantBlankAbove = true;
                         }
                     }
+
+                    // Preserve author-inserted blank lines between adjacent
+                    // single-line statements. Only PRESERVES an existing blank
+                    // (HadBlankAbove); never adds one.
+                    if (!wantBlankAbove && nonBlank[i].HadBlankAbove &&
+                        IsPlainSingleLineStatement(trimmed,
+                            nonBlank[i].IsProtected) &&
+                        IsPlainSingleLineStatement(prevTrimmed,
+                            nonBlank[i - 1].IsProtected))
+                    {
+                        wantBlankAbove = true;
+                    }
                 }
 
                 if (wantBlankAbove)
@@ -108,6 +141,46 @@ namespace CppFormatter
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line is a comment.
+        /// </summary>
+        private static bool IsCommentLine(string trimmed)
+        {
+            return trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
+                trimmed.StartsWith("*");
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line is a plain single-line C++
+        /// statement: not protected, ends with ";", not a block-end line,
+        /// not a block-start line, and not a comment.
+        /// </summary>
+        private static bool IsPlainSingleLineStatement(string trimmed,
+            bool isProtected)
+        {
+            if (isProtected)
+            {
+                return false;
+            }
+            if (!trimmed.EndsWith(";"))
+            {
+                return false;
+            }
+            if (TextUtils.IsBlockEndLine(trimmed))
+            {
+                return false;
+            }
+            if (TextUtils.IsBlockStartLine(trimmed))
+            {
+                return false;
+            }
+            if (IsCommentLine(trimmed))
+            {
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
