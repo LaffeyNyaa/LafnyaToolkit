@@ -18,7 +18,7 @@ namespace GDScriptFormatter
         public List<string> BodyLines;
 
         /// <summary>Classification group from ClassifyMember.</summary>
-        public int Group;
+        public MemberGroup Group;
     }
 
     /// <summary>
@@ -34,6 +34,102 @@ namespace GDScriptFormatter
         /// brackets, method bodies) are moved as a unit. Comments immediately
         /// preceding a member stay attached through the reorder.
         /// </summary>
+        private static List<string> CollectLeadingLines(List<string> lines,
+            ref int idx)
+        {
+            var leading = new List<string>();
+
+            while (idx < lines.Count)
+            {
+                string trimmed = lines[idx].Trim();
+
+                if (trimmed.Length == 0 || trimmed.StartsWith("#"))
+                {
+                    leading.Add(lines[idx]);
+                    idx++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return leading;
+        }
+
+        private static List<string> CollectBodyLines(List<string> lines,
+            ref int idx)
+        {
+            var body = new List<string>();
+
+            while (idx < lines.Count)
+            {
+                int bodyIndent =
+                    IndentationProcessor.LineIndentLevel(lines[idx]);
+
+                string bodyTrimmed = lines[idx].Trim();
+
+                if (bodyIndent > 0)
+                {
+                    body.Add(lines[idx]);
+                    idx++;
+                }
+                else if (bodyTrimmed.Length > 0 &&
+                    (bodyTrimmed[0] == ')' || bodyTrimmed[0] == ']' ||
+                    bodyTrimmed[0] == '}'))
+                {
+                    body.Add(lines[idx]);
+                    idx++;
+                }
+                else if (bodyTrimmed.Length == 0)
+                {
+                    int peek = idx + 1;
+                    int nextNonBlank = -1;
+
+                    while (peek < lines.Count)
+                    {
+                        string peekTrim = lines[peek].Trim();
+
+                        if (peekTrim.Length == 0) { peek++; continue; }
+                        nextNonBlank = peek;
+                        break;
+                    }
+
+                    if (nextNonBlank >= 0)
+                    {
+                        string peekTrim = lines[nextNonBlank].Trim();
+
+                        int peekIndent =
+                            IndentationProcessor.LineIndentLevel(lines[nextNonBlank]);
+
+                        if (peekTrim.Length > 0 &&
+                            (peekTrim[0] == ')' || peekTrim[0] == ']' ||
+                            peekTrim[0] == '}'))
+                        {
+                            body.Add(lines[idx]);
+                            idx++;
+                            continue;
+                        }
+
+                        if (peekIndent > 0)
+                        {
+                            body.Add(lines[idx]);
+                            idx++;
+                            continue;
+                        }
+                    }
+
+                    break;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return body;
+        }
+
         internal static string ReorderMembers(string text)
         {
             var lines = TextUtils.SplitLines(text);
@@ -79,23 +175,7 @@ namespace GDScriptFormatter
 
             while (idx < lines.Count)
             {
-                // Collect leading comments and blank lines for the next member.
-                var leading = new List<string>();
-
-                while (idx < lines.Count)
-                {
-                    string trimmed = lines[idx].Trim();
-
-                    if (trimmed.Length == 0 || trimmed.StartsWith("#"))
-                    {
-                        leading.Add(lines[idx]);
-                        idx++;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
+                var leading = CollectLeadingLines(lines, ref idx);
 
                 if (idx >= lines.Count)
                 {
@@ -148,108 +228,13 @@ namespace GDScriptFormatter
                     }
                 }
 
-                // Collect body lines (indent > 0) and closing brackets/
-                // braces at indent 0 (e.g. `)` closing a multi-line
-                // expression or `}` closing an enum/brace-initializer).
-                // Also include blank lines before closing brackets
-                // so that enum bodies and multi-line expressions stay
-                // intact.
-                var body = new List<string>();
-
-                while (idx < lines.Count)
-                {
-                    int bodyIndent = IndentationProcessor.LineIndentLevel(
-                        lines[idx]);
-
-                    string bodyTrimmed = lines[idx].Trim();
-
-                    if (bodyIndent > 0)
-                    {
-                        body.Add(lines[idx]);
-                        idx++;
-                    }
-                    else if (bodyTrimmed.Length > 0 &&
-                        (bodyTrimmed[0] == ')' ||
-                        bodyTrimmed[0] == ']' ||
-                        bodyTrimmed[0] == '}'))
-                    {
-                        // Closing bracket/brace at indent 0 belongs to
-                        // the previous member (e.g. `)` closing a
-                        // line-split paren, `}` closing an enum).
-                        body.Add(lines[idx]);
-                        idx++;
-                    }
-                    else if (bodyTrimmed.Length == 0)
-                    {
-                        // Blank line at indent 0 — peek ahead to see
-                        // if the blank line is inside a member body
-                        // (followed by indented code) or a separator
-                        // between members (followed by indent 0).
-                        int peek = idx + 1;
-                        int nextNonBlank = -1;
-
-                        while (peek < lines.Count)
-                        {
-                            string peekTrim = lines[peek].Trim();
-
-                            if (peekTrim.Length == 0)
-                            {
-                                peek++;
-                                continue;
-                            }
-
-                            nextNonBlank = peek;
-                            break;
-                        }
-
-                        if (nextNonBlank >= 0)
-                        {
-                            string peekTrim = lines[nextNonBlank].Trim();
-
-                            int peekIndent =
-                                IndentationProcessor.LineIndentLevel(
-                                lines[nextNonBlank]);
-
-                            // Closing bracket at indent 0 belongs to
-                            // the current member (e.g. `}` closing an
-                            // enum, `)` closing a multi-line call).
-
-                            if (peekTrim.Length > 0 &&
-                                (peekTrim[0] == ')' ||
-                                peekTrim[0] == ']' ||
-                                peekTrim[0] == '}'))
-                            {
-                                body.Add(lines[idx]);
-                                idx++;
-                                continue;
-                            }
-
-                            // Line at indent > 0 means we are still
-                            // inside a member body (e.g. a blank line
-                            // inside a function body between two
-                            // statements).
-
-                            if (peekIndent > 0)
-                            {
-                                body.Add(lines[idx]);
-                                idx++;
-                                continue;
-                            }
-                        }
-
-                        // Not followed by a closing bracket or
-                        // indented code; this blank line separates
-                        // members.
-                        break;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
+                var body = CollectBodyLines(lines, ref idx);
 
                 string trimmedDecl = declLine.Trim();
-                int group = MemberClassifier.ClassifyMember(trimmedDecl);
+
+                MemberGroup group =
+                    MemberClassifier.ClassifyMember(trimmedDecl);
+
                 blocks.Add(new MemberBlock
                 {
                     PrecedingLines = leading,
@@ -283,7 +268,7 @@ namespace GDScriptFormatter
                         nextTrimmed.StartsWith("enum ") ||
                         nextTrimmed.StartsWith("static "))
                     {
-                        int nextGroup = MemberClassifier.ClassifyMember(
+                        MemberGroup nextGroup = MemberClassifier.ClassifyMember(
                             nextTrimmed);
 
                         blocks[i] = new MemberBlock

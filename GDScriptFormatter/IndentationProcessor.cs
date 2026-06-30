@@ -186,7 +186,8 @@ namespace GDScriptFormatter
                 info[i].StartBracketDepth = parenBracketDepth;
                 info[i].IsContinuation = parenBracketDepth > 0;
 
-                if (i > 0 && EndsWithBackslash(text, isCode,
+                if (i > 0 && LineContinuationAnalyzer.EndsWithBackslash(text,
+                    isCode,
                     lineStarts[i - 1], lines[i - 1].Length))
                 {
                     info[i].IsContinuation = true;
@@ -286,62 +287,76 @@ namespace GDScriptFormatter
                     }
                 }
 
-                // Special case: block-starting keywords inside continuation
-                // contexts (e.g., inside brackets). Normal colon detection
-                // skips colons inside brackets to avoid treating dictionary
-                // keys as block starters. But keywords like func, if, for,
-                // while, match, elif, else always open a block regardless
-                // of bracket context — especially inside anonymous function
-                // bodies.
-
-                if (!info[i].ColonTerminated && lastCodeIdx >= 0 &&
-                    text[lastCodeIdx] == ':' && firstCodeIdx >= 0)
+                if (!info[i].ColonTerminated)
                 {
-                    // Skip leading whitespace to reach the first word.
-                    // The tokenizer treats whitespace as Code, so
-                    // firstCodeIdx may point to a space rather than a
-                    // keyword.
-                    int wordStart = firstCodeIdx;
-
-                    while (wordStart < text.Length &&
-                        wordStart < isCode.Length &&
-                        isCode[wordStart] &&
-                        char.IsWhiteSpace(text[wordStart]))
-                    {
-                        wordStart++;
-                    }
-
-                    if (wordStart < text.Length &&
-                        wordStart < isCode.Length &&
-                        isCode[wordStart])
-                    {
-                        int wordEnd = wordStart;
-
-                        while (wordEnd < text.Length &&
-                            wordEnd < isCode.Length &&
-                            isCode[wordEnd] &&
-                            !char.IsWhiteSpace(text[wordEnd]) &&
-                            text[wordEnd] != '(' &&
-                            text[wordEnd] != ':')
-                        {
-                            wordEnd++;
-                        }
-
-                        string firstWord = text.Substring(wordStart,
-                            wordEnd - wordStart);
-
-                        if (firstWord == "func" || firstWord == "if" ||
-                            firstWord == "for" || firstWord == "while" ||
-                            firstWord == "match" || firstWord == "elif" ||
-                            firstWord == "else")
-                        {
-                            info[i].ColonTerminated = true;
-                        }
-                    }
+                    CheckColonUnderBrackets(ref info[i], text, isCode,
+                        firstCodeIdx, lastCodeIdx);
                 }
             }
 
             return info;
+        }
+
+        /// <summary>
+        /// Checks whether a colon-terminated line inside brackets should still be
+        /// treated as block-starting (colon-terminated) based on the leading keyword.
+        /// Block-starting keywords (func, if, for, while, match, elif, else) always
+        /// open a block regardless of bracket context — especially inside anonymous
+        /// function bodies.
+        /// </summary>
+        private static void CheckColonUnderBrackets(
+            ref LineAnalysis info,
+            string text,
+            bool[] isCode,
+            int firstCodeIdx,
+            int lastCodeIdx)
+        {
+            if (lastCodeIdx < 0 || text[lastCodeIdx] != ':' || firstCodeIdx < 0)
+            {
+                return;
+            }
+
+            // Skip leading whitespace to reach the first word.
+            // The tokenizer treats whitespace as Code, so
+            // firstCodeIdx may point to a space rather than a
+            // keyword.
+            int wordStart = firstCodeIdx;
+
+            while (wordStart < text.Length &&
+                wordStart < isCode.Length &&
+                isCode[wordStart] &&
+                char.IsWhiteSpace(text[wordStart]))
+            {
+                wordStart++;
+            }
+
+            if (wordStart < text.Length &&
+                wordStart < isCode.Length &&
+                isCode[wordStart])
+            {
+                int wordEnd = wordStart;
+
+                while (wordEnd < text.Length &&
+                    wordEnd < isCode.Length &&
+                    isCode[wordEnd] &&
+                    !char.IsWhiteSpace(text[wordEnd]) &&
+                    text[wordEnd] != '(' &&
+                    text[wordEnd] != ':')
+                {
+                    wordEnd++;
+                }
+
+                string firstWord = text.Substring(wordStart,
+                    wordEnd - wordStart);
+
+                if (firstWord == "func" || firstWord == "if" ||
+                    firstWord == "for" || firstWord == "while" ||
+                    firstWord == "match" || firstWord == "elif" ||
+                    firstWord == "else")
+                {
+                    info.ColonTerminated = true;
+                }
+            }
         }
 
         /// <summary>
@@ -581,62 +596,6 @@ namespace GDScriptFormatter
             }
 
             return spaces / TextUtils.IndentSize;
-        }
-
-        /// <summary>
-        /// Determines whether the line occupying [lineStart, lineStart+lineLength) in text ends with
-        /// a continuation backslash that is located in a Code region. Backslashes inside comments or
-        /// string literals do not trigger continuation. A doubled backslash (\\) in Code is treated
-        /// as a non-continuation to preserve prior behavior.
-        /// </summary>
-        /// <param name="text">The full text.</param>
-        /// <param name="isCode">The code mask of text.</param>
-        /// <param name="lineStart">The starting offset of the line in text.</param>
-        /// <param name="lineLength">The length of the line (excluding the line terminator).</param>
-        /// <returns>True if the line ends with a Code-region continuation backslash.</returns>
-        private static bool EndsWithBackslash(string text, bool[] isCode,
-            int lineStart, int lineLength)
-        {
-            int lastIdx = -1;
-
-            for (int i = lineStart + lineLength - 1; i >= lineStart; i--)
-            {
-                if (i >= text.Length)
-                {
-                    continue;
-                }
-
-                char c = text[i];
-
-                if (c != ' ' && c != '\t')
-                {
-                    lastIdx = i;
-                    break;
-                }
-            }
-
-            if (lastIdx < 0)
-            {
-                return false;
-            }
-
-            if (lastIdx >= isCode.Length || !isCode[lastIdx])
-            {
-                return false;
-            }
-
-            if (text[lastIdx] != '\\')
-            {
-                return false;
-            }
-
-            if (lastIdx > lineStart && text[lastIdx - 1] == '\\' &&
-                lastIdx - 1 < isCode.Length && isCode[lastIdx - 1])
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 }

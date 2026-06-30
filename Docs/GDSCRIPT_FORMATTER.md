@@ -46,6 +46,29 @@ for n in numbers:
         print("i is 5")
 ```
 
+**Dictionary/Block braces**: 
+- Trailing blank lines immediately before a closing brace `}` (or `)` / `]`) are removed.
+- When a closing brace `}` at a given indentation level is followed by non-blank content at the same or shallower indentation level, a blank line is inserted between the brace and the following content to visually separate the completed block from the next statement.
+
+**Example — inside a function body:**
+```gdscript
+# Before formatting:
+    custom_emotion_data = {
+        "characterName": character_name,
+        "presetName": preset_name,
+
+    }
+    texture_changed.emit()
+
+# After formatting:
+    custom_emotion_data = {
+        "characterName": character_name,
+        "presetName": preset_name,
+    }
+
+    texture_changed.emit()
+```
+
 ### Indentation
 
 - Use exactly **4 spaces** for each level of indentation.
@@ -106,7 +129,7 @@ for n in numbers:
   - not a comment (does not start with `#`);
   - not a block-start line (`TextUtils.IsBlockStartLine` returns `false`; in GDScript, block-starts end with `:`), so `func`/`class` declarations are excluded;
   - not a file-header line (`TextUtils.IsFileHeaderLine` returns `false`; covers `class_name`, `extends`, etc.);
-  - not an annotation line (does not start with `@`).
+  - not an annotation line (does not start with `@`). Since annotation lines are excluded from `IsPlainSingleLineStatement`, blank lines between adjacent annotation lines are **not** preserved by this rule; annotation spacing is instead governed by the annotation-attachment rules in the [Blank Lines Between Class Members](#blank-lines-between-class-members) section.
   - `var`/`const`/`signal`/`enum` declarations **are** treated as plain single-line statements, so author-inserted blanks between them are preserved (consistent with C# field initializers). `func`/`class` declarations end with `:` and are excluded as block-starts.
 
 **Example:**
@@ -195,6 +218,10 @@ Organize class members in the following strict order:
   - `@onready` variables
   - Private variables
 - If a property specifies a custom `getter` or `setter`, it must always be surrounded by **one blank line** above and below.
+
+**Annotations on separate lines**: When an annotation line (e.g. `@warning_ignore`, `@rpc`) appears on its own line immediately before a declaration (signal, func, var, etc.), the annotation and declaration are treated as a single logical member. The blank line spacing is computed based on the declaration's group, not the annotation. The annotation line itself stays directly adjacent to its declaration (no blank line between annotation and declaration).
+
+**Setter/Getter properties**: Even if two adjacent variable declarations belong to the same group (e.g., both are `@export` variables), a blank line is inserted when either declaration has a setter/getter block (the declaration line ends with a colon `:`).
 
 **Example:**
 ```gdscript

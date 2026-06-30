@@ -119,6 +119,11 @@ namespace GDScriptFormatter
                 currentBlanksAbove = 0;
             }
 
+            // Post-processing: remove blank lines immediately before closing braces
+            result = RemoveBlanksBeforeClosingBraces(result);
+            // Post-processing: add blank lines after closing braces when followed by a statement at same indent
+            result = AddBlankAfterClosingBraces(result);
+
             return result;
         }
 
@@ -170,6 +175,12 @@ namespace GDScriptFormatter
             if (want == 0)
             {
                 want = ApplyTopLevelMemberBlankRule(prevTrimmed, curTrimmed,
+                    sameIndent, nonBlank, curIdx);
+            }
+
+            if (want == 0)
+            {
+                want = ApplySetterGetterBlockRule(prevTrimmed, curTrimmed,
                     sameIndent);
             }
 
@@ -262,19 +273,177 @@ namespace GDScriptFormatter
         /// <summary>
         /// Returns 1 blank line between different groups of top-level members
         /// (signals, enums, consts, vars, etc.) at the same indent level.
+        /// Also handles standalone annotation lines by resolving their member
+        /// group from the following declaration line.
+        /// When both lines belong to the same group but one is a bare declaration
+        /// and the other is an annotated declaration (via standalone annotation),
+        /// a blank line is also inserted to visually separate the two blocks.
         /// </summary>
         private static int ApplyTopLevelMemberBlankRule(string prevTrimmed,
+            string curTrimmed, bool sameIndent, List<NonBlankEntry> nonBlank,
+            int curIdx)
+        {
+            if (!sameIndent)
+            {
+                return 0;
+            }
+
+            MemberGroup prevGroup = (MemberGroup)(-1);
+            MemberGroup curGroup = (MemberGroup)(-1);
+
+            if (IsTopLevelMember(prevTrimmed))
+            {
+                prevGroup = ClassifyMember(prevTrimmed);
+            }
+            else if (IsStandaloneAnnotation(prevTrimmed))
+            {
+                prevGroup = ResolveAnnotationGroup(prevTrimmed, nonBlank,
+                    curIdx - 1);
+            }
+
+            if (IsTopLevelMember(curTrimmed))
+            {
+                curGroup = ClassifyMember(curTrimmed);
+            }
+            else if (IsStandaloneAnnotation(curTrimmed))
+            {
+                curGroup = ResolveAnnotationGroup(curTrimmed, nonBlank, curIdx);
+            }
+
+            if (prevGroup != (MemberGroup)(-1) && curGroup !=
+                (MemberGroup)(-1) && prevGroup != curGroup)
+            {
+                return 1;
+            }
+
+            // Same group: add blank if transitioning between bare declaration
+            // and annotated declaration (one has a standalone annotation,
+            // the other doesn't).
+
+            if (prevGroup == curGroup && prevGroup != (MemberGroup)(-1))
+            {
+                bool prevIsBare = IsTopLevelMember(prevTrimmed) &&
+                    !IsStandaloneAnnotation(prevTrimmed);
+
+                bool curIsBare = IsTopLevelMember(curTrimmed) &&
+                    !IsStandaloneAnnotation(curTrimmed);
+
+                bool prevIsAnnotated = IsStandaloneAnnotation(prevTrimmed);
+                bool curIsAnnotated = IsStandaloneAnnotation(curTrimmed);
+
+                if ((prevIsBare && curIsAnnotated) ||
+                    (prevIsAnnotated && curIsBare))
+                {
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// For a standalone annotation line, resolves the member group by looking ahead
+        /// in the nonBlank list to find the next declaration line. This lets annotation
+        /// lines inherit the group of their following declaration (e.g., @warning_ignore
+        /// + signal → signal group).
+        /// </summary>
+        private static MemberGroup ResolveAnnotationGroup(string trimmed, List<
+            NonBlankEntry> nonBlank, int curIdx)
+        {
+            if (!IsStandaloneAnnotation(trimmed))
+            {
+                return (MemberGroup)(-1);
+            }
+
+            // Look ahead for the next declaration line
+
+            for (int i = curIdx + 1; i < nonBlank.Count; i++)
+            {
+                string nextTrimmed = nonBlank[i].Line.Trim();
+
+                if (IsDeclarationLine(nextTrimmed))
+                {
+                    return ClassifyMember(nextTrimmed);
+                }
+
+                // Stop if we encounter another non-annotation, non-blank line
+
+                if (!nextTrimmed.StartsWith("@"))
+                {
+                    break;
+                }
+            }
+
+            return (MemberGroup)(-1);
+        }
+
+        /// <summary>
+        /// Returns 1 blank line when a var declaration ends with a colon (indicating
+        /// a setter/getter block), even if it belongs to the same member group as the
+        /// previous line. This ensures that properties with setters/getters are always
+        /// visually separated from adjacent members.
+        /// </summary>
+        private static int ApplySetterGetterBlockRule(string prevTrimmed,
             string curTrimmed, bool sameIndent)
         {
-            if (sameIndent &&
-                IsTopLevelMember(prevTrimmed) &&
-                IsTopLevelMember(curTrimmed) &&
-                !IsSameGroup(prevTrimmed, curTrimmed))
+            if (!sameIndent)
+            {
+                return 0;
+            }
+
+            // Current line is a block-start var declaration (has setter/getter)
+
+            if (IsBlockStartVar(curTrimmed))
+            {
+                return 1;
+            }
+
+            // Previous line is a block-start var declaration
+
+            if (IsBlockStartVar(prevTrimmed))
             {
                 return 1;
             }
 
             return 0;
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line is a variable declaration that starts a
+        /// setter/getter block (ends with a colon).
+        /// </summary>
+        private static bool IsBlockStartVar(string trimmed)
+        {
+            if (trimmed.Length == 0)
+            {
+                return false;
+            }
+
+            // Must be a var/export declaration that ends with ':'
+
+            if (!TextUtils.EndsWithColon(trimmed))
+            {
+                return false;
+            }
+
+            // Check if it's a var declaration (possibly with @export/@onready prefix)
+            MemberGroup memberType = ClassifyMember(trimmed);
+
+            if (memberType == MemberGroup.Export || memberType ==
+                MemberGroup.RegularVar || memberType == MemberGroup.Onready ||
+                memberType == MemberGroup.Private)
+            {
+                return true;
+            }
+
+            // Also handle explicit "var" keyword with colon (e.g. "var x:" as type annotation)
+
+            if (TextUtils.StartsWithKeyword(trimmed, "var"))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -423,7 +592,7 @@ namespace GDScriptFormatter
         private static int ApplyAnnotationSuppressRule(string prevTrimmed,
             string curTrimmed)
         {
-            if (prevTrimmed.StartsWith("@") &&
+            if (IsStandaloneAnnotation(prevTrimmed) &&
                 IsDeclarationLine(curTrimmed))
             {
                 return 1;
@@ -470,6 +639,39 @@ namespace GDScriptFormatter
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line is a standalone annotation line:
+        /// starts with @ but does NOT contain a declaration keyword (var, func, signal,
+        /// const, enum, class, static) on the same line.
+        /// For example, "@warning_ignore("unused_signal")" is standalone,
+        /// "@export_storage var x := 0" is NOT standalone (it has "var").
+        /// </summary>
+        private static bool IsStandaloneAnnotation(string trimmed)
+        {
+            if (!trimmed.StartsWith("@"))
+            {
+                return false;
+            }
+
+            // Find the first space after the annotation prefix
+            int spaceIdx = trimmed.IndexOf(' ');
+
+            if (spaceIdx < 0)
+            {
+                return true; // Just @something without any keyword
+            }
+
+            string rest = trimmed.Substring(spaceIdx + 1).TrimStart();
+            // If after the @ annotation there's a declaration keyword, it's combined
+            return !TextUtils.StartsWithKeyword(rest, "var") &&
+                !TextUtils.StartsWithKeyword(rest, "func") &&
+                !TextUtils.StartsWithKeyword(rest, "signal") &&
+                !TextUtils.StartsWithKeyword(rest, "const") &&
+                !TextUtils.StartsWithKeyword(rest, "enum") &&
+                !TextUtils.StartsWithKeyword(rest, "class") &&
+                !TextUtils.StartsWithKeyword(rest, "static");
         }
 
         /// <summary>
@@ -644,6 +846,112 @@ namespace GDScriptFormatter
             foreach (var line in lines)
             {
                 result.Add(line.TrimEnd());
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Removes blank lines that immediately precede a closing brace '}',
+        /// ')' or ']' at the same or lower indent level. This cleans up
+        /// trailing blank lines inside dictionary literals and similar constructs.
+        /// </summary>
+        private static List<string> RemoveBlanksBeforeClosingBraces(List<string>
+            lines)
+        {
+            var result = new List<string>(lines.Count);
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string trimmed = lines[i].Trim();
+                // Check if this line is a closing brace/bracket
+
+                if (trimmed.Length > 0 && (trimmed[0] == '}' || trimmed[0] ==
+                    ')' || trimmed[0] == ']'))
+                {
+                    // Remove any blank lines just before this closing brace
+
+                    while (result.Count > 0 && result[result.Count -
+                        1].Trim().Length == 0)
+                    {
+                        result.RemoveAt(result.Count - 1);
+                    }
+                }
+
+                result.Add(lines[i]);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Adds a blank line after a closing brace '}' when the next non-blank
+        /// line is at the same indent level and is not another closing brace.
+        /// This ensures that block-assignments (e.g. dict literals) are visually
+        /// separated from the next statement.
+        /// </summary>
+        private static List<string> AddBlankAfterClosingBraces(List<string>
+            lines)
+        {
+            var result = new List<string>(lines.Count);
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                result.Add(lines[i]);
+
+                string trimmed = lines[i].Trim();
+
+                if (trimmed.Length > 0 && trimmed[0] == '}' && i + 1 <
+                    lines.Count)
+                {
+                    // Look ahead: if the next non-blank line is at the same indent
+                    // and is not a closing brace, add a blank line
+                    int nextIdx = i + 1;
+
+                    int closeBraceIndent =
+                        IndentationProcessor.LineIndentLevel(lines[i]);
+
+                    // Skip existing blank lines
+
+                    while (nextIdx < lines.Count &&
+                        lines[nextIdx].Trim().Length == 0)
+                    {
+                        nextIdx++;
+                    }
+
+                    if (nextIdx < lines.Count)
+                    {
+                        string nextTrimmed = lines[nextIdx].Trim();
+
+                        int nextIndent =
+                            IndentationProcessor.LineIndentLevel(lines[nextIdx]);
+
+                        bool nextIsCloseBrace = nextTrimmed.Length > 0 &&
+                            (nextTrimmed[0] == '}' || nextTrimmed[0] == ')' ||
+                            nextTrimmed[0] == ']');
+
+                        // Only add blank if:
+                        // - Next line is at same or shallower indent (not inside the brace block)
+                        // - Next line is not itself a closing brace
+                        // - There isn't already a blank line
+                        bool hasBlank = i + 1 < lines.Count && lines[i +
+                            1].Trim().Length == 0;
+
+                        if (!hasBlank && !nextIsCloseBrace &&
+                            closeBraceIndent <= nextIndent)
+                        {
+                            // Check if this is a top-level closing brace (enum/class body) — skip those
+
+                            if (closeBraceIndent > 0 || (nextTrimmed.Length >
+                                0 &&
+                                !DeclarationClassifier.IsFuncOrClassDecl(nextTrimmed) &&
+                                !DeclarationClassifier.IsFileHeaderLine(nextTrimmed)))
+                            {
+                                result.Add(string.Empty);
+                            }
+                        }
+                    }
+                }
             }
 
             return result;

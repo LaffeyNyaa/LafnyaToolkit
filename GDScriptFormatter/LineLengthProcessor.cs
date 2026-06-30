@@ -90,16 +90,6 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Updates the running brace depth by scanning a line for bracket
-        /// characters, accounting for the input depth from previous lines.
-        /// </summary>
-        private static int UpdateBraceDepth(string line,
-            int currentDepth)
-        {
-            return BracketDepthTracker.UpdateDepth(line, currentDepth);
-        }
-
-        /// <summary>
         /// Recursively splits a line so each segment is at most 80 characters. Splitting priority:
         /// unclosed-bracket comma split; closed-bracket comma split (commas inside already-balanced
         /// brackets); top-level equals wrapping; otherwise leave the line unchanged.

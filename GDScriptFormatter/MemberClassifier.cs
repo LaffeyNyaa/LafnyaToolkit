@@ -2,6 +2,19 @@ using static GDScriptFormatter.TextUtils;
 
 namespace GDScriptFormatter
 {
+    internal enum MemberGroup
+    {
+        Signal,      // 0 - signal
+        Enum,        // 1 - enum
+        Const,       // 2 - const
+        StaticVar,   // 3 - static var
+        Export,      // 4 - @export
+        RegularVar,  // 5 - regular var
+        Onready,     // 6 - @onready
+        Private,     // 7 - private (_)
+        Method       // 8 - func/class
+    }
+
     /// <summary>
     /// Classifies GDScript top-level class members into groups and extracts member names.
     /// </summary>
@@ -66,7 +79,9 @@ namespace GDScriptFormatter
         /// </summary>
         internal static bool IsSameGroup(string a, string b)
         {
-            return ClassifyMember(a) == ClassifyMember(b);
+            MemberGroup groupA = ClassifyMember(a);
+            MemberGroup groupB = ClassifyMember(b);
+            return groupA == groupB;
         }
 
         /// <summary>
@@ -75,66 +90,66 @@ namespace GDScriptFormatter
         /// static var(3), @export(4), regular var(5), @onready(6), private(7),
         /// methods(8).
         /// </summary>
-        internal static int ClassifyMember(string trimmed)
+        internal static MemberGroup ClassifyMember(string trimmed)
         {
             if (StartsWithKeyword(trimmed, "signal"))
             {
-                return 0;
+                return MemberGroup.Signal;
             }
 
             if (StartsWithKeyword(trimmed, "enum"))
             {
-                return 1;
+                return MemberGroup.Enum;
             }
 
             if (StartsWithKeyword(trimmed, "const"))
             {
-                return 2;
+                return MemberGroup.Const;
             }
 
             if (StartsWithKeyword(trimmed, "static var"))
             {
-                return 3;
+                return MemberGroup.StaticVar;
             }
 
             if (trimmed.StartsWith("@export"))
             {
-                return 4;
+                return MemberGroup.Export;
             }
 
             if (trimmed.StartsWith("@onready"))
             {
-                return 6;
+                return MemberGroup.Onready;
             }
 
-            // func/class declarations (including static func) → methods group (8)
+            // func/class declarations (including static func) → methods group
 
             if (StartsWithKeyword(trimmed, "func") ||
                 (trimmed.StartsWith("class ") &&
                 !trimmed.StartsWith("class_name")))
             {
-                return 8;
+                return MemberGroup.Method;
             }
 
             if (StartsWithKeyword(trimmed, "static") &&
                 trimmed.Contains("func"))
             {
-                return 8;
+                return MemberGroup.Method;
             }
 
             string name = ExtractMemberName(trimmed);
 
             if (name.StartsWith("_"))
             {
-                return 7;
+                return MemberGroup.Private;
             }
 
             if (name.Length > 0)
             {
-                return 5;
+                return MemberGroup.RegularVar;
             }
 
-            return 8;
+            return MemberGroup.Method;
         }
 
         /// <summary>

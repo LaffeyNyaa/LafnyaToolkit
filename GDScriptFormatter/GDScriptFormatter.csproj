@@ -50,7 +50,6 @@
   <ItemGroup>
     <Compile Include="BlankLineProcessor.cs" />
     <Compile Include="BracketDepthTracker.cs" />
-    <Compile Include="DocumentSnapshot.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="Formatter.cs" />
     <Compile Include="IndentationProcessor.cs" />
