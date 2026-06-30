@@ -49,6 +49,101 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
+        /// Ensures a single space between the hash prefix and the comment
+        /// content for all comment lines. Lines consisting entirely of
+        /// hash characters (e.g. separators) and lines that already have
+        /// whitespace after the hashes are left unchanged.
+        /// </summary>
+        internal static string NormalizeCommentSpaces(string text)
+        {
+            if (text.Length == 0)
+            {
+                return text;
+            }
+
+            var sb = new StringBuilder(text.Length + 16);
+            int i = 0;
+            int len = text.Length;
+
+            while (i < len)
+            {
+                if (text[i] == '#')
+                {
+                    // Find end of hash prefix on this line.
+                    int hashEnd = i;
+
+                    while (hashEnd < len && text[hashEnd] == '#')
+                    {
+                        hashEnd++;
+                    }
+
+                    hashEnd--; // last '#' position
+
+                    // Find end of line.
+                    int lineEnd = hashEnd + 1;
+
+                    while (lineEnd < len && text[lineEnd] != '\n')
+                    {
+                        lineEnd++;
+                    }
+
+                    // If there is content after the hashes and the next
+                    // character is not whitespace, insert a space.
+                    if (hashEnd + 1 < lineEnd)
+                    {
+                        char next = text[hashEnd + 1];
+
+                        if (next != ' ' && next != '\t')
+                        {
+                            sb.Append(text, i, hashEnd + 1 - i);
+                            sb.Append(' ');
+                            sb.Append(text, hashEnd + 1, lineEnd - hashEnd - 1);
+
+                            if (lineEnd < len)
+                            {
+                                sb.Append('\n');
+                            }
+
+                            i = lineEnd + 1;
+                            continue;
+                        }
+                    }
+
+                    // Append the whole line unchanged.
+                    sb.Append(text, i, lineEnd - i);
+
+                    if (lineEnd < len)
+                    {
+                        sb.Append('\n');
+                    }
+
+                    i = lineEnd + 1;
+                }
+                else
+                {
+                    // Skip to next newline.
+                    int lineEnd = i;
+
+                    while (lineEnd < len && text[lineEnd] != '\n')
+                    {
+                        lineEnd++;
+                    }
+
+                    sb.Append(text, i, lineEnd - i);
+
+                    if (lineEnd < len)
+                    {
+                        sb.Append('\n');
+                    }
+
+                    i = lineEnd + 1;
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// Splits text into lines.
         /// </summary>
         internal static List<string> SplitLines(string text)

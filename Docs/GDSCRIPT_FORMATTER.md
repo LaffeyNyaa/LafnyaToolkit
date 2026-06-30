@@ -275,6 +275,34 @@ Both `static var` and `static func` are recognized as top-level members for blan
 
 For example, `@export var _hidden: int` is classified as **@export** (rule 5 takes precedence over rule 7), and `@onready var _state: Node` is classified as **@onready** (rule 6 takes precedence over rule 7).
 
+### Move File-Level Doc Comments
+
+When `##` doc-comment blocks appear at the very top of a file — before any file header line (`@tool`, `@icon`, `@static_unload`, `class_name`, `extends`) — they are moved to immediately after the last file header line. This places class-level documentation in its logical position.
+
+- If no file headers are present, the doc comments remain in place and attach to the first declaration as usual.
+- If the doc comments are already positioned after the file headers, no change is made (idempotent).
+- Only `##` doc-comment lines are moved; regular `#` comments at the top of the file are unaffected.
+
+**Example** — before formatting:
+```gdscript
+## @brief Player node spawner that creates and removes player nodes
+## by network peer ID, keeping game state in sync.
+class_name PlayerSpawner
+extends Node3D
+
+@export var game := Game.new()
+```
+
+After formatting:
+```gdscript
+class_name PlayerSpawner
+extends Node3D
+## @brief Player node spawner that creates and removes player nodes
+## by network peer ID, keeping game state in sync.
+
+@export var game := Game.new()
+```
+
 ### Doc Comment Attachment
 
 `##` doc-comment blocks (consecutive non-blank lines starting with `##`) are **always** attached to the immediately following declaration, even when a blank line originally separated the doc comment from the declaration. This preserves the doc-to-declaration association.
