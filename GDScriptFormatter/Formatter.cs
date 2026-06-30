@@ -5,7 +5,7 @@ namespace GDScriptFormatter
     /// <summary>
     /// Core implementation that applies all GDScript formatting rules.
     /// </summary>
-    internal static class Formatter
+    public static class Formatter
     {
         /// <summary>
         /// Applies all formatting rules to a source string and returns the result. Line endings are

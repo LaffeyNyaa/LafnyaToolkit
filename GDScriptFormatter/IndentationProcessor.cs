@@ -366,17 +366,17 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                // Continuation lines inside brackets (e.g., anonymous function
-                // bodies) may have a misleading originalDepth that is shallower
-                // than the actual block depth. Only pop blocks for
-                // non-continuation lines, or continuation lines that start
-                // with a closing bracket (which genuinely return to the
-                // parent level). This ensures nested blocks (if/for/while)
-                // inside anonymous function bodies retain correct indentation.
+                // Continuation lines (inside brackets) have an unreliable
+                // origDepth because their indentation depends on the line
+                // that opened the bracket, not on their own block nesting.
+                // Using origDepth to pop the stack would propagate incorrect
+                // indentation from the original source and cause non-idempotent
+                // formatting. Only non-continuation lines are allowed to pop
+                // the stack based on origDepth, since their indentation
+                // reflects the actual block structure. Close-brace lines ({)
+                // are handled by IsCloseBrace above, not by this pop logic.
 
-                if (!lineInfo[i].IsContinuation ||
-                    (trimmed.Length > 0 && (trimmed[0] == ')' ||
-                    trimmed[0] == ']' || trimmed[0] == '}')))
+                if (!lineInfo[i].IsContinuation)
                 {
                     while (stack.Count > 0 &&
                         origDepth < stack[stack.Count - 1])
