@@ -62,7 +62,6 @@ namespace JavaFormatter
 
                     fixedContIndent = line.Substring(0, indentLen);
                 }
-
                 else
                 {
                     fixedContIndent = null;
@@ -179,24 +178,20 @@ namespace JavaFormatter
                     bp = i + 2;
                     extra = 1;
                 }
-
                 else if (c == ',')
                 {
                     bp = i + 1;
                 }
-
                 else if (c == ';' && i + 1 < line.Length)
                 {
                     bp = i + 1;
                 }
-
                 else if (i > startIdx && IsBinaryOpContext(line, i, startIdx) &&
                     (c == '+' || c == '-' || c == '*' || c == '/' ||
                     c == '%' || c == '<' || c == '>'))
                 {
                     bp = i + 1;
                 }
-
                 else if (c == '=' && i > startIdx &&
                     IsBinaryOpContext(line, i, startIdx) &&
                     (i + 1 >= line.Length || line[i + 1] != '='))
@@ -210,7 +205,6 @@ namespace JavaFormatter
                     {
                         bestInRange = bp;
                     }
-
                     else if (firstOutOfRange < 0)
                     {
                         firstOutOfRange = bp;

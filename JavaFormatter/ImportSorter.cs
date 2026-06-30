@@ -61,13 +61,11 @@ namespace JavaFormatter
                 {
                     projectRoot = currentModule.Substring(0, lastDot);
                 }
-
                 else
                 {
                     projectRoot = currentModule;
                 }
             }
-
             else
             {
                 projectRoot = Path.GetFileName(targetRoot.TrimEnd('\\', '/'));
@@ -138,7 +136,6 @@ namespace JavaFormatter
                 {
                     currentSegment.Add(trimmed);
                 }
-
                 else if (IsCommentLine(trimmed))
                 {
                     AppendSortedSegment(newBlock, currentSegment, currentModule,
@@ -215,7 +212,6 @@ namespace JavaFormatter
                 {
                     currentModuleGroup.Add(imp);
                 }
-
                 else if (!string.IsNullOrEmpty(projectRoot) &&
                     ns.StartsWith(projectRoot + ".") &&
                     (string.IsNullOrEmpty(currentModule) || ns !=
@@ -223,12 +219,10 @@ namespace JavaFormatter
                 {
                     projectModuleGroup.Add(imp);
                 }
-
                 else if (ns.StartsWith("java.") || ns.StartsWith("javax."))
                 {
                     systemGroup.Add(imp);
                 }
-
                 else
                 {
                     thirdPartyGroup.Add(imp);

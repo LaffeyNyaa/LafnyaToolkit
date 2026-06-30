@@ -74,6 +74,7 @@ namespace GDScriptFormatter
                     // A line that starts with a closing bracket returns
                     // to the parent indent level rather than continuing
                     // at the continuation indent.
+
                     if (content.Length == 0 ||
                         (content[0] != ')' && content[0] != ']' &&
                         content[0] != '}'))
@@ -201,7 +202,6 @@ namespace GDScriptFormatter
                     {
                         parenBracketDepth++;
                     }
-
                     else if (c == ')' || c == ']' || c == '}')
                     {
                         if (parenBracketDepth > 0)
@@ -214,6 +214,7 @@ namespace GDScriptFormatter
                 // Colon check must happen AFTER processing this line's
                 // brackets so that a closing )/]/} before the colon is
                 // properly accounted for.
+
                 if (lastCodeIdx >= 0 && parenBracketDepth == 0)
                 {
                     if (text[lastCodeIdx] == ':')

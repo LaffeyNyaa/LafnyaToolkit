@@ -277,7 +277,39 @@ For example, `@export var _hidden: int` is classified as **@export** (rule 5 tak
 
 ### Doc Comment Attachment
 
-`##` doc-comment blocks (consecutive non-blank lines starting with `##`) are **always** attached to the immediately following declaration, even when a blank line originally separated the doc comment from the declaration. This preserves the doc-to-declaration association. Ordinary `#` comments retain the original-attachment behavior: they attach to the following declaration only when no blank line originally separated them.
+`##` doc-comment blocks (consecutive non-blank lines starting with `##`) are **always** attached to the immediately following declaration, even when a blank line originally separated the doc comment from the declaration. This preserves the doc-to-declaration association.
+
+**Exception — File-level doc comments**: When a `##` doc-comment block appears at file level (its nearest preceding non-blank, non-doc-comment line is a file header such as `class_name`, `extends`, `@tool`, `@icon`, or `@static_unload`), it is treated as a class-level documentation comment rather than being force-attached to the declaration below. In this case:
+- No blank line is inserted between the file header and the `##` block (the doc comment stays immediately below `extends`).
+- One blank line is inserted between the `##` block and the following `const`/`var`/`signal`/`enum` declaration.
+- Two blank lines are inserted between the `##` block and the following `func`/`class` declaration.
+
+**Example** — file-level doc comment:
+
+Before formatting:
+```gdscript
+class_name MapGenerator
+extends RefCounted
+
+## Generates province-based map data using Voronoi tessellation and layered
+## noise. Produces warped polygon meshes with terrain types, height values,
+## and shared noise textures for rendering.
+
+const TERRAIN_OCEAN_THRESHOLD: float = -0.1
+```
+
+After formatting:
+```gdscript
+class_name MapGenerator
+extends RefCounted
+## Generates province-based map data using Voronoi tessellation and layered
+## noise. Produces warped polygon meshes with terrain types, height values,
+## and shared noise textures for rendering.
+
+const TERRAIN_OCEAN_THRESHOLD: float = -0.1
+```
+
+Ordinary `#` comments retain the original-attachment behavior: they attach to the following declaration only when no blank line originally separated them.
 
 ### File I/O Behavior
 

@@ -56,7 +56,6 @@ namespace GDScriptFormatter
                         Console.WriteLine("Formatting: " + relative);
                         formattedCount++;
                     }
-
                     else
                     {
                         Console.WriteLine("Skipped: " + relative);

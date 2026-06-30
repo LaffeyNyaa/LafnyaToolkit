@@ -89,17 +89,14 @@ namespace CppFormatter
                 {
                     systemGroup.Add(entry);
                 }
-
                 else if (bucket == 1)
                 {
                     thirdPartyGroup.Add(entry);
                 }
-
                 else if (bucket == 2)
                 {
                     projectModuleGroup.Add(entry);
                 }
-
                 else
                 {
                     currentModuleGroup.Add(entry);
@@ -336,7 +333,6 @@ namespace CppFormatter
                     s = s.Substring(0, blockComment) + s.Substring(blockEnd +
                         2);
                 }
-
                 else
                 {
                     s = s.Substring(0, blockComment);

@@ -167,7 +167,6 @@ namespace JavaFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == '}')
                     {
                         depth--;
@@ -291,7 +290,6 @@ namespace JavaFormatter
                 {
                     sb.Append(token.Text.Replace("\t", "    "));
                 }
-
                 else
                 {
                     sb.Append(token.Text);
@@ -383,7 +381,6 @@ namespace JavaFormatter
                     lastNonEmptyEndsInCode = lastPosInText >= 0 &&
                         lastPosInText < isCode.Length && isCode[lastPosInText];
                 }
-
                 else
                 {
                     lastNonEmptyEndsInCode = false;

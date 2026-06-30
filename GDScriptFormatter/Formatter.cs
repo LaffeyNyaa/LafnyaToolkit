@@ -76,13 +76,17 @@ namespace GDScriptFormatter
             // continuation lines.
             var postSplitText = string.Join("\n", lines);
             var postSplitTokens = Tokenizer.Tokenize(postSplitText);
+
             bool[] postSplitIsCode = Tokenizer.BuildCodeMask(postSplitText,
                 postSplitTokens);
+
             int[] postSplitLineStarts =
                 IndentationProcessor.ComputeLineStarts(lines);
+
             var postSplitLineInfo =
                 IndentationProcessor.ComputeLineInfo(lines, postSplitText,
                 postSplitIsCode, postSplitLineStarts);
+
             var postSplitContinues = new bool[lines.Count];
 
             for (int i = 0; i < lines.Count; i++)
@@ -93,6 +97,7 @@ namespace GDScriptFormatter
 
             lines = BlankLineProcessor.ApplyBlankLineRules(lines,
                 postSplitContinues);
+
             lines = BlankLineProcessor.CollapseBlankLines(lines);
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines);
             string result = string.Join("\n", lines);

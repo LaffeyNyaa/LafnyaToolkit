@@ -191,7 +191,6 @@ namespace JavaFormatter
                 {
                     depth++;
                 }
-
                 else if (c == ')' || c == ']')
                 {
                     if (depth > 0)
@@ -199,7 +198,6 @@ namespace JavaFormatter
                         depth--;
                     }
                 }
-
                 else if (c == ';' && depth == 0)
                 {
                     break;
@@ -246,7 +244,6 @@ namespace JavaFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == ')')
                     {
                         depth--;

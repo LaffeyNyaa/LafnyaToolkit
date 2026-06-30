@@ -53,7 +53,6 @@ namespace CppFormatter
                 {
                     depth++;
                 }
-
                 else if (isCode[i] && c == '}')
                 {
                     depth--;
@@ -315,7 +314,6 @@ namespace CppFormatter
 
                     depth++;
                 }
-
                 else if (c == '}')
                 {
                     depth--;
@@ -334,7 +332,6 @@ namespace CppFormatter
                         enumDepth = -1;
                     }
                 }
-
                 else if (c == ';')
                 {
                     pendingEnum = false;
@@ -392,7 +389,6 @@ namespace CppFormatter
 
                     pendingSwitch = false;
                 }
-
                 else if (c == '}')
                 {
                     if (braceStack.Count > 0)
@@ -406,7 +402,6 @@ namespace CppFormatter
                         }
                     }
                 }
-
                 else if (c == ';')
                 {
                     pendingSwitch = false;
@@ -470,7 +465,6 @@ namespace CppFormatter
                     {
                         inCaseBody = true;
                     }
-
                     else if (inCaseBody)
                     {
                         caseBody[li] = true;
@@ -574,7 +568,6 @@ namespace CppFormatter
                         nsBlocks.Add(new KeyValuePair<int, int>(i, -1));
                         braceStack.Push(nsBlocks.Count - 1);
                     }
-
                     else
                     {
                         braceStack.Push(-1);
@@ -583,7 +576,6 @@ namespace CppFormatter
                     pendingNamespace = false;
                     braceDepth++;
                 }
-
                 else if (c == '}')
                 {
                     braceDepth--;
@@ -601,7 +593,6 @@ namespace CppFormatter
 
                     pendingNamespace = false;
                 }
-
                 else if (c == ';')
                 {
                     pendingNamespace = false;

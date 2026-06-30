@@ -175,7 +175,6 @@ namespace JavaFormatter
                             {
                                 i += 2;
                             }
-
                             else
                             {
                                 i++;
@@ -213,7 +212,6 @@ namespace JavaFormatter
                             {
                                 i += 2;
                             }
-
                             else
                             {
                                 i++;

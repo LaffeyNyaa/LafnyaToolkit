@@ -64,16 +64,22 @@ namespace JavaFormatter
 
                 bool lineStartsInCode = FirstNonWsInCode(line, lineStart,
                     isCode);
+
                 bool isBlockStart = lineStartsInCode &&
                     LineClassifier.IsBlockStartLine(trimmed);
+
                 bool currentIsImport = lineStartsInCode &&
                     LineClassifier.IsImportDirective(trimmed);
+
                 bool currentIsDoWhileTail = lineStartsInCode &&
                     LineClassifier.IsDoWhileTail(trimmed);
+
                 bool currentIsBlockCont = lineStartsInCode &&
                     LineClassifier.IsBlockContinuation(trimmed);
+
                 bool currentIsAnnotation = lineStartsInCode &&
                     trimmed.StartsWith("@");
+
                 bool currentStartsWithCloseBrace = lineStartsInCode &&
                     trimmed.StartsWith("}");
 
@@ -88,16 +94,22 @@ namespace JavaFormatter
 
                     bool prevStartsInCode = FirstNonWsInCode(prevLine,
                         prevLineStart, isCode);
+
                     bool prevEndsInCode = LastNonWsInCode(prevLine,
                         prevLineStart, isCode);
+
                     bool prevIsOpenBraceOnly = prevStartsInCode &&
                         prevTrimmed == "{";
+
                     bool prevEndsWithOpenBrace = prevEndsInCode &&
                         TextUtils.EndsWithOpenBrace(prevTrimmed);
+
                     bool prevIsBlockEnd = prevStartsInCode &&
                         LineClassifier.IsBlockEndLine(prevTrimmed);
+
                     bool prevIsImport = prevStartsInCode &&
                         LineClassifier.IsImportDirective(prevTrimmed);
+
                     bool prevIsPackage = prevStartsInCode &&
                         prevTrimmed.StartsWith("package ");
 
@@ -126,14 +138,16 @@ namespace JavaFormatter
 
                     bool currentIsDocCommentStart =
                         trimmed.StartsWith("/**");
+
                     if (!wantBlankAbove && currentIsDocCommentStart)
                     {
                         bool prevIsRegularComment =
                             prevTrimmed.StartsWith("//") ||
                             (prevTrimmed.StartsWith("/*") &&
-                                !prevTrimmed.StartsWith("/**")) ||
+                            !prevTrimmed.StartsWith("/**")) ||
                             (prevTrimmed.StartsWith("*") &&
-                                !prevTrimmed.EndsWith("*/"));
+                            !prevTrimmed.EndsWith("*/"));
+
                         bool prevIsBlockOpenBrace =
                             prevTrimmed == "{" ||
                             TextUtils.EndsWithOpenBrace(prevTrimmed);
@@ -150,8 +164,10 @@ namespace JavaFormatter
                     {
                         bool currentIsPlainStmt = IsPlainSingleLineStatement(
                             trimmed, lineStartsInCode);
+
                         bool prevIsPlainStmt = IsPlainSingleLineStatement(
                             prevTrimmed, prevStartsInCode);
+
                         if (currentIsPlainStmt && prevIsPlainStmt)
                         {
                             wantBlankAbove = true;
@@ -206,7 +222,6 @@ namespace JavaFormatter
                         result.Add(string.Empty);
                     }
                 }
-
                 else
                 {
                     blankRun = 0;
@@ -317,26 +332,32 @@ namespace JavaFormatter
             {
                 return false;
             }
+
             if (trimmed.Length == 0 || !trimmed.EndsWith(";"))
             {
                 return false;
             }
+
             if (LineClassifier.IsBlockEndLine(trimmed))
             {
                 return false;
             }
+
             if (LineClassifier.IsBlockStartLine(trimmed))
             {
                 return false;
             }
+
             if (LineClassifier.IsDoWhileTail(trimmed))
             {
                 return false;
             }
+
             if (IsCommentLine(trimmed))
             {
                 return false;
             }
+
             return true;
         }
 

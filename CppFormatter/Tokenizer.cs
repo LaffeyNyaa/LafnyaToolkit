@@ -98,7 +98,6 @@ namespace CppFormatter
                     {
                         i = n;
                     }
-
                     else
                     {
                         i = endIdx + terminator.Length;

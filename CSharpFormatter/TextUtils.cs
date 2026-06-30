@@ -184,7 +184,6 @@ namespace CSharpFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == '}')
                     {
                         depth--;
@@ -335,7 +334,6 @@ namespace CSharpFormatter
                 {
                     sb.Append(token.Text.Replace("\t", "    "));
                 }
-
                 else
                 {
                     sb.Append(token.Text);
@@ -380,19 +378,16 @@ namespace CSharpFormatter
                             result.Add(beforeBrace);
                             result.Add("{");
                         }
-
                         else
                         {
                             result.Add(line);
                         }
                     }
-
                     else
                     {
                         result.Add(line);
                     }
                 }
-
                 else
                 {
                     result.Add(line);

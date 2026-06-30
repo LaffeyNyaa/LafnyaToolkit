@@ -44,7 +44,6 @@ namespace CppFormatter
                 {
                     afterEnum = nextNonWs + 5;
                 }
-
                 else if (TextUtils.MatchesWord(text, nextNonWs, "struct"))
                 {
                     afterEnum = nextNonWs + 6;

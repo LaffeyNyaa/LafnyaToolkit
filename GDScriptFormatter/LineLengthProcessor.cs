@@ -59,7 +59,6 @@ namespace GDScriptFormatter
 
                     fixedContIndent = line.Substring(0, indentLen);
                 }
-
                 else
                 {
                     fixedContIndent = null;
@@ -131,7 +130,6 @@ namespace GDScriptFormatter
                 {
                     bracketDepth++;
                 }
-
                 else if (c == ')' || c == ']' || c == '}')
                 {
                     if (bracketDepth > 0)
@@ -256,7 +254,6 @@ namespace GDScriptFormatter
                 {
                     depth++;
                 }
-
                 else if (c == ')' || c == ']' || c == '}')
                 {
                     if (depth > 0)
@@ -264,7 +261,6 @@ namespace GDScriptFormatter
                         depth--;
                     }
                 }
-
                 else if (c == ',' && depth > 0)
                 {
                     int bp = i + 1;
@@ -273,7 +269,6 @@ namespace GDScriptFormatter
                     {
                         best = bp;
                     }
-
                     else if (best < 0)
                     {
                         best = bp;
@@ -305,7 +300,6 @@ namespace GDScriptFormatter
                 {
                     depth++;
                 }
-
                 else if (c == ')' || c == ']' || c == '}')
                 {
                     if (depth > 0)
@@ -313,7 +307,6 @@ namespace GDScriptFormatter
                         depth--;
                     }
                 }
-
                 else if (c == '=' && depth == 0)
                 {
                     if (i > 0 && isCode[i - 1])

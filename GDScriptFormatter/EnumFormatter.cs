@@ -231,7 +231,6 @@ namespace GDScriptFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == '}')
                     {
                         depth--;

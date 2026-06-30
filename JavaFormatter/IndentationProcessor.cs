@@ -47,7 +47,6 @@ namespace JavaFormatter
                 {
                     depth++;
                 }
-
                 else if (isCode[i] && c == '}')
                 {
                     depth--;
@@ -222,7 +221,6 @@ namespace JavaFormatter
 
                     depth++;
                 }
-
                 else if (c == '}')
                 {
                     depth--;
@@ -241,7 +239,6 @@ namespace JavaFormatter
                         enumDepth = -1;
                     }
                 }
-
                 else if (c == ';')
                 {
                     pendingEnum = false;

@@ -39,7 +39,6 @@ namespace GDScriptFormatter
                 {
                     sb.Append("    ");
                 }
-
                 else
                 {
                     sb.Append(c);

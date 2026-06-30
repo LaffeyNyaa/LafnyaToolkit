@@ -180,7 +180,6 @@ namespace GDScriptFormatter
                     {
                         i += 2;
                     }
-
                     else
                     {
                         i++;

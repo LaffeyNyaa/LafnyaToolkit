@@ -151,7 +151,6 @@ namespace CSharpFormatter
                             {
                                 i += 2;
                             }
-
                             else
                             {
                                 i++;
@@ -189,7 +188,6 @@ namespace CSharpFormatter
                             {
                                 i += 2;
                             }
-
                             else
                             {
                                 i++;

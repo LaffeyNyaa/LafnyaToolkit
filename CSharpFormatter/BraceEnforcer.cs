@@ -222,7 +222,6 @@ namespace CSharpFormatter
                 {
                     depth++;
                 }
-
                 else if (c == ')' || c == ']')
                 {
                     if (depth > 0)
@@ -230,7 +229,6 @@ namespace CSharpFormatter
                         depth--;
                     }
                 }
-
                 else if (c == ';' && depth == 0)
                 {
                     break;
@@ -301,7 +299,6 @@ namespace CSharpFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == ')')
                     {
                         depth--;

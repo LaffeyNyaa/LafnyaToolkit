@@ -82,7 +82,6 @@ namespace CppFormatter
 
                     fixedContIndent = line.Substring(0, indentLen);
                 }
-
                 else
                 {
                     fixedContIndent = null;
@@ -200,7 +199,6 @@ namespace CppFormatter
                     bp = i + 2;
                     i++;
                 }
-
                 else if (bp < 0 && c == '>' && i + 1 < line.Length &&
                     line[i + 1] == '>' &&
                     IsStreamOpContext(line, i, startIdx))
@@ -208,12 +206,10 @@ namespace CppFormatter
                     bp = i + 2;
                     i++;
                 }
-
                 else if (bp < 0 && c == ',')
                 {
                     bp = i + 1;
                 }
-
                 else if (bp < 0 && c == ';')
                 {
                     if (i + 1 < line.Length)
@@ -221,7 +217,6 @@ namespace CppFormatter
                         bp = i + 1;
                     }
                 }
-
                 else if (bp < 0 && i > startIdx &&
                     IsBinaryOpContext(line, i, startIdx) &&
                     (c == '+' || c == '-' || c == '*' || c == '/' ||
@@ -229,7 +224,6 @@ namespace CppFormatter
                 {
                     bp = i + 1;
                 }
-
                 else if (bp < 0 && c == '=' && i > startIdx &&
                     IsBinaryOpContext(line, i, startIdx) &&
                     (i + 1 >= line.Length || (line[i + 1] != '=' &&
@@ -244,7 +238,6 @@ namespace CppFormatter
                     {
                         bestInRange = bp;
                     }
-
                     else if (firstOutOfRange < 0)
                     {
                         firstOutOfRange = bp;

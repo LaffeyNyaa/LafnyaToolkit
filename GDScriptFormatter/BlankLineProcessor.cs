@@ -16,10 +16,13 @@ namespace GDScriptFormatter
         {
             /// <summary>Whether a blank line existed above this line in the original input.</summary>
             public bool HadBlankAbove;
+
             /// <summary>The line text.</summary>
             public string Line;
+
             /// <summary>The indentation level.</summary>
             public int Indent;
+
             /// <summary>Whether this line is a continuation of the previous line.</summary>
             public bool IsContinuation;
 
@@ -60,11 +63,14 @@ namespace GDScriptFormatter
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
                 int indent = IndentationProcessor.LineIndentLevel(line);
+
                 bool cont = isContinuation != null &&
                     lineIdx < isContinuation.Length &&
                     isContinuation[lineIdx];
+
                 nonBlank.Add(new NonBlankEntry(hadBlankAbove, line, indent,
                     cont));
+
                 prevWasBlank = false;
                 isFirst = false;
                 lineIdx++;
@@ -84,6 +90,7 @@ namespace GDScriptFormatter
                 {
                     string prevTrimmed = result[result.Count - 1].Trim();
                     int prevIndent = resultIndents[resultIndents.Count - 1];
+
                     wantBlankAbove = ComputeDesiredBlanksAbove(
                         prevTrimmed, trimmed, nonBlank, i,
                         prevIndent, lineIndent);
@@ -132,6 +139,7 @@ namespace GDScriptFormatter
             // If the current line is a continuation of the previous line
             // (unclosed bracket or backslash), never insert blank lines
             // between them.
+
             if (nonBlank[curIdx].IsContinuation)
             {
                 return 0;
@@ -155,19 +163,22 @@ namespace GDScriptFormatter
             {
                 want = 2;
             }
-            else if (TextUtils.IsBlockStartLine(curTrimmed) && !TextUtils.IsSameGroup(
+            else if (TextUtils.IsBlockStartLine(curTrimmed) &&
+                !TextUtils.IsSameGroup(
                 prevTrimmed, curTrimmed) && sameIndent)
             {
                 want = 1;
             }
-            else if (TextUtils.IsBlockStartLine(curTrimmed) && !deeperThanPrev &&
+            else if (TextUtils.IsBlockStartLine(curTrimmed) &&
+                !deeperThanPrev &&
                 prevTrimmed.Length > 0 && prevTrimmed != ":" &&
                 !TextUtils.EndsWithColon(prevTrimmed))
             {
                 want = 1;
             }
 
-            if (want == 0 && sameIndent && TextUtils.IsTopLevelMember(prevTrimmed) &&
+            if (want == 0 && sameIndent &&
+                TextUtils.IsTopLevelMember(prevTrimmed) &&
                 TextUtils.IsTopLevelMember(curTrimmed) &&
                 !TextUtils.IsSameGroup(prevTrimmed, curTrimmed))
             {
@@ -183,9 +194,13 @@ namespace GDScriptFormatter
             if (want == 0 && curTrimmed.StartsWith("##"))
             {
                 bool prevIsDocComment = prevTrimmed.StartsWith("##");
-                bool prevIsRegularComment = prevTrimmed.StartsWith("#") && !prevIsDocComment;
+
+                bool prevIsRegularComment = prevTrimmed.StartsWith("#") &&
+                    !prevIsDocComment;
+
                 bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
                     prevTrimmed.EndsWith("{");
+
                 bool prevIsFileHeader = TextUtils.IsFileHeaderLine(prevTrimmed);
 
                 if (prevTrimmed.Length > 0 && !prevIsDocComment &&
@@ -200,6 +215,7 @@ namespace GDScriptFormatter
             // previous non-blank line, we just exited one or more code
             // blocks. Insert one blank line to satisfy the "one blank line
             // below code blocks" rule.
+
             if (want == 0 && curIndent < prevIndent)
             {
                 want = 1;
@@ -209,6 +225,7 @@ namespace GDScriptFormatter
             // single-line statements at the same indent. Only PRESERVES an
             // existing blank (HadBlankAbove); never adds one. Prevents the
             // "align downward" logic from stripping the author's blank.
+
             if (want == 0 && nonBlank[curIdx].HadBlankAbove &&
                 prevIndent == curIndent &&
                 IsPlainSingleLineStatement(prevTrimmed) &&
@@ -231,26 +248,32 @@ namespace GDScriptFormatter
             {
                 return false;
             }
+
             if (trimmed.StartsWith("#"))
             {
                 return false;
             }
+
             if (TextUtils.IsBlockStartLine(trimmed))
             {
                 return false;
             }
+
             if (trimmed.StartsWith("@"))
             {
                 return false;
             }
+
             if (TextUtils.IsFuncOrClassDecl(trimmed))
             {
                 return false;
             }
+
             if (TextUtils.IsFileHeaderLine(trimmed))
             {
                 return false;
             }
+
             return true;
         }
 
@@ -275,6 +298,16 @@ namespace GDScriptFormatter
 
             if (prevTrimmed.StartsWith("##"))
             {
+                // Do not force-attach file-level doc comments.
+                // A doc comment is file-level when its nearest preceding
+                // non-doc-comment line is a file header (class_name,
+                // extends, @tool, @icon, @static_unload).
+
+                if (IsFileLevelDocComment(nonBlank, curIdx))
+                {
+                    return false;
+                }
+
                 return true;
             }
 
@@ -284,6 +317,33 @@ namespace GDScriptFormatter
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Determines whether the current doc-comment block (ending at curIdx-1)
+        /// is a file-level doc comment. A doc comment is file-level when the
+        /// nearest preceding non-doc-comment line is a file header.
+        /// </summary>
+        private static bool IsFileLevelDocComment(
+            List<NonBlankEntry> nonBlank, int curIdx)
+        {
+            // Scan backwards from the line just before curIdx (which is
+            // the last line of the doc-comment block) to find the first
+            // non-doc-comment line.
+
+            for (int j = curIdx - 1; j >= 0; j--)
+            {
+                string trimmed = nonBlank[j].Line.Trim();
+
+                if (!trimmed.StartsWith("##"))
+                {
+                    return TextUtils.IsFileHeaderLine(trimmed);
+                }
+            }
+
+            // Entire file up to curIdx consists of doc comments
+            // (no file header found). Treat as file-level.
+            return true;
         }
 
         /// <summary>
@@ -338,7 +398,9 @@ namespace GDScriptFormatter
                         }
 
                         string trimmed = line.Trim();
-                        bool nearFuncClass = TextUtils.IsFuncOrClassDecl(trimmed);
+
+                        bool nearFuncClass =
+                            TextUtils.IsFuncOrClassDecl(trimmed);
 
                         if (!nearFuncClass && result.Count > 0)
                         {

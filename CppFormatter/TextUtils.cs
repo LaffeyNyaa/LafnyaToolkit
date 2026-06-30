@@ -147,7 +147,6 @@ namespace CppFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == '}')
                     {
                         depth--;
@@ -439,7 +438,6 @@ namespace CppFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == '{')
                     {
                         depth--;

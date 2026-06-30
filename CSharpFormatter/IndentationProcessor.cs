@@ -59,7 +59,6 @@ namespace CSharpFormatter
                 {
                     depth++;
                 }
-
                 else if (isCode[i] && c == '}')
                 {
                     depth--;
@@ -193,7 +192,6 @@ namespace CSharpFormatter
 
                     depth++;
                 }
-
                 else if (c == '}')
                 {
                     depth--;
@@ -212,7 +210,6 @@ namespace CSharpFormatter
                         enumDepth = -1;
                     }
                 }
-
                 else if (c == ';')
                 {
                     pendingEnum = false;
@@ -272,7 +269,6 @@ namespace CSharpFormatter
 
                     pendingSwitch = false;
                 }
-
                 else if (c == '}')
                 {
                     if (braceStack.Count > 0)
@@ -286,7 +282,6 @@ namespace CSharpFormatter
                         }
                     }
                 }
-
                 else if (c == ';')
                 {
                     pendingSwitch = false;
@@ -346,7 +341,6 @@ namespace CSharpFormatter
                     {
                         inCaseBody = true;
                     }
-
                     else if (inCaseBody)
                     {
                         caseBody[li] = true;

@@ -76,7 +76,6 @@ namespace JsonFormatter
                 {
                     ReadChar();
                 }
-
                 else
                 {
                     break;
@@ -112,13 +111,11 @@ namespace JsonFormatter
                     _index++;
                 }
             }
-
             else if (c == '\n')
             {
                 _line++;
                 _column = 1;
             }
-
             else
             {
                 _column++;
@@ -340,7 +337,6 @@ namespace JsonFormatter
             {
                 ReadChar();
             }
-
             else if (c >= '1' && c <= '9')
             {
                 ReadChar();
@@ -351,7 +347,6 @@ namespace JsonFormatter
                     ReadChar();
                 }
             }
-
             else
             {
                 throw Error("invalid number");

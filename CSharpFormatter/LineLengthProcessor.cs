@@ -61,7 +61,6 @@ namespace CSharpFormatter
 
                     fixedContIndent = line.Substring(0, indentLen);
                 }
-
                 else
                 {
                     fixedContIndent = null;
@@ -182,7 +181,6 @@ namespace CSharpFormatter
                     {
                         bestInRange = bp;
                     }
-
                     else if (firstOutOfRange < 0)
                     {
                         firstOutOfRange = bp;

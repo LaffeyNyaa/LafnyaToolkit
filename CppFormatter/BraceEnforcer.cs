@@ -43,7 +43,6 @@ namespace CppFormatter
                             insertions);
                     }
                 }
-
                 else if (TextUtils.MatchesWord(text, i, "for"))
                 {
                     int afterParen = SkipParen(text, isCode, i + 3);
@@ -54,7 +53,6 @@ namespace CppFormatter
                             insertions);
                     }
                 }
-
                 else if (TextUtils.MatchesWord(text, i, "while"))
                 {
                     int afterParen = SkipParen(text, isCode, i + 5);
@@ -74,19 +72,16 @@ namespace CppFormatter
                             insertions);
                     }
                 }
-
                 else if (TextUtils.MatchesWord(text, i, "do"))
                 {
                     CollectDoWhileBodyInsertions(text, isCode, i,
                         insertions);
                 }
-
                 else if (TextUtils.MatchesWord(text, i, "switch"))
                 {
                     CollectSwitchBodyInsertions(text, isCode, i,
                         insertions);
                 }
-
                 else if (TextUtils.MatchesWord(text, i, "else"))
                 {
                     int afterElse = i + 4;
@@ -240,7 +235,6 @@ namespace CppFormatter
                     {
                         depth++;
                     }
-
                     else if (c == ')' || c == ']')
                     {
                         if (depth > 0)
@@ -248,7 +242,6 @@ namespace CppFormatter
                             depth--;
                         }
                     }
-
                     else if (c == ';' && depth == 0)
                     {
                         return j + 1;
@@ -284,7 +277,6 @@ namespace CppFormatter
                     {
                         depth++;
                     }
-
                     else if (text[i] == ')')
                     {
                         depth--;

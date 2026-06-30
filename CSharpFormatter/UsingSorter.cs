@@ -145,17 +145,14 @@ namespace CSharpFormatter
                 {
                     currentModuleGroup.Add(u);
                 }
-
                 else if (ns.StartsWith(rootNamespace + "."))
                 {
                     projectModuleGroup.Add(u);
                 }
-
                 else if (ns.StartsWith("System"))
                 {
                     systemGroup.Add(u);
                 }
-
                 else
                 {
                     thirdPartyGroup.Add(u);
