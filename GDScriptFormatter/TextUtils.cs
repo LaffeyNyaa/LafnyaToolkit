@@ -78,7 +78,6 @@ namespace GDScriptFormatter
                     }
 
                     hashEnd--; // last '#' position
-
                     // Find end of line.
                     int lineEnd = hashEnd + 1;
 
@@ -89,6 +88,7 @@ namespace GDScriptFormatter
 
                     // If there is content after the hashes and the next
                     // character is not whitespace, insert a space.
+
                     if (hashEnd + 1 < lineEnd)
                     {
                         char next = text[hashEnd + 1];

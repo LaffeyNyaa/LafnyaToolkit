@@ -128,6 +128,7 @@ namespace GDScriptFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 string trimmed = lines[i].Trim();
+
                 if (trimmed.StartsWith("##"))
                 {
                     if (lastDocLineIdx >= 0)
