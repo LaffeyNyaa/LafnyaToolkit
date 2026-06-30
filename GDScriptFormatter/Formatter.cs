@@ -73,6 +73,26 @@ namespace GDScriptFormatter
             lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
                 preSplitContinues);
 
+            // Re-indent after line-length splitting so that the indentation
+            // of newly introduced continuation lines and synthetic
+            // parentheses matches the Reindent algorithm. Without this,
+            // the first formatting pass produces different indentation than
+            // the second pass (where Reindent processes the post-split
+            // output), causing the formatter to be non-idempotent.
+            {
+                var postSplitTextForReindent = string.Join("\n", lines);
+
+                var reindentTokens = Tokenizer.Tokenize(
+                    postSplitTextForReindent);
+
+                bool[] reindentIsCode = Tokenizer.BuildCodeMask(
+                    postSplitTextForReindent, reindentTokens);
+
+                lines = IndentationProcessor.Reindent(
+                    lines, postSplitTextForReindent, reindentTokens,
+                    reindentIsCode);
+            }
+
             // Recompute continuation flags after line-length splitting so
             // that BlankLineProcessor can suppress blank lines between
             // continuation lines.

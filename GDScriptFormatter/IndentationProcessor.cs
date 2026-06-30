@@ -32,6 +32,13 @@ namespace GDScriptFormatter
             /// Used to distinguish outermost continuation closing brackets (depth 1 → drop to parent indent)
             /// from nested continuation closing brackets (depth &gt; 1 → keep continuation indent).</summary>
             public int StartBracketDepth;
+
+            /// <summary>The bracket depth at the end of this line, after processing all brackets on this line.
+            /// Used to determine whether a continuation line starting with a closing bracket should keep
+            /// continuation indent (EndBracketDepth > 0 means still inside nested brackets). This is
+            /// stable across formatting passes even when synthetic parentheses are introduced by line
+            /// splitting, unlike StartBracketDepth which shifts when wrapping parentheses are added.</summary>
+            public int EndBracketDepth;
         }
 
         /// <summary>
@@ -52,7 +59,9 @@ namespace GDScriptFormatter
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
             var lineStarts = ComputeLineStarts(lines);
             var lineInfo = ComputeLineInfo(lines, text, isCode, lineStarts);
-            int[] depths = ComputeDepthsFromStack(lines, lineInfo);
+
+            int[] depths = ComputeDepthsFromStack(lines, lineInfo,
+                preserveIndent);
 
             var result = new List<string>(lines.Count);
 
@@ -79,17 +88,22 @@ namespace GDScriptFormatter
                     // A line that starts with a closing bracket returns
                     // to the parent indent level rather than continuing
                     // at the continuation indent — but only when closing
-                    // the outermost bracket (StartBracketDepth == 1).
-                    // When inside nested brackets (StartBracketDepth > 1),
+                    // the outermost bracket (EndBracketDepth == 0).
+                    // When inside nested brackets (EndBracketDepth > 0),
                     // keep the continuation indent so that synthetically
                     // introduced wrapping brackets (e.g. from = (...) line
                     // splitting) do not lose their indentation on a second
+                    // formatting pass. Using EndBracketDepth instead of
+                    // StartBracketDepth ensures stability across formatting
+                    // passes because EndBracketDepth reflects the bracket
+                    // depth after the line is fully processed, which is
+                    // independent of synthetic parentheses added on a prior
                     // formatting pass.
 
                     if (content.Length == 0 ||
                         (content[0] != ')' && content[0] != ']' &&
                         content[0] != '}') ||
-                        lineInfo[i].StartBracketDepth > 1)
+                        lineInfo[i].EndBracketDepth > 0)
                     {
                         baseDepth++;
                     }
@@ -185,6 +199,18 @@ namespace GDScriptFormatter
                         info[i].IsCloseBrace = true;
                     }
 
+                    // Fallback: if the code mask didn't identify the closing brace
+                    // (e.g. because garbled text in a string literal confused the
+                    // tokenizer), detect it from the trimmed line content instead.
+                    // A line whose first non-whitespace character is '}' and which
+                    // contains no other code tokens before it is a close-brace line.
+
+                    if (!info[i].IsCloseBrace && trimmed.Length > 0 &&
+                        trimmed[0] == '}')
+                    {
+                        info[i].IsCloseBrace = true;
+                    }
+
                     if (lastCodeIdx >= 0 && text[lastCodeIdx] == '{')
                     {
                         info[i].BraceTerminated = true;
@@ -224,6 +250,7 @@ namespace GDScriptFormatter
                     }
                 }
 
+                info[i].EndBracketDepth = parenBracketDepth;
                 // Colon check must happen AFTER processing this line's
                 // brackets so that a closing )/]/} before the colon is
                 // properly accounted for.
@@ -243,9 +270,11 @@ namespace GDScriptFormatter
         /// <summary>
         /// Stack-based indentation computation from original indentation depth: colon-terminated lines and brace-terminated lines
         /// open a new block, indenting subsequent lines by +1; close-brace lines and returning to shallower indentation pop blocks.
+        /// Lines inside triple-quoted strings (preserveIndent[i] == true) are skipped for stack manipulation so that their
+        /// content-leading does not incorrectly pop the block stack.
         /// </summary>
         private static int[] ComputeDepthsFromStack(List<string> lines,
-            LineAnalysis[] lineInfo)
+            LineAnalysis[] lineInfo, bool[] preserveIndent)
         {
             int[] depths = new int[lines.Count];
             var stack = new List<int>();
@@ -255,6 +284,17 @@ namespace GDScriptFormatter
                 string trimmed = lines[i].Trim();
 
                 if (trimmed.Length == 0)
+                {
+                    depths[i] = stack.Count;
+                    continue;
+                }
+
+                // Lines inside triple-quoted strings must not affect the
+                // block stack — their content-leading may be shallower
+                // than the enclosing block's indent (e.g. raw """ string
+                // content starting at column 0 inside a function body).
+
+                if (preserveIndent[i])
                 {
                     depths[i] = stack.Count;
                     continue;

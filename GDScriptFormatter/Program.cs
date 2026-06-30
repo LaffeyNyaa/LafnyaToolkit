@@ -46,7 +46,12 @@ namespace GDScriptFormatter
 
                 try
                 {
-                    string original = File.ReadAllText(file, utf8NoBom);
+                    byte[] rawBytes = File.ReadAllBytes(file);
+                    var (enc, bomLen) = DetectEncoding(rawBytes);
+
+                    string original = enc.GetString(rawBytes, bomLen,
+                        rawBytes.Length - bomLen);
+
                     string formatted = Formatter.Format(original);
 
                     if (!string.Equals(original, formatted,
@@ -198,6 +203,57 @@ namespace GDScriptFormatter
             }
 
             return normalizedFile;
+        }
+
+        /// <summary>
+        /// Detects the encoding of a byte array by inspecting the BOM.
+        /// Falls back to UTF-8 validation and then to Encoding.Default if no BOM is present.
+        /// </summary>
+        /// <param name="bytes">The raw byte array to inspect.</param>
+        /// <returns>A tuple of the detected encoding and the length of the BOM (0 if no BOM).</returns>
+        private static (Encoding encoding,
+            int bomLength) DetectEncoding(byte[] bytes)
+        {
+            if (bytes.Length >= 3
+            && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            {
+                return (Encoding.UTF8, 3);
+            }
+
+            if (bytes.Length >= 2
+            && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            {
+                if (bytes.Length >= 4
+                && bytes[2] == 0x00 && bytes[3] == 0x00)
+                {
+                    return (Encoding.UTF32, 4);
+                }
+
+                return (Encoding.Unicode, 2);
+            }
+
+            if (bytes.Length >= 2
+            && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            {
+                return (new UnicodeEncoding(true, true), 2);
+            }
+
+            if (bytes.Length >= 4
+            && bytes[0] == 0x00 && bytes[1] == 0x00
+            && bytes[2] == 0xFE && bytes[3] == 0xFF)
+            {
+                return (new UTF32Encoding(true, true), 4);
+            }
+
+            try
+            {
+                Encoding.UTF8.GetString(bytes);
+                return (Encoding.UTF8, 0);
+            }
+            catch (Exception)
+            {
+                return (Encoding.Default, 0);
+            }
         }
     }
 }
