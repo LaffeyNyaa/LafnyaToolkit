@@ -64,7 +64,16 @@ namespace GDScriptFormatter
                     fixedContIndent = null;
                 }
 
-                var split = SplitLongLine(line, fixedContIndent);
+                // Check whether this line has continuation lines
+                // following it. If so, skip top-level = wrapping to
+                // avoid creating orphan continuation lines.
+                bool continuesNext = lineContinuesNext != null &&
+                    i < lineContinuesNext.Length &&
+                    lineContinuesNext[i];
+
+                var split = SplitLongLine(line, fixedContIndent,
+                    continuesNext);
+
                 result.AddRange(split);
             }
 
@@ -82,9 +91,11 @@ namespace GDScriptFormatter
         /// <param name="line">The line to split.</param>
         /// <param name="fixedContIndent">The fixed continuation indent, or null to compute from
         /// the line's indent on the first split.</param>
+        /// <param name="continuesNext">Whether the next line is a continuation of this line;
+        /// when true, top-level = wrapping is skipped to avoid orphan continuation lines.</param>
         /// <returns>The list of split segments.</returns>
         private static List<string> SplitLongLine(string line,
-            string fixedContIndent)
+            string fixedContIndent, bool continuesNext = false)
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -181,6 +192,15 @@ namespace GDScriptFormatter
                         return res;
                     }
                 }
+            }
+
+            // If this line is followed by continuation lines, do NOT
+            // apply top-level = wrapping — it would orphan the continuation
+            // lines and produce invalid GDScript.
+
+            if (continuesNext)
+            {
+                return new List<string> { line };
             }
 
             int eqPos = FindTopLevelEquals(line, isCode, indentLen);
