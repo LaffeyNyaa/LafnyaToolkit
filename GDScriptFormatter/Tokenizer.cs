@@ -226,10 +226,45 @@ namespace GDScriptFormatter
                 i++;
             }
 
+            string commentText = source.Substring(start, i - start);
+            commentText = NormalizeCommentText(commentText);
+
             tokens.Add(new Token { Kind = TokenKind.Comment,
-                Text = source.Substring(start, i - start) });
+                Text = commentText });
 
             return i;
+        }
+
+        /// <summary>
+        /// Normalizes comment text by ensuring a single space exists between the hash prefix
+        /// and the comment content. If the entire line consists of only hash characters (e.g.
+        /// a separator line), no change is made. If a space already follows the hash prefix,
+        /// the text is returned as-is.
+        /// </summary>
+        /// <param name="commentText">The raw comment text.</param>
+        /// <returns>The normalized comment text.</returns>
+        private static string NormalizeCommentText(string commentText)
+        {
+            int hashEnd = 0;
+            int len = commentText.Length;
+
+            while (hashEnd < len && commentText[hashEnd] == '#')
+            {
+                hashEnd++;
+            }
+
+            hashEnd--;
+
+            if (hashEnd + 1 < len)
+            {
+                char next = commentText[hashEnd + 1];
+                if (next != ' ' && next != '\t')
+                {
+                    return commentText.Insert(hashEnd + 1, " ");
+                }
+            }
+
+            return commentText;
         }
 
         /// <summary>
