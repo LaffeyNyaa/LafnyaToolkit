@@ -207,7 +207,8 @@ namespace GDScriptFormatter
                     !prevIsRegularComment && !prevIsBlockOpenBrace &&
                     !prevIsFileHeader)
                 {
-                    want = 1;
+                    want = IsDocCommentAttachedToFuncOrClass(
+                        nonBlank, curIdx) ? 2 : 1;
                 }
             }
 
@@ -230,6 +231,38 @@ namespace GDScriptFormatter
                 prevIndent == curIndent &&
                 IsPlainSingleLineStatement(prevTrimmed) &&
                 IsPlainSingleLineStatement(curTrimmed))
+            {
+                want = 1;
+            }
+
+            // Multi-line statement below: if the immediate previous
+            // non-blank line was a continuation and the current line is
+            // not, add a blank line (unless entering a deeper block,
+            // e.g. a multi-line if-condition followed by its body).
+            // Also skip when the continuation line itself is a block
+            // start (ends with colon) — that is an if/for/while header
+            // whose body should stay attached.
+
+            if (want == 0 && curIdx > 0 &&
+                nonBlank[curIdx - 1].IsContinuation &&
+                !nonBlank[curIdx].IsContinuation &&
+                curIndent <= prevIndent &&
+                !TextUtils.IsBlockStartLine(
+                nonBlank[curIdx - 1].Line.Trim()))
+            {
+                want = 1;
+            }
+
+            // Multi-line statement above: if the next non-blank line is a
+            // continuation and the current line is not, add a blank line
+            // before the multi-line statement begins. Only applies when
+            // the current line is a peer of the previous line (same
+            // indent) — not when entering a new block.
+
+            if (want == 0 && curIdx + 1 < nonBlank.Count &&
+                nonBlank[curIdx + 1].IsContinuation &&
+                !nonBlank[curIdx].IsContinuation &&
+                prevIndent == curIndent)
             {
                 want = 1;
             }
@@ -344,6 +377,26 @@ namespace GDScriptFormatter
             // Entire file up to curIdx consists of doc comments
             // (no file header found). Treat as file-level.
             return true;
+        }
+
+        /// <summary>
+        /// Determines whether the doc-comment block starting at startIdx is attached
+        /// to a func or class declaration (looking ahead past consecutive ## lines).
+        /// </summary>
+        private static bool IsDocCommentAttachedToFuncOrClass(
+            List<NonBlankEntry> nonBlank, int startIdx)
+        {
+            for (int i = startIdx + 1; i < nonBlank.Count; i++)
+            {
+                string trimmed = nonBlank[i].Line.Trim();
+
+                if (!trimmed.StartsWith("##"))
+                {
+                    return TextUtils.IsFuncOrClassDecl(trimmed);
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
