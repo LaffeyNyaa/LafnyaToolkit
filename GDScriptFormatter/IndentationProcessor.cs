@@ -262,6 +262,59 @@ namespace GDScriptFormatter
                         info[i].ColonTerminated = true;
                     }
                 }
+
+                // Special case: block-starting keywords inside continuation
+                // contexts (e.g., inside brackets). Normal colon detection
+                // skips colons inside brackets to avoid treating dictionary
+                // keys as block starters. But keywords like func, if, for,
+                // while, match, elif, else always open a block regardless
+                // of bracket context — especially inside anonymous function
+                // bodies.
+
+                if (!info[i].ColonTerminated && lastCodeIdx >= 0 &&
+                    text[lastCodeIdx] == ':' && firstCodeIdx >= 0)
+                {
+                    // Skip leading whitespace to reach the first word.
+                    // The tokenizer treats whitespace as Code, so
+                    // firstCodeIdx may point to a space rather than a
+                    // keyword.
+                    int wordStart = firstCodeIdx;
+
+                    while (wordStart < text.Length &&
+                        wordStart < isCode.Length &&
+                        isCode[wordStart] &&
+                        char.IsWhiteSpace(text[wordStart]))
+                    {
+                        wordStart++;
+                    }
+
+                    if (wordStart < text.Length &&
+                        wordStart < isCode.Length &&
+                        isCode[wordStart])
+                    {
+                        int wordEnd = wordStart;
+
+                        while (wordEnd < text.Length &&
+                            wordEnd < isCode.Length &&
+                            isCode[wordEnd] &&
+                            !char.IsWhiteSpace(text[wordEnd]) &&
+                            text[wordEnd] != '(')
+                        {
+                            wordEnd++;
+                        }
+
+                        string firstWord = text.Substring(wordStart,
+                            wordEnd - wordStart);
+
+                        if (firstWord == "func" || firstWord == "if" ||
+                            firstWord == "for" || firstWord == "while" ||
+                            firstWord == "match" || firstWord == "elif" ||
+                            firstWord == "else")
+                        {
+                            info[i].ColonTerminated = true;
+                        }
+                    }
+                }
             }
 
             return info;
@@ -313,9 +366,23 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                while (stack.Count > 0 && origDepth < stack[stack.Count - 1])
+                // Continuation lines inside brackets (e.g., anonymous function
+                // bodies) may have a misleading originalDepth that is shallower
+                // than the actual block depth. Only pop blocks for
+                // non-continuation lines, or continuation lines that start
+                // with a closing bracket (which genuinely return to the
+                // parent level). This ensures nested blocks (if/for/while)
+                // inside anonymous function bodies retain correct indentation.
+
+                if (!lineInfo[i].IsContinuation ||
+                    (trimmed.Length > 0 && (trimmed[0] == ')' ||
+                    trimmed[0] == ']' || trimmed[0] == '}')))
                 {
-                    stack.RemoveAt(stack.Count - 1);
+                    while (stack.Count > 0 &&
+                        origDepth < stack[stack.Count - 1])
+                    {
+                        stack.RemoveAt(stack.Count - 1);
+                    }
                 }
 
                 depths[i] = stack.Count;
