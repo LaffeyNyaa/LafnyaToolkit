@@ -24,6 +24,7 @@ namespace GDScriptFormatter
             bool[] lineContinuesNext)
         {
             var result = new List<string>(lines.Count);
+            int runningBraceDepth = 0;
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -32,6 +33,10 @@ namespace GDScriptFormatter
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     result.Add(line);
+
+                    runningBraceDepth = UpdateBraceDepth(
+                        line, runningBraceDepth);
+
                     continue;
                 }
 
@@ -72,12 +77,42 @@ namespace GDScriptFormatter
                     lineContinuesNext[i];
 
                 var split = SplitLongLine(line, fixedContIndent,
-                    continuesNext);
+                    continuesNext, runningBraceDepth);
 
                 result.AddRange(split);
+
+                runningBraceDepth = UpdateBraceDepth(
+                    line, runningBraceDepth);
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Updates the running brace depth by scanning a line for bracket
+        /// characters, accounting for the input depth from previous lines.
+        /// </summary>
+        private static int UpdateBraceDepth(string line,
+            int currentDepth)
+        {
+            int depth = currentDepth;
+
+            foreach (char c in line)
+            {
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+            }
+
+            return depth;
         }
 
         /// <summary>
@@ -93,11 +128,27 @@ namespace GDScriptFormatter
         /// the line's indent on the first split.</param>
         /// <param name="continuesNext">Whether the next line is a continuation of this line;
         /// when true, top-level = wrapping is skipped to avoid orphan continuation lines.</param>
+        /// <param name="inheritedBraceDepth">Brace depth accumulated from previous lines;
+        /// when greater than 0 the line is inside a brace-delimited construct (dictionary,
+        /// array, or parenthesised expression) and all splitting is skipped.</param>
         /// <returns>The list of split segments.</returns>
         private static List<string> SplitLongLine(string line,
-            string fixedContIndent, bool continuesNext = false)
+            string fixedContIndent, bool continuesNext = false,
+            int inheritedBraceDepth = 0)
         {
             if (line.Length <= TextUtils.MaxLineLength)
+            {
+                return new List<string> { line };
+            }
+
+            // If this line is inside a brace-delimited construct
+            // (dictionary, array, or parenthesised expression) that
+            // started on a previous line, skip all splitting.
+            // Splitting strategies (especially = wrapping) assume a
+            // top-level statement context and will produce invalid
+            // GDScript when applied inside braces.
+
+            if (inheritedBraceDepth > 0)
             {
                 return new List<string> { line };
             }
