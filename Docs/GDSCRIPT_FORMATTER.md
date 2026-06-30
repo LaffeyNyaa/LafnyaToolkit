@@ -59,6 +59,14 @@ for n in numbers:
 ### Blank Lines for Classes and Methods
 
 - Maintain exactly **two blank lines** above and below class definitions and method declarations.
+- **Exception — Annotation-attached declarations**: When a decoration/annotation line (starting with `@`, e.g. `@rpc`, `@export`, `@warning_ignore`, `@onready`) immediately precedes a `func` or `class` declaration, blank lines between the annotation and the declaration are suppressed to zero. The annotation is considered part of the declaration's signature and must be directly adjacent to it.
+  ```gdscript
+  ## Doc comment.
+  @rpc("any_peer", "call_remote")
+  func request_change_emotion(...) -> void:
+      pass
+  ```
+  Without this exception, the 2-blank-line rule would insert unwanted blank lines between `@rpc` and `func`.
 
 ### Empty Lines: Documentation Comments
 

@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 
+using static GDScriptFormatter.DeclarationClassifier;
+using static GDScriptFormatter.MemberClassifier;
+
 namespace GDScriptFormatter
 {
     /// <summary>
@@ -78,6 +81,7 @@ namespace GDScriptFormatter
 
             var result = new List<string>(nonBlank.Count);
             var resultIndents = new List<int>(nonBlank.Count);
+            int currentBlanksAbove = 0;
 
             for (int i = 0; i < nonBlank.Count; i++)
             {
@@ -96,8 +100,6 @@ namespace GDScriptFormatter
                         prevIndent, lineIndent);
                 }
 
-                int currentBlanksAbove = CountTrailingBlanks(result);
-
                 while (currentBlanksAbove < wantBlankAbove)
                 {
                     result.Add(string.Empty);
@@ -114,6 +116,7 @@ namespace GDScriptFormatter
 
                 result.Add(line);
                 resultIndents.Add(lineIndent);
+                currentBlanksAbove = 0;
             }
 
             return result;
@@ -126,6 +129,8 @@ namespace GDScriptFormatter
             string curTrimmed, List<NonBlankEntry> nonBlank, int curIdx,
             int prevIndent, int curIndent)
         {
+            // Guard clauses
+
             if (curTrimmed.Length == 0)
             {
                 return 0;
@@ -152,89 +157,227 @@ namespace GDScriptFormatter
 
             bool sameIndent = prevIndent == curIndent;
             bool deeperThanPrev = curIndent > prevIndent;
-            int want = 0;
 
-            if (TextUtils.IsFuncOrClassDecl(curTrimmed))
+            int want = ApplyFuncClassBlankRule(prevTrimmed, curTrimmed,
+                sameIndent);
+
+            if (want == 0)
             {
-                want = 2;
+                want = ApplyBlockStartBlankRule(prevTrimmed, curTrimmed,
+                    sameIndent, deeperThanPrev);
             }
-            else if (sameIndent && TextUtils.IsFuncOrClassDecl(prevTrimmed) &&
-                !TextUtils.IsFuncOrClassDecl(curTrimmed))
+
+            if (want == 0)
             {
-                want = 2;
+                want = ApplyTopLevelMemberBlankRule(prevTrimmed, curTrimmed,
+                    sameIndent);
             }
-            else if (TextUtils.IsBlockStartLine(curTrimmed) &&
-                !TextUtils.IsSameGroup(
-                prevTrimmed, curTrimmed) && sameIndent)
+
+            if (want == 0)
             {
-                want = 1;
+                want = ApplyFileHeaderBlankRule(prevTrimmed, curTrimmed,
+                    deeperThanPrev);
             }
-            else if (TextUtils.IsBlockStartLine(curTrimmed) &&
+
+            if (want == 0)
+            {
+                want = ApplyDocCommentBlankRule(prevTrimmed, curTrimmed,
+                    nonBlank, curIdx);
+            }
+
+            if (want == 0)
+            {
+                want = ApplyDedentBlankRule(curIndent, prevIndent);
+            }
+
+            if (want == 0)
+            {
+                want = ApplyPreserveAuthorBlankRule(nonBlank[curIdx],
+                    prevTrimmed, curTrimmed);
+            }
+
+            if (want == 0)
+            {
+                want = ApplyMultiLineStatementBlankRule(nonBlank, curIdx,
+                    curIndent, prevIndent);
+            }
+
+            // Annotation suppression override (checked last so it can
+            // override previous rules)
+
+            if (ApplyAnnotationSuppressRule(prevTrimmed, curTrimmed) != 0)
+            {
+                return 0;
+            }
+
+            return want;
+        }
+
+        /// <summary>
+        /// Returns 2 blank lines when the current line is a func/class declaration,
+        /// or when the previous line was a func/class declaration at the same indent level.
+        /// </summary>
+        private static int ApplyFuncClassBlankRule(string prevTrimmed,
+            string curTrimmed, bool sameIndent)
+        {
+            if (IsFuncOrClassDecl(curTrimmed))
+            {
+                return 2;
+            }
+
+            if (sameIndent && IsFuncOrClassDecl(prevTrimmed) &&
+                !IsFuncOrClassDecl(curTrimmed))
+            {
+                return 2;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns 1 blank line when the current line starts a block and is not
+        /// in the same group as the previous line, or when entering a block from
+        /// a non-block line.
+        /// </summary>
+        private static int ApplyBlockStartBlankRule(string prevTrimmed,
+            string curTrimmed, bool sameIndent, bool deeperThanPrev)
+        {
+            if (TextUtils.IsBlockStartLine(curTrimmed) &&
+                !IsSameGroup(prevTrimmed, curTrimmed) && sameIndent)
+            {
+                return 1;
+            }
+
+            if (TextUtils.IsBlockStartLine(curTrimmed) &&
                 !deeperThanPrev &&
                 prevTrimmed.Length > 0 && prevTrimmed != ":" &&
                 !TextUtils.EndsWithColon(prevTrimmed))
             {
-                want = 1;
+                return 1;
             }
 
-            if (want == 0 && sameIndent &&
-                TextUtils.IsTopLevelMember(prevTrimmed) &&
-                TextUtils.IsTopLevelMember(curTrimmed) &&
-                !TextUtils.IsSameGroup(prevTrimmed, curTrimmed))
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns 1 blank line between different groups of top-level members
+        /// (signals, enums, consts, vars, etc.) at the same indent level.
+        /// </summary>
+        private static int ApplyTopLevelMemberBlankRule(string prevTrimmed,
+            string curTrimmed, bool sameIndent)
+        {
+            if (sameIndent &&
+                IsTopLevelMember(prevTrimmed) &&
+                IsTopLevelMember(curTrimmed) &&
+                !IsSameGroup(prevTrimmed, curTrimmed))
             {
-                want = 1;
+                return 1;
             }
 
-            if (want == 0 && TextUtils.IsFileHeaderLine(prevTrimmed) &&
-                !TextUtils.IsFileHeaderLine(curTrimmed) && !deeperThanPrev)
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns 1 blank line after a file-level header line when the
+        /// current line is not itself a header and is not entering a deeper block.
+        /// </summary>
+        private static int ApplyFileHeaderBlankRule(string prevTrimmed,
+            string curTrimmed, bool deeperThanPrev)
+        {
+            if (IsFileHeaderLine(prevTrimmed) &&
+                !IsFileHeaderLine(curTrimmed) && !deeperThanPrev)
             {
-                want = 1;
+                return 1;
             }
 
-            if (want == 0 && curTrimmed.StartsWith("##"))
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns 1 (or 2 if the doc comment is attached to a func/class) blank line
+        /// before a doc comment block. No blank line is added when the previous line
+        /// is already a comment, an opening brace, or a file header.
+        /// </summary>
+        private static int ApplyDocCommentBlankRule(string prevTrimmed,
+            string curTrimmed, List<NonBlankEntry> nonBlank, int curIdx)
+        {
+            if (!curTrimmed.StartsWith("##"))
             {
-                bool prevIsDocComment = prevTrimmed.StartsWith("##");
-
-                bool prevIsRegularComment = prevTrimmed.StartsWith("#") &&
-                    !prevIsDocComment;
-
-                bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
-                    prevTrimmed.EndsWith("{");
-
-                bool prevIsFileHeader = TextUtils.IsFileHeaderLine(prevTrimmed);
-
-                if (prevTrimmed.Length > 0 && !prevIsDocComment &&
-                    !prevIsRegularComment && !prevIsBlockOpenBrace &&
-                    !prevIsFileHeader)
-                {
-                    want = IsDocCommentAttachedToFuncOrClass(
-                        nonBlank, curIdx) ? 2 : 1;
-                }
+                return 0;
             }
 
-            // When the current line is at a shallower indent than the
-            // previous non-blank line, we just exited one or more code
-            // blocks. Insert one blank line to satisfy the "one blank line
-            // below code blocks" rule.
+            bool prevIsDocComment = prevTrimmed.StartsWith("##");
 
-            if (want == 0 && curIndent < prevIndent)
+            bool prevIsRegularComment = prevTrimmed.StartsWith("#") &&
+                !prevIsDocComment;
+
+            bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
+                prevTrimmed.EndsWith("{");
+
+            bool prevIsFileHeader = IsFileHeaderLine(prevTrimmed);
+
+            if (prevTrimmed.Length > 0 && !prevIsDocComment &&
+                !prevIsRegularComment && !prevIsBlockOpenBrace &&
+                !prevIsFileHeader)
             {
-                want = 1;
+                return IsDocCommentAttachedToFuncOrClass(
+                    nonBlank, curIdx) ? 2 : 1;
             }
 
-            // Preserve author-inserted blank lines between adjacent
-            // single-line statements at the same indent. Only PRESERVES an
-            // existing blank (HadBlankAbove); never adds one. Prevents the
-            // "align downward" logic from stripping the author's blank.
+            // If the previous line is a ## doc comment but the current ##
+            // line had a blank line above it in the original, they belong to
+            // separate doc comment blocks. Insert the appropriate spacing.
 
-            if (want == 0 && nonBlank[curIdx].HadBlankAbove &&
-                prevIndent == curIndent &&
+            if (prevIsDocComment && nonBlank[curIdx].HadBlankAbove)
+            {
+                return IsDocCommentAttachedToFuncOrClass(
+                    nonBlank, curIdx) ? 2 : 1;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns 1 blank line when the current line is at a shallower indent
+        /// than the previous line (i.e. we just exited a code block).
+        /// </summary>
+        private static int ApplyDedentBlankRule(int curIndent, int prevIndent)
+        {
+            if (curIndent < prevIndent)
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Preserves author-inserted blank lines between adjacent plain
+        /// single-line statements at the same indent. Only preserves an
+        /// existing blank (HadBlankAbove); never adds one.
+        /// </summary>
+        private static int ApplyPreserveAuthorBlankRule(NonBlankEntry curEntry,
+            string prevTrimmed, string curTrimmed)
+        {
+            if (curEntry.HadBlankAbove &&
                 IsPlainSingleLineStatement(prevTrimmed) &&
                 IsPlainSingleLineStatement(curTrimmed))
             {
-                want = 1;
+                return 1;
             }
 
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns 1 blank line around multi-line statements: when the previous
+        /// non-blank line was a continuation and the current line is not (unless
+        /// entering a deeper block or the continuation is a block header), or
+        /// when a following line is a continuation.
+        /// </summary>
+        private static int ApplyMultiLineStatementBlankRule(List<NonBlankEntry>
+            nonBlank, int curIdx, int curIndent, int prevIndent)
+        {
             // Multi-line statement below: if the immediate previous
             // non-blank line was a continuation and the current line is
             // not, add a blank line (unless entering a deeper block,
@@ -243,14 +386,14 @@ namespace GDScriptFormatter
             // start (ends with colon) — that is an if/for/while header
             // whose body should stay attached.
 
-            if (want == 0 && curIdx > 0 &&
+            if (curIdx > 0 &&
                 nonBlank[curIdx - 1].IsContinuation &&
                 !nonBlank[curIdx].IsContinuation &&
                 curIndent <= prevIndent &&
                 !TextUtils.IsBlockStartLine(
                 nonBlank[curIdx - 1].Line.Trim()))
             {
-                want = 1;
+                return 1;
             }
 
             // Multi-line statement above: if the next non-blank line is a
@@ -259,15 +402,34 @@ namespace GDScriptFormatter
             // the current line is a peer of the previous line (same
             // indent) — not when entering a new block.
 
-            if (want == 0 && curIdx + 1 < nonBlank.Count &&
+            if (curIdx + 1 < nonBlank.Count &&
                 nonBlank[curIdx + 1].IsContinuation &&
                 !nonBlank[curIdx].IsContinuation &&
                 prevIndent == curIndent)
             {
-                want = 1;
+                return 1;
             }
 
-            return want;
+            return 0;
+        }
+
+        /// <summary>
+        /// When an annotation line (starting with @) immediately precedes a
+        /// declaration line (func, class, var, signal, const, enum, etc.),
+        /// returns non-zero to suppress blank lines between them. The
+        /// annotation belongs to the declaration and should be directly
+        /// adjacent.
+        /// </summary>
+        private static int ApplyAnnotationSuppressRule(string prevTrimmed,
+            string curTrimmed)
+        {
+            if (prevTrimmed.StartsWith("@") &&
+                IsDeclarationLine(curTrimmed))
+            {
+                return 1;
+            }
+
+            return 0;
         }
 
         /// <summary>
@@ -297,12 +459,12 @@ namespace GDScriptFormatter
                 return false;
             }
 
-            if (TextUtils.IsFuncOrClassDecl(trimmed))
+            if (IsFuncOrClassDecl(trimmed))
             {
                 return false;
             }
 
-            if (TextUtils.IsFileHeaderLine(trimmed))
+            if (IsFileHeaderLine(trimmed))
             {
                 return false;
             }
@@ -324,32 +486,21 @@ namespace GDScriptFormatter
                 return false;
             }
 
-            if (!TextUtils.IsDeclarationLine(curTrimmed))
+            if (!IsDeclarationLine(curTrimmed))
             {
                 return false;
             }
 
+            // Doc comments (##) are force-attached unless they're file-level.
+
             if (prevTrimmed.StartsWith("##"))
             {
-                // Do not force-attach file-level doc comments.
-                // A doc comment is file-level when its nearest preceding
-                // non-doc-comment line is a file header (class_name,
-                // extends, @tool, @icon, @static_unload).
-
-                if (IsFileLevelDocComment(nonBlank, curIdx))
-                {
-                    return false;
-                }
-
-                return true;
+                return !IsFileLevelDocComment(nonBlank, curIdx);
             }
 
-            if (!nonBlank[curIdx].HadBlankAbove)
-            {
-                return true;
-            }
-
-            return false;
+            // Single-# comments are attached only when no blank line
+            // originally separated them.
+            return !nonBlank[curIdx].HadBlankAbove;
         }
 
         /// <summary>
@@ -370,7 +521,18 @@ namespace GDScriptFormatter
 
                 if (!trimmed.StartsWith("##"))
                 {
-                    return TextUtils.IsFileHeaderLine(trimmed);
+                    return IsFileHeaderLine(trimmed);
+                }
+
+                // If this ## line had a blank line above it in the
+                // original, it marks the start of a new doc comment
+                // block. Since it is separated from any file headers
+                // by another ## block, this block is NOT file-level
+                // (it is a member-level doc comment).
+
+                if (nonBlank[j].HadBlankAbove)
+                {
+                    return false;
                 }
             }
 
@@ -392,33 +554,11 @@ namespace GDScriptFormatter
 
                 if (!trimmed.StartsWith("##"))
                 {
-                    return TextUtils.IsFuncOrClassDecl(trimmed);
+                    return IsFuncOrClassDecl(trimmed);
                 }
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Counts the number of consecutive blank lines at the end of result.
-        /// </summary>
-        private static int CountTrailingBlanks(List<string> result)
-        {
-            int count = 0;
-
-            for (int j = result.Count - 1; j >= 0; j--)
-            {
-                if (result[j].Trim().Length == 0)
-                {
-                    count++;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            return count;
         }
 
         /// <summary>
@@ -450,24 +590,9 @@ namespace GDScriptFormatter
                             result.RemoveAt(result.Count - 1);
                         }
 
-                        string trimmed = line.Trim();
-
-                        bool nearFuncClass =
-                            TextUtils.IsFuncOrClassDecl(trimmed);
-
-                        if (!nearFuncClass && result.Count > 0)
-                        {
-                            string prevTrim = result[result.Count - 1].Trim();
-
-                            if (TextUtils.IsFuncOrClassDecl(prevTrim))
-                            {
-                                nearFuncClass = true;
-                            }
-                        }
-
                         result.Add(string.Empty);
 
-                        if (nearFuncClass)
+                        if (ShouldKeepTwoBlanks(line, result))
                         {
                             result.Add(string.Empty);
                         }
@@ -479,6 +604,34 @@ namespace GDScriptFormatter
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Determines whether to keep two blank lines (instead of one) when
+        /// collapsing excessive blank lines above a func/class declaration or
+        /// below one.
+        /// </summary>
+        private static bool ShouldKeepTwoBlanks(string currentLine, List<string>
+            result)
+        {
+            string trimmed = currentLine.Trim();
+
+            if (IsFuncOrClassDecl(trimmed))
+            {
+                return true;
+            }
+
+            if (result.Count > 0)
+            {
+                string prevTrim = result[result.Count - 1].Trim();
+
+                if (IsFuncOrClassDecl(prevTrim))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

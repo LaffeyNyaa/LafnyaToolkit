@@ -29,12 +29,13 @@ namespace GDScriptFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
+                // Guard clause: short lines pass through unchanged
 
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     result.Add(line);
 
-                    runningBraceDepth = UpdateBraceDepth(
+                    runningBraceDepth = BracketDepthTracker.UpdateDepth(
                         line, runningBraceDepth);
 
                     continue;
@@ -81,7 +82,7 @@ namespace GDScriptFormatter
 
                 result.AddRange(split);
 
-                runningBraceDepth = UpdateBraceDepth(
+                runningBraceDepth = BracketDepthTracker.UpdateDepth(
                     line, runningBraceDepth);
             }
 
@@ -95,24 +96,7 @@ namespace GDScriptFormatter
         private static int UpdateBraceDepth(string line,
             int currentDepth)
         {
-            int depth = currentDepth;
-
-            foreach (char c in line)
-            {
-                if (c == '(' || c == '[' || c == '{')
-                {
-                    depth++;
-                }
-                else if (c == ')' || c == ']' || c == '}')
-                {
-                    if (depth > 0)
-                    {
-                        depth--;
-                    }
-                }
-            }
-
-            return depth;
+            return BracketDepthTracker.UpdateDepth(line, currentDepth);
         }
 
         /// <summary>
@@ -136,17 +120,14 @@ namespace GDScriptFormatter
             string fixedContIndent, bool continuesNext = false,
             int inheritedBraceDepth = 0)
         {
+            // Guard clause: short lines pass through unchanged
+
             if (line.Length <= TextUtils.MaxLineLength)
             {
                 return new List<string> { line };
             }
 
-            // If this line is inside a brace-delimited construct
-            // (dictionary, array, or parenthesised expression) that
-            // started on a previous line, skip all splitting.
-            // Splitting strategies (especially = wrapping) assume a
-            // top-level statement context and will produce invalid
-            // GDScript when applied inside braces.
+            // Guard clause: skip splitting inside brace-delimited constructs
 
             if (inheritedBraceDepth > 0)
             {
@@ -176,131 +157,174 @@ namespace GDScriptFormatter
 
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
+            // Try each splitting strategy in priority order
+            var result = TryUnclosedBracketSplit(line, contIndent, isCode,
+                indentLen);
 
-            int bracketDepth = 0;
-
-            for (int ci = indentLen; ci < line.Length; ci++)
+            if (result != null)
             {
-                if (!isCode[ci])
-                {
-                    continue;
-                }
-
-                char c = line[ci];
-
-                if (c == '(' || c == '[' || c == '{')
-                {
-                    bracketDepth++;
-                }
-                else if (c == ')' || c == ']' || c == '}')
-                {
-                    if (bracketDepth > 0)
-                    {
-                        bracketDepth--;
-                    }
-                }
+                return result;
             }
 
-            bool hasUnclosedBracket = bracketDepth > 0;
+            result = TryClosedBracketSplit(line, contIndent, isCode, indentLen);
 
-            if (hasUnclosedBracket)
+            if (result != null && result[0].Length <= TextUtils.MaxLineLength)
             {
-                int breakAt = FindCommaBreakInBrackets(line, isCode, indentLen);
-
-                if (breakAt > 0 && breakAt < line.Length)
-                {
-                    string first = line.Substring(0, breakAt).TrimEnd();
-
-                    string rest = contIndent +
-                        line.Substring(breakAt).TrimStart();
-
-                    if (first.Length > 0 && first.Length < line.Length)
-                    {
-                        var res = new List<string> { first };
-                        res.AddRange(SplitLongLine(rest, contIndent));
-                        return res;
-                    }
-                }
+                return result;
             }
 
-            if (!hasUnclosedBracket)
+            result = TryTopLevelEqualsSplit(line, contIndent, indent, isCode,
+                indentLen, continuesNext);
+
+            if (result != null)
             {
-                int breakAt = FindCommaBreakInBrackets(line, isCode, indentLen);
-
-                if (breakAt > 0 && breakAt < line.Length)
-                {
-                    string first = line.Substring(0, breakAt).TrimEnd();
-
-                    if (first.Length > 0 && first.Length <=
-                        TextUtils.MaxLineLength &&
-                        first.Length < line.Length)
-                    {
-                        string rest = contIndent +
-                            line.Substring(breakAt).TrimStart();
-
-                        var res = new List<string> { first };
-                        res.AddRange(SplitLongLine(rest, contIndent));
-                        return res;
-                    }
-                }
+                return result;
             }
 
+            return new List<string> { line };
+        }
+
+        /// <summary>
+        /// Attempts to split a line at a comma inside unclosed brackets.
+        /// Returns the split segments, or null if this strategy does not apply.
+        /// </summary>
+        private static List<string> TryUnclosedBracketSplit(string line,
+            string contIndent, bool[] isCode, int indentLen)
+        {
+            int bracketDepth = BracketDepthTracker.FindBracketDepth(line,
+                isCode, indentLen);
+
+            if (bracketDepth <= 0)
+            {
+                return null;
+            }
+
+            int breakAt = FindCommaBreakInBrackets(line, isCode, indentLen);
+
+            if (breakAt <= 0 || breakAt >= line.Length)
+            {
+                return null;
+            }
+
+            string first = line.Substring(0, breakAt).TrimEnd();
+
+            string rest = contIndent +
+                line.Substring(breakAt).TrimStart();
+
+            if (first.Length <= 0 || first.Length >= line.Length)
+            {
+                return null;
+            }
+
+            var res = new List<string> { first };
+            res.AddRange(SplitLongLine(rest, contIndent));
+            return res;
+        }
+
+        /// <summary>
+        /// Attempts to split a line at a comma inside already-balanced brackets.
+        /// Returns the split segments, or null if this strategy does not apply.
+        /// </summary>
+        private static List<string> TryClosedBracketSplit(string line,
+            string contIndent, bool[] isCode, int indentLen)
+        {
+            int bracketDepth = BracketDepthTracker.FindBracketDepth(line,
+                isCode, indentLen);
+
+            if (bracketDepth > 0)
+            {
+                return null;
+            }
+
+            int breakAt = FindCommaBreakInBrackets(line, isCode, indentLen);
+
+            if (breakAt <= 0 || breakAt >= line.Length)
+            {
+                return null;
+            }
+
+            string first = line.Substring(0, breakAt).TrimEnd();
+
+            if (first.Length <= 0 || first.Length >= line.Length)
+            {
+                return null;
+            }
+
+            string rest = contIndent +
+                line.Substring(breakAt).TrimStart();
+
+            var res = new List<string> { first };
+            res.AddRange(SplitLongLine(rest, contIndent));
+            return res;
+        }
+
+        /// <summary>
+        /// Attempts to split a line at a top-level assignment equals sign by
+        /// wrapping the RHS in parentheses and splitting inside them.
+        /// Returns the split segments, or null if this strategy does not apply.
+        /// </summary>
+        private static List<string> TryTopLevelEqualsSplit(string line,
+            string contIndent, string indent, bool[] isCode, int indentLen,
+            bool continuesNext)
+        {
             // If this line is followed by continuation lines, do NOT
             // apply top-level = wrapping — it would orphan the continuation
             // lines and produce invalid GDScript.
 
             if (continuesNext)
             {
-                return new List<string> { line };
+                return null;
             }
 
             int eqPos = FindTopLevelEquals(line, isCode, indentLen);
 
-            if (eqPos >= 0)
+            if (eqPos < 0)
             {
-                string beforeEq = line.Substring(0, eqPos).TrimEnd();
-                string afterEq = line.Substring(eqPos + 1).TrimStart();
+                return null;
+            }
 
-                if (afterEq.Length > 0 && !afterEq.StartsWith("("))
+            string beforeEq = line.Substring(0, eqPos).TrimEnd();
+            string afterEq = line.Substring(eqPos + 1).TrimStart();
+
+            if (afterEq.Length > 0 && !afterEq.StartsWith("("))
+            {
+                string firstLine = beforeEq + " = (";
+                string rhsCont = contIndent + afterEq;
+                // The close paren must sit at the same level as the
+                // opening line (indent) because Reindent treats a line
+                // that starts with a closing bracket as returning to
+                // the parent indent level in the next pass.
+                string closeLine = indent + ")";
+
+                var rhsSplit = SplitLongLine(rhsCont, contIndent);
+                var res2 = new List<string> { firstLine };
+                res2.AddRange(rhsSplit);
+                res2.Add(closeLine);
+                return res2;
+            }
+
+            if (afterEq.StartsWith("("))
+            {
+                int breakAt2 = FindCommaBreakInBrackets(
+                    line, isCode, eqPos + 1);
+
+                if (breakAt2 > 0 && breakAt2 < line.Length)
                 {
-                    string firstLine = beforeEq + " = (";
-                    string rhsCont = contIndent + afterEq;
-                    // The close paren must sit at the same level as the
-                    // opening line (indent) because Reindent treats a line
-                    // that starts with a closing bracket as returning to
-                    // the parent indent level in the next pass.
-                    string closeLine = indent + ")";
+                    string first2 = line.Substring(0, breakAt2).TrimEnd();
 
-                    var rhsSplit = SplitLongLine(rhsCont, contIndent);
-                    var res2 = new List<string> { firstLine };
-                    res2.AddRange(rhsSplit);
-                    res2.Add(closeLine);
-                    return res2;
-                }
+                    string rest2 = contIndent +
+                        line.Substring(breakAt2).TrimStart();
 
-                if (afterEq.StartsWith("("))
-                {
-                    int breakAt2 = FindCommaBreakInBrackets(
-                        line, isCode, eqPos + 1);
-
-                    if (breakAt2 > 0 && breakAt2 < line.Length)
+                    if (first2.Length > 0 && first2.Length < line.Length)
                     {
-                        string first2 = line.Substring(0, breakAt2).TrimEnd();
-
-                        string rest2 = contIndent +
-                            line.Substring(breakAt2).TrimStart();
-
-                        if (first2.Length > 0 && first2.Length < line.Length)
-                        {
-                            var res3 = new List<string> { first2 };
-                            res3.AddRange(SplitLongLine(rest2, contIndent));
-                            return res3;
-                        }
+                        var res3 = new List<string> { first2 };
+                        res3.AddRange(SplitLongLine(rest2, contIndent));
+                        return res3;
                     }
                 }
             }
 
-            return new List<string> { line };
+            return null;
         }
 
         /// <summary>
@@ -324,15 +348,20 @@ namespace GDScriptFormatter
                 if (c == '(' || c == '[' || c == '{')
                 {
                     depth++;
+                    continue;
                 }
-                else if (c == ')' || c == ']' || c == '}')
+
+                if (c == ')' || c == ']' || c == '}')
                 {
                     if (depth > 0)
                     {
                         depth--;
                     }
+
+                    continue;
                 }
-                else if (c == ',' && depth > 0)
+
+                if (c == ',' && depth > 0)
                 {
                     int bp = i + 1;
 

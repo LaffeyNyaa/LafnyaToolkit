@@ -321,7 +321,8 @@ namespace GDScriptFormatter
                             wordEnd < isCode.Length &&
                             isCode[wordEnd] &&
                             !char.IsWhiteSpace(text[wordEnd]) &&
-                            text[wordEnd] != '(')
+                            text[wordEnd] != '(' &&
+                            text[wordEnd] != ':')
                         {
                             wordEnd++;
                         }
@@ -354,6 +355,11 @@ namespace GDScriptFormatter
         {
             int[] depths = new int[lines.Count];
             var stack = new List<int>();
+            // Tracks stack pushes made by colon-terminated continuation lines
+            // (e.g. func/if/for/while/match/elif/else inside brackets).
+            // Each entry stores (stackHeightAfterPush, origDepthOfLine).
+            var continuationColonPushes = new List<(int height, int origDepth)>
+                ();
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -380,12 +386,7 @@ namespace GDScriptFormatter
 
                 if (lineInfo[i].IsCloseBrace)
                 {
-                    if (stack.Count > 0)
-                    {
-                        stack.RemoveAt(stack.Count - 1);
-                    }
-
-                    depths[i] = stack.Count;
+                    HandleCloseBrace(i, stack, depths);
                     continue;
                 }
 
@@ -401,11 +402,51 @@ namespace GDScriptFormatter
 
                 if (!lineInfo[i].IsContinuation)
                 {
-                    while (stack.Count > 0 &&
-                        origDepth < stack[stack.Count - 1])
-                    {
-                        stack.RemoveAt(stack.Count - 1);
-                    }
+                    HandleNonContinuationPop(origDepth, stack,
+                        continuationColonPushes);
+                }
+
+                // For continuation lines that are NOT colon-terminated and
+                // NOT close-braces, pop stack entries that were pushed by
+                // colon-terminated continuation lines when the current line's
+                // origDepth is at or below the colon entry's origDepth.
+                // This correctly handles block exits inside continuation
+                // contexts (e.g., returning to the func-body level after an
+                // if-block inside a func lambda passed as a call argument).
+
+                if (lineInfo[i].IsContinuation &&
+                    !lineInfo[i].ColonTerminated &&
+                    !lineInfo[i].IsCloseBrace &&
+                    // Lines starting with a closing bracket are exiting the
+                // continuation context — they should not trigger the
+                // continuation-colon pop logic.
+                trimmed.Length > 0 &&
+                    trimmed[0] != ')' &&
+                    trimmed[0] != ']' &&
+                    trimmed[0] != '}')
+                {
+                    PopContinuationColonEntries(origDepth, stack,
+                        continuationColonPushes);
+                }
+
+                // For colon-terminated continuation lines, also pop matching
+                // continuation colon pushes when at the same origDepth.
+                // This correctly handles else:/elif: which should appear at
+                // the same indentation level as their matching if.
+                // Lines starting with a closing bracket ()/: ]: }:) are
+                // exiting the continuation context — the colon opens a new
+                // block at the current stack level rather than popping
+                // previous continuation colon pushes.
+
+                if (lineInfo[i].IsContinuation &&
+                    lineInfo[i].ColonTerminated &&
+                    trimmed.Length > 0 &&
+                    trimmed[0] != ')' &&
+                    trimmed[0] != ']' &&
+                    trimmed[0] != '}')
+                {
+                    PopContinuationColonEntries(origDepth, stack,
+                        continuationColonPushes);
                 }
 
                 depths[i] = stack.Count;
@@ -414,10 +455,84 @@ namespace GDScriptFormatter
                     lineInfo[i].BraceTerminated)
                 {
                     stack.Add(stack.Count + 1);
+                    // Record colon pushes from continuation lines so
+                    // they can be properly popped when the block exits.
+
+                    if (lineInfo[i].IsContinuation &&
+                        lineInfo[i].ColonTerminated)
+                    {
+                        continuationColonPushes.Add(
+                            (stack.Count, origDepth));
+                    }
                 }
             }
 
             return depths;
+        }
+
+        private static void HandleCloseBrace(int i, List<int> stack,
+            int[] depths)
+        {
+            if (stack.Count > 0)
+            {
+                stack.RemoveAt(stack.Count - 1);
+            }
+
+            depths[i] = stack.Count;
+        }
+
+        private static void HandleNonContinuationPop(int origDepth,
+            List<int> stack,
+            List<(int height, int origDepth)> continuationColonPushes)
+        {
+            while (stack.Count > 0 &&
+                origDepth < stack[stack.Count - 1])
+            {
+                stack.RemoveAt(stack.Count - 1);
+            }
+
+            // When non-continuation lines pop the stack, any
+            // continuationColonPushes entries whose recorded height
+            // exceeds the new stack size are stale — they were
+            // pushed by colon-terminated continuation lines inside
+            // blocks that have now been closed. Cleaning them up
+            // prevents stale entries from persisting across
+            // function/block boundaries and incorrectly affecting
+            // continuation lines in other scopes.
+
+            while (continuationColonPushes.Count > 0 &&
+                continuationColonPushes[
+
+            continuationColonPushes.Count - 1].height >
+                stack.Count)
+            {
+                continuationColonPushes.RemoveAt(
+                    continuationColonPushes.Count - 1);
+            }
+        }
+
+        private static void PopContinuationColonEntries(int origDepth,
+            List<int> stack,
+            List<(int height, int origDepth)> continuationColonPushes)
+        {
+            while (continuationColonPushes.Count > 0 &&
+                origDepth <=
+                continuationColonPushes[
+            continuationColonPushes.Count - 1].origDepth)
+            {
+                var entry =
+                    continuationColonPushes[
+                continuationColonPushes.Count - 1];
+                int targetCount = entry.height - 1;
+
+                while (stack.Count > targetCount)
+                {
+                    stack.RemoveAt(stack.Count - 1);
+                }
+
+                continuationColonPushes.RemoveAt(
+                    continuationColonPushes.Count - 1);
+            }
         }
 
         /// <summary>

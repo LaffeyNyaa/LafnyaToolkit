@@ -49,12 +49,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlankLineProcessor.cs" />
+    <Compile Include="BracketDepthTracker.cs" />
+    <Compile Include="DocumentSnapshot.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="Formatter.cs" />
     <Compile Include="IndentationProcessor.cs" />
+    <Compile Include="LineContinuationAnalyzer.cs" />
     <Compile Include="LineLengthProcessor.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DeclarationClassifier.cs" />
+    <Compile Include="DocCommentMover.cs" />
+    <Compile Include="MemberClassifier.cs" />
+    <Compile Include="MemberReorderer.cs" />
     <Compile Include="TextUtils.cs" />
     <Compile Include="Tokenizer.cs" />
   </ItemGroup>
