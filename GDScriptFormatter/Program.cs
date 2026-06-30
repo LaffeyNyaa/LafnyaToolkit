@@ -132,13 +132,45 @@ namespace GDScriptFormatter
 
         /// <summary>
         /// Recursively discovers all .gd files under the target directory, sorted alphabetically.
+        /// Directories named "addons" (case-insensitive) and their contents are excluded.
         /// </summary>
         /// <param name="root">The root directory.</param>
         /// <returns>A sorted list of full paths to .gd files.</returns>
         private static List<string> DiscoverGdFiles(string root)
         {
-            var files = new List<string>(Directory.EnumerateFiles(root, "*.gd",
-                SearchOption.AllDirectories));
+            var files = new List<string>();
+            var dirsToVisit = new Queue<string>();
+            dirsToVisit.Enqueue(root);
+
+            while (dirsToVisit.Count > 0)
+            {
+                string currentDir = dirsToVisit.Dequeue();
+
+                try
+                {
+                    files.AddRange(Directory.EnumerateFiles(currentDir, "*.gd"));
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+
+                try
+                {
+                    foreach (string subDir in Directory.EnumerateDirectories(currentDir))
+                    {
+                        string dirName = Path.GetFileName(subDir);
+
+                        if (!string.Equals(dirName, "addons",
+                            StringComparison.OrdinalIgnoreCase))
+                        {
+                            dirsToVisit.Enqueue(subDir);
+                        }
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+            }
 
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return files;

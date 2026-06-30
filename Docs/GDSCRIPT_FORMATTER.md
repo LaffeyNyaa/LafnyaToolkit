@@ -9,6 +9,7 @@ This formatter targets **GDScript as shipped with Godot 4.4.1** (GDScript 2.x sy
 The GDScript formatting tool is located in the `GDScriptFormatter` directory.
 - **Arguments**: Accepts a target directory as an argument and formats all GDScript files within it, including its subdirectories.
 - **Validation**: If no argument is provided or the specified directory does not exist, the tool will output a prompt/error message.
+- **addons Exclusions**: Directories named `addons` (case-insensitive) and all their contents are automatically excluded from formatting. This prevents accidental modification of third-party Godot plugin code.
 
 ## Execution Logs
 

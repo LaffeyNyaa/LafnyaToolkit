@@ -27,6 +27,11 @@ namespace GDScriptFormatter
 
             /// <summary>The line's original indentation level (leading spaces / IndentSize).</summary>
             public int OriginalDepth;
+
+            /// <summary>The bracket depth at the start of this line, before processing any brackets on this line.
+            /// Used to distinguish outermost continuation closing brackets (depth 1 → drop to parent indent)
+            /// from nested continuation closing brackets (depth &gt; 1 → keep continuation indent).</summary>
+            public int StartBracketDepth;
         }
 
         /// <summary>
@@ -73,11 +78,18 @@ namespace GDScriptFormatter
                 {
                     // A line that starts with a closing bracket returns
                     // to the parent indent level rather than continuing
-                    // at the continuation indent.
+                    // at the continuation indent — but only when closing
+                    // the outermost bracket (StartBracketDepth == 1).
+                    // When inside nested brackets (StartBracketDepth > 1),
+                    // keep the continuation indent so that synthetically
+                    // introduced wrapping brackets (e.g. from = (...) line
+                    // splitting) do not lose their indentation on a second
+                    // formatting pass.
 
                     if (content.Length == 0 ||
                         (content[0] != ')' && content[0] != ']' &&
-                        content[0] != '}'))
+                        content[0] != '}') ||
+                        lineInfo[i].StartBracketDepth > 1)
                     {
                         baseDepth++;
                     }
@@ -134,6 +146,7 @@ namespace GDScriptFormatter
                 int origDepth = leadingSpaces / TextUtils.IndentSize;
 
                 info[i].OriginalDepth = origDepth;
+                info[i].StartBracketDepth = parenBracketDepth;
                 info[i].IsContinuation = parenBracketDepth > 0;
 
                 if (i > 0 && EndsWithBackslash(text, isCode,
