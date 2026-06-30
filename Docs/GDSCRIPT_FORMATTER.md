@@ -151,6 +151,33 @@ func run():
 ```
 The blank between `lineStarts` and `enumRanges` is preserved. No blank is inserted between `enumRanges`/`depth`/`enumDepth`/`enumStart`/`pendingEnum`, nor between `var a`/`var b`/`var c`.
 
+### elif/else Blank Line Suppression
+
+- Blank lines are **not** inserted immediately before `elif` or `else` lines, even when the preceding line is at a deeper indentation (i.e., exiting the `if`/`elif` block body).
+- This ensures that logically connected branches (`if`-`elif`-`else`) remain visually grouped together.
+- This suppression applies regardless of other blank-line rules (e.g., `ApplyBlockStartBlankRule`, `ApplyDedentBlankRule`).
+
+**Correct Example:**
+```gdscript
+func _notify_unreachable(sender_id: int) -> void:
+    if sender_id == 1:
+        Console.add_error_message(tr("NOT_REACHABLE"))
+    else:
+        Console.add_error_message_remote.rpc_id(sender_id, tr("NOT_REACHABLE"))
+```
+
+**Incorrect Example (blank line before `elif`/`else` is suppressed):**
+```gdscript
+func _notify_unreachable(sender_id: int) -> void:
+    if sender_id == 1:
+        Console.add_error_message(tr("NOT_REACHABLE"))
+
+    else:
+        Console.add_error_message_remote.rpc_id(sender_id, tr("NOT_REACHABLE"))
+```
+
+This rule applies to all `elif` and `else` lines, including chained `if`-`elif`-`elif`-`else` structures.
+
 ### Enum Formatting
 
 - Write each enum value on a separate line.

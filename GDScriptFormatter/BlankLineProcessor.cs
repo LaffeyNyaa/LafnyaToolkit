@@ -221,6 +221,15 @@ namespace GDScriptFormatter
                 return 0;
             }
 
+            // elif/else suppression: never insert blank lines before elif
+            // or else — they are continuations of the preceding if/elif
+            // block and should remain adjacent.
+
+            if (IsElifOrElseBlock(curTrimmed))
+            {
+                return 0;
+            }
+
             return want;
         }
 
@@ -599,6 +608,17 @@ namespace GDScriptFormatter
             }
 
             return 0;
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line is an elif or else block start.
+        /// These are continuations of the preceding if/elif block and should
+        /// not have blank lines inserted before them.
+        /// </summary>
+        private static bool IsElifOrElseBlock(string trimmed)
+        {
+            return TextUtils.StartsWithKeyword(trimmed, "elif") ||
+                TextUtils.StartsWithKeyword(trimmed, "else");
         }
 
         /// <summary>
