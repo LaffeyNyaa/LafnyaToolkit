@@ -148,7 +148,8 @@ namespace GDScriptFormatter
 
                 try
                 {
-                    files.AddRange(Directory.EnumerateFiles(currentDir, "*.gd"));
+                    files.AddRange(Directory.EnumerateFiles(currentDir,
+                        "*.gd"));
                 }
                 catch (UnauthorizedAccessException)
                 {
