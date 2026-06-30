@@ -258,6 +258,7 @@ namespace GDScriptFormatter
             if (hashEnd + 1 < len)
             {
                 char next = commentText[hashEnd + 1];
+
                 if (next != ' ' && next != '\t')
                 {
                     return commentText.Insert(hashEnd + 1, " ");
