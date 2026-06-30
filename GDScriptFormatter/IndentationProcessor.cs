@@ -107,6 +107,29 @@ namespace GDScriptFormatter
                     {
                         baseDepth++;
                     }
+
+                    // Additional fix for continuation lines that close the
+                    // outermost bracket: block-stack entries pushed by
+                    // colon-terminated lines inside the continuation context
+                    // (e.g., func(): inside callback parens) inflate
+                    // depths[i]. The closing bracket should return to the
+                    // indentation level of the line that opened the bracket,
+                    // which is the last non-continuation line's depth.
+
+                    if (content.Length > 0 &&
+                        (content[0] == ')' || content[0] == ']') &&
+                        lineInfo[i].EndBracketDepth == 0 &&
+                        depths[i] > 0)
+                    {
+                        for (int j = i - 1; j >= 0; j--)
+                        {
+                            if (!lineInfo[j].IsContinuation)
+                            {
+                                baseDepth = depths[j];
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 result.Add(new string(' ',
