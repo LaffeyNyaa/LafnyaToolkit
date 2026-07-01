@@ -262,6 +262,22 @@ The stream insertion (`<<`) and extraction (`>>`) operators are treated as safe 
 
 A break is permitted at `<<` or `>>` only when the preceding non-whitespace character is one of `)`, `]`, an identifier character (letter/digit/`_`), `"` (string close), or `'` (char close). This avoids breaking inside template parameter lists (e.g., `vector<vector<int>>`) where `>>` is part of a template closing bracket rather than a stream operator.
 
+### Line Wrapping: `->` Pointer Member Access Operator
+
+The pointer member access operator (`->`) is treated as an atomic unit and SHALL NOT be split across lines. When the formatter encounters `->`, both characters are skipped as a pair and no break point is recorded between them.
+
+*Before (incorrect)*:
+```cpp
+    spdlog::error("http server failed to listen on port {}", impl_-
+        >config.port);
+```
+
+*After (correct)*:
+```cpp
+    spdlog::error("http server failed to listen on port {}",
+        impl_->config.port);
+```
+
 ---
 
 ### Continuation Indicator: Exclusion Rules

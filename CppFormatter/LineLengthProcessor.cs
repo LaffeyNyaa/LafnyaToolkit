@@ -222,6 +222,14 @@ namespace CppFormatter
                     (c == '+' || c == '-' || c == '*' || c == '/' ||
                     c == '%' || c == '<' || c == '>'))
                 {
+                    // Don't break at -> (pointer member access operator)
+
+                    if (c == '-' && i + 1 < line.Length && line[i + 1] == '>')
+                    {
+                        i++;
+                        continue;
+                    }
+
                     bp = i + 1;
                 }
                 else if (bp < 0 && c == '=' && i > startIdx &&
