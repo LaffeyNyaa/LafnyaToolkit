@@ -34,8 +34,8 @@ namespace CppFormatter
                         i++;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.SingleLineComment,
-                        Text = source.Substring(start, i - start) });
+                    tokens.Add(new Token(TokenKind.SingleLineComment,
+                        source.Substring(start, i - start)));
 
                     continue;
                 }
@@ -58,8 +58,8 @@ namespace CppFormatter
                         i++;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.MultiLineComment,
-                        Text = source.Substring(start, i - start) });
+                    tokens.Add(new Token(TokenKind.MultiLineComment,
+                        source.Substring(start, i - start)));
 
                     continue;
                 }
@@ -81,8 +81,8 @@ namespace CppFormatter
 
                     if (i >= n)
                     {
-                        tokens.Add(new Token { Kind = TokenKind.VerbatimString,
-                            Text = source.Substring(start, i - start) });
+                        tokens.Add(new Token(TokenKind.VerbatimString,
+                            source.Substring(start, i - start)));
 
                         continue;
                     }
@@ -103,8 +103,8 @@ namespace CppFormatter
                         i = endIdx + terminator.Length;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.VerbatimString,
-                        Text = source.Substring(start, i - start) });
+                    tokens.Add(new Token(TokenKind.VerbatimString,
+                        source.Substring(start, i - start)));
 
                     continue;
                 }
@@ -135,8 +135,8 @@ namespace CppFormatter
                         i++;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.String,
-                        Text = source.Substring(start, i - start) });
+                    tokens.Add(new Token(TokenKind.String,
+                        source.Substring(start, i - start)));
 
                     continue;
                 }
@@ -164,8 +164,8 @@ namespace CppFormatter
                         i++;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.Char,
-                        Text = source.Substring(start, i - start) });
+                    tokens.Add(new Token(TokenKind.Char,
+                        source.Substring(start, i - start)));
 
                     continue;
                 }
@@ -199,8 +199,8 @@ namespace CppFormatter
                         i++;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.Preprocessor,
-                        Text = source.Substring(start, i - start) });
+                    tokens.Add(new Token(TokenKind.Preprocessor,
+                        source.Substring(start, i - start)));
 
                     continue;
                 }
@@ -407,8 +407,8 @@ namespace CppFormatter
         {
             if (code.Length > 0)
             {
-                tokens.Add(new Token { Kind = TokenKind.Code,
-                    Text = code.ToString() });
+                tokens.Add(new Token(TokenKind.Code,
+                    code.ToString()));
 
                 code.Clear();
             }
@@ -423,23 +423,18 @@ namespace CppFormatter
         /// <returns>true if the '#' is at line start; otherwise false.</returns>
         private static bool IsLineStart(string source, int index)
         {
-            int j = index - 1;
+            int lastNewline = index > 0
+                ? source.LastIndexOf('\n', index - 1)
+                : -1;
 
-            while (j >= 0)
+            for (int j = lastNewline + 1; j < index; j++)
             {
                 char ch = source[j];
-
-                if (ch == '\n')
-                {
-                    return true;
-                }
 
                 if (ch != ' ' && ch != '\t' && ch != '\r')
                 {
                     return false;
                 }
-
-                j--;
             }
 
             return true;

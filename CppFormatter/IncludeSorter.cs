@@ -30,7 +30,7 @@ namespace CppFormatter
 
             for (int i = 0; i < lines.Length; i++)
             {
-                if (IsIncludeDirective(lines[i].Trim()))
+                if (TextUtils.IsIncludeDirective(lines[i].Trim()))
                 {
                     if (firstInclude == -1)
                     {
@@ -58,7 +58,7 @@ namespace CppFormatter
             {
                 string trimmed = lines[i].Trim();
 
-                if (IsIncludeDirective(trimmed))
+                if (TextUtils.IsIncludeDirective(trimmed))
                 {
                     units.Add(new IncludeUnit(
                         new List<string>(), lines[i]));
@@ -159,6 +159,7 @@ namespace CppFormatter
             // Ensure a blank line between a non-include preprocessor directive
             // (e.g., #pragma once) and the first #include directive. Scan
             // backward past any blank lines to find the actual content line.
+
             if (firstInclude > 0 && newBlock.Count > 0)
             {
                 int scanIdx = firstInclude - 1;
@@ -173,10 +174,10 @@ namespace CppFormatter
                 {
                     string lastBeforeInclude = lines[scanIdx].Trim();
 
-                    if (!IsIncludeDirective(lastBeforeInclude) &&
+                    if (!TextUtils.IsIncludeDirective(lastBeforeInclude) &&
                         lastBeforeInclude.Length > 0 &&
                         lastBeforeInclude[0] == '#' &&
-                        IsIncludeDirective(newBlock[0]))
+                        TextUtils.IsIncludeDirective(newBlock[0]))
                     {
                         result.Append('\n');
                     }
@@ -275,38 +276,6 @@ namespace CppFormatter
             }
 
             return 3;
-        }
-
-        /// <summary>Determines whether a line is an #include directive.</summary>
-        /// <param name="line">The trimmed line.</param>
-        /// <returns>true if the line is an #include directive; otherwise false.</returns>
-        private static bool IsIncludeDirective(string line)
-        {
-            if (line.StartsWith("#include "))
-            {
-                return true;
-            }
-
-            if (line.StartsWith("#include\t"))
-            {
-                return true;
-            }
-
-            if (line.StartsWith("#include<") || line.StartsWith("#include\""))
-            {
-                return true;
-            }
-
-            return line == "#include";
-        }
-
-        /// <summary>Determines whether a line is a comment start (//, /*, or * continuation).</summary>
-        /// <param name="line">The trimmed line.</param>
-        /// <returns>true if the line is a comment line; otherwise false.</returns>
-        private static bool IsCommentLine(string line)
-        {
-            return line.StartsWith("//") || line.StartsWith("/*") ||
-                line.StartsWith("*");
         }
 
         /// <summary>Extracts the delimited form of an include directive.</summary>
@@ -425,38 +394,6 @@ namespace CppFormatter
         private static bool IsAsciiLetter(char c)
         {
             return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-        }
-
-        /// <summary>
-        /// Represents a single #include directive together with any preceding
-        /// lines (preprocessor directives, blank lines, comments) that appeared
-        /// between this include and the previous include.
-        /// </summary>
-        private class IncludeUnit
-        {
-            /// <summary>Gets the preceding lines (preprocessor, blanks, etc.).</summary>
-            public List<string> PrecedingLines
-            {
-                get;
-            }
-
-            /// <summary>Gets the raw #include directive line.</summary>
-            public string IncludeLine
-            {
-                get;
-            }
-
-            /// <summary>
-            /// Initializes a new instance of the IncludeUnit class.
-            /// </summary>
-            /// <param name="precedingLines">The lines preceding this include.</param>
-            /// <param name="includeLine">The include directive line.</param>
-            public IncludeUnit(List<string> precedingLines,
-                string includeLine)
-            {
-                PrecedingLines = precedingLines;
-                IncludeLine = includeLine;
-            }
         }
     }
 }

@@ -83,24 +83,6 @@ namespace CppFormatter
                 foreach (var file in Directory.EnumerateFiles(root, "*" + ext,
                     SearchOption.AllDirectories))
                 {
-                    string fileExt = Path.GetExtension(file);
-                    bool match = false;
-
-                    foreach (var e in extensions)
-                    {
-                        if (string.Equals(fileExt, e,
-                            StringComparison.OrdinalIgnoreCase))
-                        {
-                            match = true;
-                            break;
-                        }
-                    }
-
-                    if (!match)
-                    {
-                        continue;
-                    }
-
                     // Skip files under the "build" directory
 
                     if (file.IndexOf(Path.DirectorySeparatorChar + "build" +

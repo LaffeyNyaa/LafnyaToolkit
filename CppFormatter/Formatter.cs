@@ -21,27 +21,29 @@ namespace CppFormatter
             text = IncludeSorter.Sort(text);
             text = text.Replace("\t", "    ");
             text = text.Replace("\r\n", "\n").Replace("\r", "\n");
-            text = TextUtils.MoveOpenBraceToPreviousLine(text);
-            text = TextUtils.MergeDoWhileCloseBrace(text);
+            text = BraceMerger.MoveOpenBraceToPreviousLine(text);
+            text = DoWhileMerger.MergeDoWhileCloseBrace(text);
             text = EndifCommentProcessor.AppendEndifComments(text);
             tokens = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             var lines = TextUtils.SplitLines(text);
+            string currentText = text;
 
-            lines = IndentationProcessor.Reindent(lines, text, tokens, isCode);
+            lines = IndentationProcessor.Reindent(lines, currentText, tokens,
+                isCode);
 
-            lines = IndentationProcessor.TrimNamespaceBodyBlankLines(lines,
-                text, tokens, isCode);
+            lines = NamespaceBodyTrimmer.TrimNamespaceBodyBlankLines(lines,
+                currentText, tokens, isCode);
 
             // Compute continuation flags from the post-Reindent (pre-split)
             // line structure so that LineLengthProcessor can detect
             // continuation lines and avoid cascading indents when splitting
             // them (a continuation line split at parent+4 must keep its
             // segments at parent+4, not parent+8).
-            string textForLimit = string.Join("\n", lines);
-            var tokensForLimit = Tokenizer.Tokenize(textForLimit);
+            currentText = string.Join("\n", lines);
+            var tokensForLimit = Tokenizer.Tokenize(currentText);
 
-            bool[] isCodeForLimit = Tokenizer.BuildCodeMask(textForLimit,
+            bool[] isCodeForLimit = Tokenizer.BuildCodeMask(currentText,
                 tokensForLimit);
 
             int[] lineStartsForLimit = Tokenizer.ComputeLineStarts(lines);
@@ -52,7 +54,7 @@ namespace CppFormatter
                 preSplitContinues[i] = IndentationProcessor
 
                 .IsContinuationIndicator(lines[i],
-                    lineStartsForLimit[i], textForLimit, isCodeForLimit);
+                    lineStartsForLimit[i], currentText, isCodeForLimit);
             }
 
             // Split long lines BEFORE applying blank-line rules so that the
@@ -61,22 +63,23 @@ namespace CppFormatter
             // lines and shift indices, causing LineLengthProcessor to read
             // the wrong continuation flag for each line.
             lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
-                textForLimit, preSplitContinues);
+                currentText, preSplitContinues);
 
-            string textForBlank = string.Join("\n", lines);
+            // Only join lines when they have been modified by a processor
+            currentText = string.Join("\n", lines);
 
             lines = BlankLineProcessor.ApplyBlankLineRules(lines,
-                textForBlank);
+                currentText);
 
-            string textForCollapse = string.Join("\n", lines);
+            currentText = string.Join("\n", lines);
 
             lines = BlankLineProcessor.CollapseBlankLines(lines,
-                textForCollapse);
+                currentText);
 
-            string textForTrim = string.Join("\n", lines);
+            currentText = string.Join("\n", lines);
 
             lines = BlankLineProcessor.TrimTrailingWhitespace(lines,
-                textForTrim);
+                currentText);
 
             string result = string.Join("\n", lines);
             result = TextUtils.EnsureSingleTrailingNewline(result);

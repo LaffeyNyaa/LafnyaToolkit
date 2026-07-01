@@ -317,6 +317,15 @@ namespace CppFormatter
         }
 
         /// <summary>
+        /// Determines whether a trimmed line is a comment.
+        /// </summary>
+        internal static bool IsCommentLine(string trimmed)
+        {
+            return trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
+                trimmed.StartsWith("*");
+        }
+
+        /// <summary>
         /// Determines whether a line is an #include directive.
         /// </summary>
         internal static bool IsIncludeDirective(string trimmed)
