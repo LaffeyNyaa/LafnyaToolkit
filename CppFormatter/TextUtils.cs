@@ -265,7 +265,10 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Determines whether a line is a block end line: exactly } or };.
+        /// Determines whether a line is a block-end line: }, };, or }
+        /// followed by comments/closing delimiters. Lines like
+        /// "} else {", "} else if (...)", "} catch (...)" are NOT
+        /// block-end lines (they continue into a new block).
         /// </summary>
         internal static bool IsBlockEndLine(string trimmed)
         {
@@ -274,17 +277,43 @@ namespace CppFormatter
                 return false;
             }
 
-            if (trimmed == "}")
+            if (trimmed[0] != '}')
+            {
+                return false;
+            }
+
+            // Check what follows after the leading }
+            string afterBrace = trimmed.Substring(1).TrimStart();
+            // Pure block-end: just "}", "};", or "} // comment"
+
+            if (afterBrace.Length == 0)
             {
                 return true;
             }
 
-            if (trimmed == "};")
+            if (afterBrace == ";")
             {
                 return true;
             }
 
-            return false;
+            if (afterBrace.StartsWith("//") ||
+                afterBrace.StartsWith("/*"))
+            {
+                return true;
+            }
+
+            // "} else {", "} else if (...)", "} catch (...)" —
+            // these continue into a new block, not a real block-end.
+
+            if (StartsWithKeyword(afterBrace, "else") ||
+                StartsWithKeyword(afterBrace, "catch"))
+            {
+                return false;
+            }
+
+            // Everything else: "});", "} while (cond);",
+            // "}  // comment" (handled above), etc. — block end.
+            return true;
         }
 
         /// <summary>

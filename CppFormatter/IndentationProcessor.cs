@@ -32,6 +32,7 @@ namespace CppFormatter
             bool[] caseBody = ComputeCaseScope(lines, text, isCode);
             int depth = 0;
             int lineIdx = 0;
+            bool pendingNamespace = false;
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -51,7 +52,14 @@ namespace CppFormatter
 
                 if (isCode[i] && c == '{')
                 {
-                    depth++;
+                    if (pendingNamespace)
+                    {
+                        pendingNamespace = false;
+                    }
+                    else
+                    {
+                        depth++;
+                    }
                 }
                 else if (isCode[i] && c == '}')
                 {
@@ -62,10 +70,48 @@ namespace CppFormatter
                         depth = 0;
                     }
 
+                    // Only update depths[lineIdx] when the closing brace
+                    // reduces depth below what was recorded at the start of
+                    // this line.  This prevents a `}` that merely closes a
+                    // `{` _on the same line_ (e.g. inside {{"x", y}}) from
+                    // overwriting the line-start depth that was correctly
+                    // set by the preceding `\n` handler.
+
                     if (lineIdx < depths.Length)
                     {
-                        depths[lineIdx] = depth;
+                        int startDepth = depths[lineIdx];
+
+                        if (depth < startDepth)
+                        {
+                            depths[lineIdx] = depth;
+                        }
                     }
+                }
+
+                if (isCode[i] && c == 'n' &&
+                    (i == 0 || !TextUtils.IsWordChar(text[i - 1])) &&
+                    TextUtils.MatchesWord(text, i, "namespace"))
+                {
+                    pendingNamespace = true;
+                }
+
+                // Reset pendingNamespace if we encounter characters that
+                // terminate a namespace declaration (; for alias, = for
+                // assignment, or non-identifier chars that are not { or :).
+
+                if (pendingNamespace && c == ';')
+                {
+                    pendingNamespace = false;
+                }
+
+                if (pendingNamespace && c == '=')
+                {
+                    pendingNamespace = false;
+                }
+
+                if (pendingNamespace && c == '(')
+                {
+                    pendingNamespace = false;
                 }
             }
 
@@ -90,16 +136,74 @@ namespace CppFormatter
 
                 int baseDepth = depths[i];
 
-                if (i > 0 && !inEnumBlock[i] && !caseBody[i] &&
-                    IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
-                    text, isCode))
+                if (i > 0 && !inEnumBlock[i] && !caseBody[i])
                 {
-                    baseDepth++;
+                    // Scan backward through blank lines AND string-only
+                    // continuation lines to find the actual code line that
+                    // carries the continuation indicator.
+                    //
+                    // Blank lines inserted by BlankLineProcessor must not
+                    // break the continuation chain on subsequent passes.
+                    // Similarly, pure string-literal continuation lines
+                    // (e.g. "SELECT ... ") contain no code-region
+                    // characters, so IsContinuationIndicator cannot detect
+                    // the continuation from them alone; we must walk back
+                    // to the preceding code-carrying line.
+                    int scanLine = i - 1;
+
+                    while (scanLine >= 0)
+                    {
+                        // Skip blank lines.
+
+                        if (lines[scanLine].Trim().Length == 0)
+                        {
+                            scanLine--;
+                            continue;
+                        }
+
+                        if (IsContinuationIndicator(lines[scanLine],
+                            lineStarts[scanLine], text, isCode))
+                        {
+                            baseDepth++;
+                            break;
+                        }
+
+                        // If this line has at least one code-region
+                        // character, it terminates the backward scan.
+                        // A line with code that is NOT a continuation
+                        // indicator is a statement boundary.
+
+                        if (HasCodeChar(lines[scanLine],
+                            lineStarts[scanLine], text, isCode))
+                        {
+                            break;
+                        }
+
+                        // This line has no code-region characters
+                        // (e.g. pure string continuation). Continue
+                        // scanning backward.
+                        scanLine--;
+                    }
                 }
 
                 if (caseBody[i])
                 {
                     baseDepth++;
+                }
+
+                // Consecutive namespace declarations are kept at the same
+                // indentation level as their enclosing block's content:
+                // reduce namespace keyword depth by 1.
+
+                if (TextUtils.StartsWithKeyword(content, "namespace"))
+                {
+                    baseDepth = baseDepth > 0 ? baseDepth - 1 : 0;
+                }
+
+                if (content == "public:" || content == "private:" || content ==
+                    "protected:")
+                {
+                    baseDepth = baseDepth > 0 ? baseDepth - 1 : 0;
                 }
 
                 result.Add(new string(' ', baseDepth * TextUtils.IndentSize) +
@@ -164,6 +268,36 @@ namespace CppFormatter
 
             string last2 = line.Substring(lastCodeIdx - 1, 2);
             return last2 == "&&" || last2 == "||";
+        }
+
+        /// <summary>
+        /// Determines whether a line contains at least one code-region
+        /// character (excluding whitespace). Useful for checking whether a
+        /// line is a pure string/comment continuation that transparently
+        /// passes the continuation chain through to the preceding line.
+        /// </summary>
+        private static bool HasCodeChar(string line, int lineStart,
+            string text, bool[] isCode)
+        {
+            for (int i = 0; i < line.Length; i++)
+            {
+                int textPos = lineStart + i;
+
+                if (textPos < 0 || textPos >= isCode.Length ||
+                    !isCode[textPos])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if (c != ' ' && c != '\t')
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -342,8 +476,15 @@ namespace CppFormatter
             {
                 for (int i = 0; i < lines.Count; i++)
                 {
+                    // Use <= for range.Value so that a line starting exactly
+                    // at the closing brace position (e.g. "};" on its own
+                    // line) is still treated as inside the enum block.
+                    // Without this, the backward continuation indicator scan
+                    // would see the preceding enum member's trailing comma
+                    // as a continuation and incorrectly indent "};" by one
+                    // extra level on every formatting pass.
                     if (lineStarts[i] > range.Key &&
-                        lineStarts[i] < range.Value)
+                        lineStarts[i] <= range.Value)
                     {
                         inEnumBlock[i] = true;
                     }

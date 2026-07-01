@@ -101,6 +101,15 @@ namespace CppFormatter
                         continue;
                     }
 
+                    // Skip files under the "build" directory
+
+                    if (file.IndexOf(Path.DirectorySeparatorChar + "build" +
+                        Path.DirectorySeparatorChar,
+                        StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        continue;
+                    }
+
                     if (seen.Add(file))
                     {
                         files.Add(file);

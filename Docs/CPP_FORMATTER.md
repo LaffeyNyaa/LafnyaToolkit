@@ -53,6 +53,7 @@
 - **Exceptions**:
   - Do not add an empty line above if the block is at the very beginning of its parent block.
   - Do not add an empty line below if the block is at the very end of its parent block.
+- **Preprocessor Conditionals**: Preprocessor conditional blocks (`#if`/`#ifdef`/`#ifndef` ... `#endif`) are treated as code blocks and follow the same blank-line rules as other blocks.
 - *Incorrect*:
   ```cpp
   int i = 0;
@@ -82,7 +83,10 @@
 - **Exceptions**:
   - Do not add an empty line above if located at the beginning of the parent block.
   - Do not add an empty line below if located at the end of the parent block.
-- **Namespace Specifics**: No empty lines are allowed immediately after the opening brace `{` or immediately before the closing brace `}` of a namespace.
+- **Namespace Specifics**:
+  - No empty lines are allowed immediately after the opening brace `{` or immediately before the closing brace `}` of a namespace.
+  - Consecutive namespace declarations must not have empty lines between them.
+  - Consecutive namespace declarations share the same indentation level as the enclosing block's content (i.e., the inner namespace keyword is not additionally indented relative to the outer namespace's body). The `{` of a namespace declaration does not increase the nesting depth for subsequent content.
 
 ### Empty Lines: Documentation Comments
 
@@ -158,6 +162,8 @@
   };
   ```
 
+- **Idempotency**: The closing `};` of an enum declaration is treated as part of the enum body for indentation purposes. This prevents the backward continuation-indicator scan from misinterpreting the preceding enum member's trailing comma as a continuation and incorrectly indenting `};` by one extra level on subsequent formatting passes.
+
 ### `#include` Directives Ordering
 
 - **Categories**: Include directives are divided into four categories: System Libraries, Third-party Libraries, Other Project Modules, and the Current Module.
@@ -167,6 +173,8 @@
   3. Other Project Modules
   4. Current Module
 - **Spacing**: Separate each category with exactly one empty line.
+- **Pragma Once Handling**: A blank line is automatically inserted between a `#pragma once` directive (or any other non-include preprocessor directive) and the first `#include` directive, ensuring visual separation between the include guard and the include block.
+- **Include-less Files**: Files without any `#include` directives are left completely untouched by the include sorting pass.
 
 ---
 
@@ -182,7 +190,9 @@ The four-group classification uses the following heuristic:
 
 4. **Current Module**: `#include "header"` that does not qualify as Other Project (i.e., a simple relative path). Examples: `"foo.h"`, `"subdir/bar.hpp"`.
 
-`#include` directives nested inside `#if`/`#ifdef`/`#ifndef` blocks are left untouched; only the top-level contiguous block is reordered.
+`#include` directives nested inside `#if`/`#ifdef`/`#ifndef` blocks are left untouched. However, ALL top-level `#include` directives across the entire file are collected, categorized, and sorted as a single unified block. The `#if`/`#ifdef`/`#ifndef` wrapper (including the `#define` and `#endif` lines) is preserved as part of the wrapped include's unit.
+
+In addition to sorting includes, any non-include preprocessor directives (such as `#ifndef`, `#define`, `#endif`, `#pragma`, `#error`) that appear between includes are extracted and placed at the very top of the file, before the first `#include` line.
 
 ---
 
@@ -246,3 +256,128 @@ This prevents incorrect over-indentation of statements following access specifie
 
 - **Read**: The formatter auto-detects the file encoding via byte order marks (BOM). Supported encodings: UTF-8 (with/without BOM), UTF-16 LE (with BOM), UTF-16 BE (with BOM), UTF-32 LE (with BOM), UTF-32 BE (with BOM). Files without a BOM are read as UTF-8.
 - **Write**: After formatting, the file is always written as UTF-8 without BOM, regardless of the original encoding. If the formatted content is identical to the original (and the original was already UTF-8 without BOM), the file is skipped and not rewritten.
+
+---
+
+### `#endif` Comment Appending
+
+Each `#endif` directive is automatically annotated with a `// <macro_name>` comment that references the matching opening directive's macro name. This is done via stack-based matching to correctly handle nested conditionals.
+
+- **`#ifdef`/`#ifndef`**: The macro name following the directive is used.
+- **`#if`**: The first identifier in the condition is used (skipping `!`, `(`, and `defined(...)` wrappers).
+- **`#else`/`#elif`**: These do not affect the stack.
+- **Nested conditionals**: Each `#endif` references its own matching opening directive's macro.
+
+*Example*:
+```cpp
+#ifndef CPPHTTPLIB_MBEDTLS_SUPPORT
+#define CPPHTTPLIB_MBEDTLS_SUPPORT 1
+#endif  // CPPHTTPLIB_MBEDTLS_SUPPORT
+```
+
+---
+
+### Empty Lines: Blank Line Before `return` at End of Block
+
+When a `return` statement is the last non-blank statement before the closing `}` of a block, and the block contains at least one other statement before the `return`, a blank line is inserted above the `return`.
+
+- **Multi-statement block**: A blank line is added before the `return`.
+  ```cpp
+  if (!result) {
+      spdlog::warn("request failed");
+
+      return response;
+  }
+  ```
+- **Single-statement block**: No blank line is added (the `return` is the only statement).
+  ```cpp
+  if (x == 0) {
+      return nullptr;
+  }
+  ```
+
+---
+### Constructor Initializer List Formatting
+
+Constructor initializer lists are formatted with the following rules:
+
+- **Colon placement**: The colon `:` must immediately follow the closing `)` of the constructor signature on the next line, with no blank line between them.
+- **Colon indentation**: The `:` starts at the base indentation of the constructor (not continuation indent), so it aligns with the constructor's opening level.
+- **Continuation indentation**: Continuation lines in the initializer list are indented one additional level from the colon.
+- **Blank line exclusion**: The multi-line statement end rule does not insert a blank line before a line starting with `:` (constructor initializer list continuation).
+
+*Example*:
+```cpp
+HttpServer::HttpServer(const Config& config,
+    Repository& repo,
+    QqVerifier& verifier,
+    CodeGenerator& code_gen)
+: impl_(std::make_unique<Impl>(config, repo, verifier, code_gen)) {
+    impl_->configure();
+}
+```
+
+---
+
+### Access Specifier Indentation
+
+Access specifiers (`public:`, `protected:`, `private:`) inside class and struct definitions are indented at the same level as the enclosing class/struct keyword itself (not indented by an extra level).
+
+*Example*:
+```cpp
+class CodeGenerator {
+public:
+    std::string generate() const;
+};
+```
+
+### Reference: Formatted Example
+
+After formatting, `http_client.cpp` produces the following output which demonstrates all the rules above:
+
+```cpp
+#ifndef CPPHTTPLIB_MBEDTLS_SUPPORT
+#define CPPHTTPLIB_MBEDTLS_SUPPORT 1
+#endif  // CPPHTTPLIB_MBEDTLS_SUPPORT
+
+#include <chrono>
+#include <cstdio>
+#include <optional>
+#include <string>
+
+#include <httplib.h>
+#include <spdlog/spdlog.h>
+
+#include "lafnya/http_client.hpp"
+
+namespace lafnya {
+namespace {
+struct UrlParts {
+    std::string host;
+    std::string path;
+};
+```
+
+The full formatted output should be verified with the latest formatter version.
+
+---
+
+### Skip Build Directory
+
+The formatter automatically skips any C++ files located under a `build` directory (case-insensitive) during file discovery. This prevents formatting auto-generated files produced by CMake or other build systems.
+
+- **Detection**: The formatter checks whether the file's absolute path contains a path segment named `build` (e.g., `\build\` on Windows, `/build/` on Linux/macOS).
+- **Case-insensitive**: Both `build`, `Build`, and `BUILD` directory names are recognized.
+- **Scope**: All subdirectories named `build` at any depth are skipped.
+
+*Example: Given a project tree with:*
+```
+project/
+  src/
+    main.cpp
+  build/
+    CMakeCache.txt
+    src/
+      main.cpp   (generated copy)
+```
+The formatter will format `project/src/main.cpp` but skip `project/build/src/main.cpp`.

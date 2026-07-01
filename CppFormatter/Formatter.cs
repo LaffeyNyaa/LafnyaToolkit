@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace CppFormatter
 {
     /// <summary>
@@ -25,9 +23,11 @@ namespace CppFormatter
             text = text.Replace("\r\n", "\n").Replace("\r", "\n");
             text = TextUtils.MoveOpenBraceToPreviousLine(text);
             text = TextUtils.MergeDoWhileCloseBrace(text);
+            text = EndifCommentProcessor.AppendEndifComments(text);
             tokens = Tokenizer.Tokenize(text);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             var lines = TextUtils.SplitLines(text);
+
             lines = IndentationProcessor.Reindent(lines, text, tokens, isCode);
 
             lines = IndentationProcessor.TrimNamespaceBodyBlankLines(lines,

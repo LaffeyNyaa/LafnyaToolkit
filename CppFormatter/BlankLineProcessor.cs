@@ -79,71 +79,249 @@ namespace CppFormatter
                 isFirst = false;
             }
 
+            // Compute continuation flags for each non-blank entry.
+            // A line is a continuation of the previous statement when its leading
+            // whitespace is at least IndentSize deeper than the preceding line.
+            // Once a continuation is detected, subsequent lines at the same indent
+            // level also propagate as continuations.
+            bool[] isContinuation = new bool[nonBlank.Count];
+
+            for (int j = 1; j < nonBlank.Count; j++)
+            {
+                string curTrimmed = nonBlank[j].Line.Trim();
+                int curIndent = nonBlank[j].Line.Length - curTrimmed.Length;
+
+                int prevIndent = nonBlank[j - 1].Line.Length -
+                    nonBlank[j - 1].Line.TrimStart().Length;
+
+                string prevTrimmed = nonBlank[j - 1].Line.Trim();
+                // A line is a continuation only when the previous line is not
+                // a complete statement (doesn't end with ";", ":", "{" or "}").
+                // Access specifiers (public:, protected:, private:) and label
+                // lines ending with ':' are complete statements that should not
+                // trigger continuation for the following line.
+                // This prevents false positives like the first line of a
+                // nested block being misclassified as a continuation.
+
+                if (curIndent >= prevIndent + TextUtils.IndentSize &&
+                    !prevTrimmed.EndsWith(";") &&
+                    !prevTrimmed.EndsWith(":") &&
+                    !prevTrimmed.EndsWith("{") &&
+                    !prevTrimmed.EndsWith("}"))
+                {
+                    isContinuation[j] = true;
+                }
+                else if (isContinuation[j - 1] && curIndent == prevIndent)
+                {
+                    // Propagate continuation flag to lines at the same continuation indent.
+                    // Skip this propagation for lines ending with '{' or lines that are
+                    // block-start/block-end to avoid misclassifying aligned blocks.
+
+                    if (!curTrimmed.EndsWith("{") &&
+                        !curTrimmed.EndsWith(";") &&
+                        !TextUtils.IsBlockStartLine(curTrimmed) &&
+                        !TextUtils.IsBlockEndLine(curTrimmed))
+                    {
+                        isContinuation[j] = true;
+                    }
+                }
+            }
+
             var result = new List<string>(nonBlank.Count);
 
             for (int i = 0; i < nonBlank.Count; i++)
             {
                 string line = nonBlank[i].Line;
                 string trimmed = line.Trim();
-                bool isBlockStart = TextUtils.IsBlockStartLine(trimmed);
+
+                bool isBlockStart = TextUtils.IsBlockStartLine(trimmed) ||
+                    trimmed.StartsWith("#ifdef") ||
+                    trimmed.StartsWith("#ifndef") ||
+                    trimmed.StartsWith("#if");
+
                 bool wantBlankAbove = false;
 
                 if (result.Count > 0)
                 {
                     string prevTrimmed = result[result.Count - 1].Trim();
+                    // [Improvement 4] No blank line between consecutive namespaces (highest priority)
+                    bool curIsNamespace = TextUtils.StartsWithKeyword(trimmed,
+                        "namespace");
 
-                    if (isBlockStart && prevTrimmed.Length > 0 && prevTrimmed !=
-                        "{" && !TextUtils.EndsWithOpenBrace(prevTrimmed))
+                    bool prevIsNamespace =
+                        TextUtils.StartsWithKeyword(prevTrimmed, "namespace");
+
+                    bool consecutiveNamespaces = curIsNamespace &&
+                        prevIsNamespace;
+
+                    if (consecutiveNamespaces)
                     {
-                        wantBlankAbove = true;
+                        wantBlankAbove = false;
                     }
-
-                    if (!wantBlankAbove &&
-                        TextUtils.IsBlockEndLine(prevTrimmed) &&
-                        trimmed.Length > 0 && trimmed != "}" &&
-                        !trimmed.StartsWith("}"))
+                    else
                     {
-                        wantBlankAbove = true;
-                    }
+                        // [Improvement 2] block-start: #if/#ifdef/#ifndef handled uniformly via isBlockStart
 
-                    if (!wantBlankAbove &&
-                        TextUtils.IsIncludeDirective(trimmed) &&
-                        TextUtils.IsIncludeDirective(prevTrimmed) &&
-                        nonBlank[i].HadBlankAbove)
-                    {
-                        wantBlankAbove = true;
-                    }
-
-                    if (!wantBlankAbove && trimmed.StartsWith("///"))
-                    {
-                        bool prevIsDocComment = prevTrimmed.StartsWith("///");
-
-                        bool prevIsRegularComment =
-                            prevTrimmed.StartsWith("//") ||
-                            prevTrimmed.StartsWith("/*") ||
-                            prevTrimmed.StartsWith("*");
-
-                        bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
-                            TextUtils.EndsWithOpenBrace(prevTrimmed);
-
-                        if (prevTrimmed.Length > 0 && !prevIsDocComment &&
-                            !prevIsRegularComment && !prevIsBlockOpenBrace)
+                        if (isBlockStart && prevTrimmed.Length > 0 &&
+                            prevTrimmed !=
+                            "{" && !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
+                            prevTrimmed != "*/")
                         {
                             wantBlankAbove = true;
                         }
-                    }
 
-                    // Preserve author-inserted blank lines between adjacent
-                    // single-line statements. Only PRESERVES an existing blank
-                    // (HadBlankAbove); never adds one.
+                        // [Improvement 2] block-end: add #endif detection
 
-                    if (!wantBlankAbove && nonBlank[i].HadBlankAbove &&
-                        IsPlainSingleLineStatement(trimmed,
-                        nonBlank[i].IsProtected) &&
-                        IsPlainSingleLineStatement(prevTrimmed,
-                        nonBlank[i - 1].IsProtected))
-                    {
-                        wantBlankAbove = true;
+                        if (!wantBlankAbove &&
+                            (TextUtils.IsBlockEndLine(prevTrimmed) ||
+                            prevTrimmed.StartsWith("#endif")) &&
+                            trimmed.Length > 0 && trimmed != "}" &&
+                            !trimmed.StartsWith("}"))
+                        {
+                            wantBlankAbove = true;
+                        }
+
+                        // Function/method definition: line ends with '{' but
+                        // isn't a keyword-start or '}'-start line.
+                        // Only applies when the current line is NOT a
+                        // continuation of a previous statement.
+
+                        if (!wantBlankAbove &&
+                            TextUtils.EndsWithOpenBrace(trimmed) &&
+                            !isBlockStart &&
+                            !trimmed.StartsWith("}") &&
+                            !trimmed.StartsWith(":") &&
+                            i > 0 && !isContinuation[i] &&
+                            prevTrimmed.Length > 0 &&
+                            prevTrimmed != "{" &&
+                            !TextUtils.EndsWithOpenBrace(prevTrimmed))
+                        {
+                            wantBlankAbove = true;
+                        }
+
+                        if (!wantBlankAbove &&
+                            TextUtils.IsIncludeDirective(trimmed) &&
+                            TextUtils.IsIncludeDirective(prevTrimmed) &&
+                            nonBlank[i].HadBlankAbove)
+                        {
+                            wantBlankAbove = true;
+                        }
+
+                        // Ensure blank line between a non-include preprocessor
+                        // directive (e.g. #pragma once) and the first #include.
+                        if (!wantBlankAbove &&
+                            TextUtils.IsIncludeDirective(trimmed) &&
+                            prevTrimmed.Length > 0 &&
+                            prevTrimmed[0] == '#' &&
+                            !TextUtils.IsIncludeDirective(prevTrimmed))
+                        {
+                            wantBlankAbove = true;
+                        }
+
+                        if (!wantBlankAbove && trimmed.StartsWith("///"))
+                        {
+                            bool prevIsDocComment =
+                                prevTrimmed.StartsWith("///");
+
+                            bool prevIsRegularComment =
+                                prevTrimmed.StartsWith("//") ||
+                                prevTrimmed.StartsWith("/*") ||
+                                prevTrimmed.StartsWith("*");
+
+                            bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
+                                TextUtils.EndsWithOpenBrace(prevTrimmed);
+
+                            if (prevTrimmed.Length > 0 && !prevIsDocComment &&
+                                !prevIsRegularComment && !prevIsBlockOpenBrace)
+                            {
+                                wantBlankAbove = true;
+                            }
+                        }
+
+                        // Preserve author-inserted blank lines between adjacent
+                        // single-line statements. Only PRESERVES an existing blank
+                        // (HadBlankAbove); never adds one.
+
+                        if (!wantBlankAbove && nonBlank[i].HadBlankAbove &&
+                            IsPlainSingleLineStatement(trimmed,
+                            nonBlank[i].IsProtected) &&
+                            IsPlainSingleLineStatement(prevTrimmed,
+                            nonBlank[i - 1].IsProtected))
+                        {
+                            wantBlankAbove = true;
+                        }
+
+                        // [Improvement 5] Blank line above return at block end when
+                        // the previous statement is a multi-line statement
+                        // (continuation line indented differently from the
+                        // return keyword itself). Single-line preceding
+                        // statements at the same indentation as return do
+                        // NOT get a blank line.
+
+                        if (!wantBlankAbove &&
+                            trimmed.StartsWith("return") &&
+                            i + 1 < nonBlank.Count &&
+                            nonBlank[i + 1].Line.Trim() == "}" &&
+                            result.Count > 0)
+                        {
+                            string lastLine = result[result.Count - 1];
+                            string lastTrimmed = lastLine.Trim();
+
+                            if (lastTrimmed.Length > 0 &&
+                                !TextUtils.EndsWithOpenBrace(lastTrimmed))
+                            {
+                                int lastIndent = lastLine.Length -
+                                    lastLine.TrimStart().Length;
+
+                                int returnIndent = nonBlank[i].Line.Length -
+                                    trimmed.Length;
+
+                                if (lastIndent != returnIndent)
+                                {
+                                    wantBlankAbove = true;
+                                }
+                            }
+                        }
+
+                        // [Improvement 6] Multi-line statement start: blank line above the first
+                        // line of a multi-line statement (line doesn't end with ";", and the next
+                        // non-blank line is a continuation).
+
+                        if (!wantBlankAbove &&
+                            i + 1 < nonBlank.Count &&
+                            !isContinuation[i] &&
+                            isContinuation[i + 1] &&
+                            !trimmed.EndsWith("{") &&
+                            !trimmed.EndsWith("}") &&
+                            !trimmed.StartsWith(":") &&
+                            !TextUtils.IsBlockStartLine(trimmed) &&
+                            !TextUtils.IsBlockEndLine(trimmed) &&
+                            !trimmed.StartsWith("#") &&
+                            !IsCommentLine(trimmed) &&
+                            !nonBlank[i].IsProtected &&
+                            prevTrimmed.Length > 0 &&
+                            prevTrimmed != "{" &&
+                            !TextUtils.EndsWithOpenBrace(prevTrimmed))
+                        {
+                            wantBlankAbove = true;
+                        }
+
+                        // [Improvement 6] Multi-line statement end: blank line above a new statement
+                        // that follows a multi-line statement (the previous non-blank line was a
+                        // continuation, but the current line is not).
+
+                        if (!wantBlankAbove &&
+                            i > 0 &&
+                            !isContinuation[i] &&
+                            isContinuation[i - 1] &&
+                            prevTrimmed.Length > 0 &&
+                            prevTrimmed != "{" &&
+                            !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
+                            !TextUtils.IsBlockEndLine(trimmed) &&
+                            !trimmed.StartsWith(":"))
+                        {
+                            wantBlankAbove = true;
+                        }
                     }
                 }
 

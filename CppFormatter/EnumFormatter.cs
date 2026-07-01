@@ -96,8 +96,21 @@ namespace CppFormatter
                     sb.Append('\n');
                 }
 
+                // Include the closing brace in the replacement so that
+                // IndentationProcessor can re-indent the }; on the same pass,
+                // making the formatter idempotent.
+                sb.Append('}');
+
+                int closeEnd = braceEnd;
+
+                if (closeEnd + 1 < text.Length && text[closeEnd + 1] == ';')
+                {
+                    closeEnd++;
+                    sb.Append(';');
+                }
+
                 replacements.Add(new TextUtils.Replacement(braceStart + 1,
-                    braceEnd, sb.ToString()));
+                    closeEnd + 1, sb.ToString()));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);
