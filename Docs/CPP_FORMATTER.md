@@ -356,6 +356,96 @@ public:
 };
 ```
 
+### Empty Lines: Access Specifiers
+
+- **Blank line before**: The formatter inserts exactly one blank line above an access specifier (`public:`, `protected:`, `private:`) when the preceding non-blank line is a regular code statement (not a block-opening brace and not another access specifier). This visually separates different access sections within a class/struct.
+- **No blank line after**: The formatter does not insert a blank line between an access specifier and the first member declaration that follows it. This applies regardless of whether the member is a single-line declaration, a multi-line declaration, a function definition, or a documentation comment block preceding the declaration.
+- **Rationale**:
+  - The blank line before an access specifier separates it from the previous access section's last member, making class layouts more readable.
+  - The no-blank-after rule treats the access specifier as an extension of the class/struct block start — the first member in each access section is conceptually at the beginning of its parent context and should not be separated from the access specifier by a blank line.
+
+*Incorrect (missing blank before access specifier)*:
+```cpp
+class QqUser {
+public:
+    int id;
+private:
+    std::string name;
+};
+```
+
+*Correct (blank before access specifier)*:
+```cpp
+class QqUser {
+public:
+    int id;
+
+private:
+    std::string name;
+};
+```
+
+*Incorrect (blank after access specifier)*:
+```cpp
+class HttpServer {
+public:
+
+    HttpServer(const Config& config,
+        Repository& repo);
+};
+```
+
+*Correct (no blank after access specifier)*:
+```cpp
+class HttpServer {
+public:
+    HttpServer(const Config& config,
+        Repository& repo);
+};
+```
+
+*Incorrect (doc comment case — blank after access specifier)*:
+```cpp
+class CodeGenerator {
+public:
+
+    /**
+     * @brief Generate a single invitation code.
+     */
+    std::string generate() const;
+};
+```
+
+*Correct (doc comment case — no blank after access specifier)*:
+```cpp
+class CodeGenerator {
+public:
+    /**
+     * @brief Generate a single invitation code.
+     */
+    std::string generate() const;
+};
+```
+
+*Incorrect (consecutive access specifiers with blank)*:
+```cpp
+class QqUser {
+public:
+
+protected:
+    int value;
+};
+```
+
+*Correct (consecutive access specifiers without blank)*:
+```cpp
+class QqUser {
+public:
+protected:
+    int value;
+};
+```
+
 ### Reference: Formatted Example
 
 After formatting, `http_client.cpp` produces the following output which demonstrates all the rules above:

@@ -317,6 +317,17 @@ namespace CppFormatter
         }
 
         /// <summary>
+        /// Determines whether a trimmed line is an access specifier:
+        /// public:, protected:, or private:.
+        /// </summary>
+        internal static bool IsAccessSpecifier(string trimmed)
+        {
+            return trimmed == "public:" ||
+                trimmed == "protected:" ||
+                trimmed == "private:";
+        }
+
+        /// <summary>
         /// Determines whether a trimmed line is a comment.
         /// </summary>
         internal static bool IsCommentLine(string trimmed)

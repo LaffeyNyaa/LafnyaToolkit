@@ -172,7 +172,8 @@ namespace CppFormatter
                             i > 0 && !isContinuation[i] &&
                             prevTrimmed.Length > 0 &&
                             prevTrimmed != "{" &&
-                            !TextUtils.EndsWithOpenBrace(prevTrimmed))
+                            !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
+                            !TextUtils.IsAccessSpecifier(prevTrimmed))
                         {
                             wantBlankAbove = true;
                         }
@@ -213,11 +214,14 @@ namespace CppFormatter
                                 prevTrimmed.StartsWith("//") ||
                                 prevTrimmed.StartsWith("/*");
 
-                            bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
-                                TextUtils.EndsWithOpenBrace(prevTrimmed);
+                            bool prevIsBlockOpenBraceOrAccessSpec =
+                                prevTrimmed == "{" ||
+                                TextUtils.EndsWithOpenBrace(prevTrimmed) ||
+                                TextUtils.IsAccessSpecifier(prevTrimmed);
 
                             if (prevTrimmed.Length > 0 && !prevIsDocComment &&
-                                !prevIsRegularComment && !prevIsBlockOpenBrace)
+                                !prevIsRegularComment &&
+                                !prevIsBlockOpenBraceOrAccessSpec)
                             {
                                 wantBlankAbove = true;
                             }
@@ -286,7 +290,9 @@ namespace CppFormatter
                             !nonBlank[i].IsProtected &&
                             prevTrimmed.Length > 0 &&
                             prevTrimmed != "{" &&
-                            !TextUtils.EndsWithOpenBrace(prevTrimmed))
+                            !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
+                            !TextUtils.IsAccessSpecifier(prevTrimmed) &&
+                            !prevWasDocComment)
                         {
                             wantBlankAbove = true;
                         }
@@ -347,16 +353,27 @@ namespace CppFormatter
                             !wantBlankBelow &&
                             trimmed.EndsWith(";") &&
                             prevWasDocComment &&
+                            !nonBlank[i].IsProtected &&
                             i + 1 < nonBlank.Count &&
                             !TextUtils.IsBlockEndLine(nonBlank[i +
-                            1].Line.Trim()) &&
-                            !nonBlank[i +
-                            1].Line.Trim().StartsWith("private:") &&
-                            !nonBlank[i +
-                            1].Line.Trim().StartsWith("protected:") &&
-                            !nonBlank[i + 1].Line.Trim().StartsWith("public:"))
+                            1].Line.Trim()))
                         {
                             wantBlankBelow = true;
+                        }
+
+                        // [New Rule] Blank line before access specifier.
+                        // Insert a blank line above public:/protected:/private:
+                        // when the previous non-blank line is NOT a block-opening
+                        // brace and NOT another access specifier.
+
+                        if (!wantBlankAbove &&
+                            !wantBlankBelow &&
+                            TextUtils.IsAccessSpecifier(trimmed) &&
+                            prevTrimmed.Length > 0 &&
+                            !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
+                            !TextUtils.IsAccessSpecifier(prevTrimmed))
+                        {
+                            wantBlankAbove = true;
                         }
                     }
                 }
