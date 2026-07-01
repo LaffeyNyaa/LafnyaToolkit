@@ -136,6 +136,31 @@
   ```
   The author-inserted blank between `lineStarts` and `enumRanges` is preserved. No blank is inserted between `enumRanges` / `depth` / `enumDepth` / `enumStart` / `pendingEnum`, because no blank existed there in the input.
 
+### Doc-comment + Single-line Statement as Multi-line Unit (Header Files)
+
+- **General Rule**: In header files, a single-line statement (a line ending with `;`) that is immediately preceded by a documentation comment block (`/** ... */` or `///`) is treated as a multi-line statement unit. The doc comment is considered part of the statement for blank-line purposes.
+- **Blank above**: A blank line is inserted above the doc comment when the preceding non-blank line is a regular code statement (not a doc comment, not a regular comment, and not a block-opening brace).
+- **Blank below**: A blank line is inserted below the single-line statement when the following non-blank line is a new statement, unless the next line is a block-end (`}`, `};`) or an access specifier (`public:`, `protected:`, `private:`).
+- **Rationale**: This prevents doc-commented declarations in class/struct bodies from being visually merged with adjacent declarations, ensuring consistent vertical spacing similar to multi-line constructs.
+- *Incorrect*:
+  ```cpp
+  int getValue() const;
+  /// @brief Get the name.
+  const std::string& getName() const;
+  /// @brief Get the value.
+  int getValue() const;
+  ```
+- *Correct*:
+  ```cpp
+  int getValue() const;
+
+  /// @brief Get the name.
+  const std::string& getName() const;
+
+  /// @brief Get the value.
+  int getValue() const;
+  ```
+
 ### End of File (EOF) Newline
 
 - **Newline Rule**: Every file must end with exactly **one newline character**.

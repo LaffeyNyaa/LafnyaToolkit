@@ -27,9 +27,16 @@ namespace CppFormatter
             List<Token> tokens, bool[] isCode)
         {
             int[] depths = new int[lines.Count];
-            bool[] preserveIndent = PreserveIndentComputer.Compute(lines, tokens);
-            bool[] inEnumBlock = EnumBlockDetector.ComputeInEnumBlock(lines, text, isCode);
-            bool[] caseBody = CaseScopeDetector.ComputeCaseScope(lines, text, isCode);
+
+            bool[] preserveIndent = PreserveIndentComputer.Compute(lines,
+                tokens);
+
+            bool[] inEnumBlock = EnumBlockDetector.ComputeInEnumBlock(lines,
+                text, isCode);
+
+            bool[] caseBody = CaseScopeDetector.ComputeCaseScope(lines, text,
+                isCode);
+
             int depth = 0;
             int lineIdx = 0;
             bool pendingNamespace = false;

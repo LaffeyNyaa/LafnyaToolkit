@@ -6,10 +6,16 @@ namespace CppFormatter
     internal readonly struct Token
     {
         /// <summary>The token kind.</summary>
-        public TokenKind Kind { get; }
+        public TokenKind Kind
+        {
+            get;
+        }
 
         /// <summary>The original text of the token (not normalized in any way).</summary>
-        public string Text { get; }
+        public string Text
+        {
+            get;
+        }
 
         /// <summary>
         /// Creates a new token with the given kind and text.

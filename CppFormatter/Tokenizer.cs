@@ -424,8 +424,8 @@ namespace CppFormatter
         private static bool IsLineStart(string source, int index)
         {
             int lastNewline = index > 0
-                ? source.LastIndexOf('\n', index - 1)
-                : -1;
+            ? source.LastIndexOf('\n', index - 1)
+            : -1;
 
             for (int j = lastNewline + 1; j < index; j++)
             {

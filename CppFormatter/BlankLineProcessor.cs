@@ -104,6 +104,8 @@ namespace CppFormatter
             }
 
             var result = new List<string>(nonBlank.Count);
+            bool prevWasDocComment = false;
+            bool wantBlankBelow = false;
 
             for (int i = 0; i < nonBlank.Count; i++)
             {
@@ -195,15 +197,21 @@ namespace CppFormatter
                             wantBlankAbove = true;
                         }
 
-                        if (!wantBlankAbove && trimmed.StartsWith("///"))
+                        // [Task 2] Doc comment blank rule: extend to handle /** comments.
+                        // Only /** (doc comment start) and /// trigger this rule;
+                        // * and */ continuation lines are handled by prevIsDocComment check.
+
+                        if (!wantBlankAbove && (trimmed.StartsWith("///") ||
+                            trimmed.StartsWith("/**")))
                         {
                             bool prevIsDocComment =
-                                prevTrimmed.StartsWith("///");
+                                prevTrimmed.StartsWith("///") ||
+                                prevTrimmed.StartsWith("/**") ||
+                                prevTrimmed.StartsWith("*");
 
                             bool prevIsRegularComment =
                                 prevTrimmed.StartsWith("//") ||
-                                prevTrimmed.StartsWith("/*") ||
-                                prevTrimmed.StartsWith("*");
+                                prevTrimmed.StartsWith("/*");
 
                             bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
                                 TextUtils.EndsWithOpenBrace(prevTrimmed);
@@ -283,9 +291,14 @@ namespace CppFormatter
                             wantBlankAbove = true;
                         }
 
-                        // [Improvement 6] Multi-line statement end: blank line above a new statement
-                        // that follows a multi-line statement (the previous non-blank line was a
-                        // continuation, but the current line is not).
+                        // [Improvement 6, Task 1] Multi-line statement end: blank line above a new
+                        // statement that follows a multi-line statement (the previous non-blank line
+                        // was a continuation, but the current line is not).
+                        // When the current line is at continuation indent (same or deeper than the
+                        // previous continuation line) and ends with ';', it IS the last segment of
+                        // the multi-line statement itself — defer the blank to after this line.
+                        // When the current line is at base indent (shallower than the previous
+                        // continuation), it is a new statement and gets the blank above.
 
                         if (!wantBlankAbove &&
                             i > 0 &&
@@ -297,7 +310,53 @@ namespace CppFormatter
                             !TextUtils.IsBlockEndLine(trimmed) &&
                             !trimmed.StartsWith(":"))
                         {
-                            wantBlankAbove = true;
+                            if (trimmed.EndsWith(";"))
+                            {
+                                int curIndent = nonBlank[i].Line.Length -
+                                    trimmed.Length;
+
+                                int prevContinuationIndent =
+                                    nonBlank[i - 1].Line.Length -
+                                    nonBlank[i - 1].Line.TrimStart().Length;
+
+                                if (curIndent >= prevContinuationIndent)
+                                {
+                                    // Last segment of the multi-line statement —
+                                    // insert blank below this line.
+                                    wantBlankBelow = true;
+                                }
+                                else
+                                {
+                                    // New statement at base indent —
+                                    // insert blank above this line.
+                                    wantBlankAbove = true;
+                                }
+                            }
+                            else
+                            {
+                                wantBlankAbove = true;
+                            }
+                        }
+
+                        // [Task 3] Blank line below a single-line statement that was preceded by a
+                        // doc comment (treated as a multi-line statement unit in header files).
+                        // Do not add a blank when the next non-blank line is a block end or an
+                        // access specifier.
+
+                        if (!wantBlankAbove &&
+                            !wantBlankBelow &&
+                            trimmed.EndsWith(";") &&
+                            prevWasDocComment &&
+                            i + 1 < nonBlank.Count &&
+                            !TextUtils.IsBlockEndLine(nonBlank[i +
+                            1].Line.Trim()) &&
+                            !nonBlank[i +
+                            1].Line.Trim().StartsWith("private:") &&
+                            !nonBlank[i +
+                            1].Line.Trim().StartsWith("protected:") &&
+                            !nonBlank[i + 1].Line.Trim().StartsWith("public:"))
+                        {
+                            wantBlankBelow = true;
                         }
                     }
                 }
@@ -308,9 +367,39 @@ namespace CppFormatter
                 }
 
                 result.Add(line);
+
+                if (wantBlankBelow)
+                {
+                    result.Add(string.Empty);
+                    wantBlankBelow = false;
+                }
+
+                // Track whether the previous non-blank entry is a doc comment line.
+                // This is used by the [Task 3] rule above.
+
+                if (IsDocCommentLine(trimmed))
+                {
+                    prevWasDocComment = true;
+                }
+                else if (trimmed.Length > 0)
+                {
+                    prevWasDocComment = false;
+                }
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line is part of a documentation
+        /// comment block: ///, /** (doc comment start), or * (continuation
+        /// line inside a /** */ block, including the */ closing).
+        /// </summary>
+        private static bool IsDocCommentLine(string trimmed)
+        {
+            return trimmed.StartsWith("///") ||
+                trimmed.StartsWith("/**") ||
+                trimmed.StartsWith("*");
         }
 
         /// <summary>
