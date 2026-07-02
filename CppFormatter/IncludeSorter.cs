@@ -157,8 +157,9 @@ namespace CppFormatter
             }
 
             // Ensure a blank line between a non-include preprocessor directive
-            // (e.g., #pragma once) and the first #include directive. Scan
-            // backward past any blank lines to find the actual content line.
+            // (e.g., #pragma once) or a comment block and the first #include
+            // directive. Scan backward past any blank lines to find the
+            // actual content line.
 
             if (firstInclude > 0 && newBlock.Count > 0)
             {
@@ -174,10 +175,24 @@ namespace CppFormatter
                 {
                     string lastBeforeInclude = lines[scanIdx].Trim();
 
-                    if (!TextUtils.IsIncludeDirective(lastBeforeInclude) &&
+                    bool firstIsInclude =
+                        TextUtils.IsIncludeDirective(newBlock[0]);
+
+                    // Blank between non-include preprocessor directive and
+                    // first include.
+
+                    if (firstIsInclude &&
+                        !TextUtils.IsIncludeDirective(lastBeforeInclude) &&
                         lastBeforeInclude.Length > 0 &&
-                        lastBeforeInclude[0] == '#' &&
-                        TextUtils.IsIncludeDirective(newBlock[0]))
+                        lastBeforeInclude[0] == '#')
+                    {
+                        result.Append('\n');
+                    }
+
+                    // Blank between comment and first include.
+
+                    if (firstIsInclude &&
+                        TextUtils.IsCommentLine(lastBeforeInclude))
                     {
                         result.Append('\n');
                     }

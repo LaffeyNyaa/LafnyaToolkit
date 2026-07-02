@@ -200,6 +200,15 @@ namespace CppFormatter
                             wantBlankAbove = true;
                         }
 
+                        // Ensure blank line between a comment and an #include.
+
+                        if (!wantBlankAbove &&
+                            TextUtils.IsIncludeDirective(trimmed) &&
+                            TextUtils.IsCommentLine(prevTrimmed))
+                        {
+                            wantBlankAbove = true;
+                        }
+
                         // [Task 2] Doc comment blank rule: extend to handle /** comments.
                         // Only /** (doc comment start) and /// trigger this rule;
                         // * and */ continuation lines are handled by prevIsDocComment check.

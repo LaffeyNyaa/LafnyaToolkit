@@ -199,6 +199,7 @@
   4. Current Module
 - **Spacing**: Separate each category with exactly one empty line.
 - **Pragma Once Handling**: A blank line is automatically inserted between a `#pragma once` directive (or any other non-include preprocessor directive) and the first `#include` directive, ensuring visual separation between the include guard and the include block.
+- **Comment Before Include**: A blank line is automatically inserted between a comment block (e.g., a file-header license comment `/* ... */` or a doc comment `///` / `/** ... */`) and the first `#include` directive. This provides visual separation between the comment header at the top of the file and the include block.
 - **Include-less Files**: Files without any `#include` directives are left completely untouched by the include sorting pass.
 
 ---
