@@ -143,7 +143,9 @@ namespace CppFormatter
                         if (isBlockStart && prevTrimmed.Length > 0 &&
                             prevTrimmed !=
                             "{" && !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
-                            prevTrimmed != "*/")
+                            prevTrimmed != "*/" &&
+                            !prevTrimmed.StartsWith("/**") &&
+                            !prevTrimmed.StartsWith("///"))
                         {
                             wantBlankAbove = true;
                         }
