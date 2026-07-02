@@ -15,9 +15,10 @@ namespace CppFormatter
 
         /// <summary>
         /// Splits lines exceeding 80 characters at safe token boundaries;
-        /// continuation lines are indented one extra level. Lines entirely
-        /// inside a multi-line string or comment token are preserved verbatim
-        /// and never split.
+        /// continuation lines are indented one extra level (except after
+        /// semicolons, where base indent is used). Lines entirely inside a
+        /// multi-line string or comment token are preserved verbatim and
+        /// never split.
         /// <paramref name="lineContinuesNext"/> flags whether each line ends
         /// with a continuation indicator; when a line is itself a continuation
         /// of the previous line, its split segments reuse the line's current
@@ -87,7 +88,7 @@ namespace CppFormatter
                     fixedContIndent = null;
                 }
 
-                var split = SplitLongLine(line, fixedContIndent);
+                var split = SplitLongLine(line, fixedContIndent, null);
                 result.AddRange(split);
             }
 
@@ -100,9 +101,14 @@ namespace CppFormatter
         /// fixed continuation indent reused across all continuation segments
         /// so that 3+ segment splits do not cascade; pass null on the first
         /// call to trigger computation from the original line's indent.
+        /// <paramref name="baseIndent"/> is the base indent of the original
+        /// line; pass null on the first call, and it will be computed from
+        /// the leading whitespace. When a break occurs at a semicolon in a
+        /// recursive call, the continuation indent is reset to baseIndent
+        /// so that trailing doc comments (/**<) use the correct indent.
         /// </summary>
         private static List<string> SplitLongLine(string line,
-            string fixedContIndent)
+            string fixedContIndent, string baseIndent)
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -122,16 +128,12 @@ namespace CppFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            // On the first call (fixedContIndent == null), compute the fixed
-            // continuation indent from the original line's indent. This indent
-            // is reused for ALL continuation segments so that 3+ segment
-            // splits do not cascade (parent+4 for every continuation line,
-            // matching Reindent's behaviour).
+            // Compute baseIndent from the current line's leading whitespace
+            // when it is not yet set (first call from ApplyLineLengthLimit).
 
-            if (fixedContIndent == null)
+            if (baseIndent == null)
             {
-                fixedContIndent = indent + new string(' ',
-                    TextUtils.IndentSize);
+                baseIndent = indent;
             }
 
             var tokens = Tokenizer.Tokenize(line);
@@ -143,6 +145,38 @@ namespace CppFormatter
                 return new List<string> { line };
             }
 
+            // On the first call (fixedContIndent == null), compute the fixed
+            // continuation indent from the original line's indent. This indent
+            // is reused for ALL continuation segments so that 3+ segment
+            // splits do not cascade. When the break is at a semicolon, the
+            // content after is a new structural element (e.g. trailing /**<
+            // comment) and should use base indent to match
+            // IndentationProcessor's expectation.
+            //
+            // On recursive calls (fixedContIndent != null), also re-evaluate
+            // the semicolon break condition so that continuation segments
+            // after a semicolon always reset to baseIndent. This ensures
+            // that the /**< trailing doc comment portion always uses the
+            // correct base indent regardless of how many split levels
+            // preceded it.
+
+            if (fixedContIndent == null)
+            {
+                if (IsSemicolonBreak(line, isCode, breakAt))
+                {
+                    fixedContIndent = indent;
+                }
+                else
+                {
+                    fixedContIndent = indent + new string(' ',
+                        TextUtils.IndentSize);
+                }
+            }
+            else if (IsSemicolonBreak(line, isCode, breakAt))
+            {
+                fixedContIndent = baseIndent;
+            }
+
             string first = line.Substring(0, breakAt).TrimEnd();
             string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
 
@@ -152,7 +186,7 @@ namespace CppFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest, fixedContIndent));
+            result.AddRange(SplitLongLine(rest, fixedContIndent, baseIndent));
             return result;
         }
 
@@ -261,6 +295,24 @@ namespace CppFormatter
             }
 
             return firstOutOfRange;
+        }
+
+        /// <summary>
+        /// Determines whether the break point is immediately after a
+        /// semicolon in code context.
+        /// </summary>
+        private static bool IsSemicolonBreak(string line, bool[] isCode,
+            int breakAt)
+        {
+            if (breakAt <= 0 || breakAt > line.Length)
+            {
+                return false;
+            }
+
+            int semiPos = breakAt - 1;
+
+            return semiPos < isCode.Length && isCode[semiPos] &&
+                line[semiPos] == ';';
         }
 
         /// <summary>

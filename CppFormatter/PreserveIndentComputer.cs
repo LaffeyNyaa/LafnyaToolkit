@@ -41,6 +41,20 @@ namespace CppFormatter
                 tokenPos = tokenEnd;
             }
 
+            // Preserve indentation for /**< (trailing doc comment) lines.
+            // These inline doc comments get split to their own line by the
+            // LineLengthProcessor. Their indent must be preserved so that the
+            // IndentationProcessor does not re-indent them on subsequent
+            // formatting passes, which would cause non-idempotent output.
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (lines[i].TrimStart().StartsWith("/**<"))
+                {
+                    preserveIndent[i] = true;
+                }
+            }
+
             return preserveIndent;
         }
     }

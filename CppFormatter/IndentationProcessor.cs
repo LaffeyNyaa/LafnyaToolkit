@@ -143,7 +143,7 @@ namespace CppFormatter
 
                 int baseDepth = depths[i];
 
-                if (i > 0 && !inEnumBlock[i] && !caseBody[i])
+                if (i > 0 && !inEnumBlock[i])
                 {
                     // Scan backward through blank lines AND string-only
                     // continuation lines to find the actual code line that
@@ -156,6 +156,10 @@ namespace CppFormatter
                     // characters, so IsContinuationIndicator cannot detect
                     // the continuation from them alone; we must walk back
                     // to the preceding code-carrying line.
+                    // Case body lines (inside switch case/default blocks)
+                    // also participate in continuation detection so that
+                    // continuation indentation inside case bodies is
+                    // preserved across formatting passes.
                     int scanLine = i - 1;
 
                     while (scanLine >= 0)
