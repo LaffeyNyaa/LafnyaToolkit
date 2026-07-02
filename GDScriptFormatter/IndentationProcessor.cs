@@ -281,7 +281,22 @@ namespace GDScriptFormatter
 
                 if (lastCodeIdx >= 0 && parenBracketDepth == 0)
                 {
-                    if (text[lastCodeIdx] == ':')
+                    // Scan backwards from lastCodeIdx past any trailing
+                    // whitespace in the code region. The code mask marks
+                    // whitespace between code tokens and comments as Code,
+                    // so lastCodeIdx may point to a space rather than the
+                    // actual last meaningful character (e.g. a colon before
+                    // a `#` inline comment).
+                    int actualLast = lastCodeIdx;
+
+                    while (actualLast >= 0 && actualLast < isCode.Length &&
+                        isCode[actualLast] &&
+                        char.IsWhiteSpace(text[actualLast]))
+                    {
+                        actualLast--;
+                    }
+
+                    if (actualLast >= 0 && text[actualLast] == ':')
                     {
                         info[i].ColonTerminated = true;
                     }
@@ -376,6 +391,8 @@ namespace GDScriptFormatter
             var continuationColonPushes = new List<(int height, int origDepth)>
                 ();
 
+            bool previousWasColonOrBrace = false;
+
             for (int i = 0; i < lines.Count; i++)
             {
                 string trimmed = lines[i].Trim();
@@ -402,6 +419,7 @@ namespace GDScriptFormatter
                 if (lineInfo[i].IsCloseBrace)
                 {
                     HandleCloseBrace(i, stack, depths);
+                    previousWasColonOrBrace = false;
                     continue;
                 }
 
@@ -417,8 +435,13 @@ namespace GDScriptFormatter
 
                 if (!lineInfo[i].IsContinuation)
                 {
-                    HandleNonContinuationPop(origDepth, stack,
-                        continuationColonPushes);
+                    if (!previousWasColonOrBrace)
+                    {
+                        HandleNonContinuationPop(origDepth, stack,
+                            continuationColonPushes);
+                    }
+
+                    previousWasColonOrBrace = false;
                 }
 
                 // For continuation lines that are NOT colon-terminated and
@@ -470,6 +493,7 @@ namespace GDScriptFormatter
                     lineInfo[i].BraceTerminated)
                 {
                     stack.Add(stack.Count + 1);
+                    previousWasColonOrBrace = true;
                     // Record colon pushes from continuation lines so
                     // they can be properly popped when the block exits.
 
