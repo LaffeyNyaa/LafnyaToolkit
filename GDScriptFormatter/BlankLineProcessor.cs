@@ -550,8 +550,10 @@ namespace GDScriptFormatter
         /// <summary>
         /// Returns 1 blank line around multi-line statements: when the previous
         /// non-blank line was a continuation and the current line is not (unless
-        /// entering a deeper block or the continuation is a block header), or
-        /// when a following line is a continuation.
+        /// entering a deeper block or the continuation is a block header), when
+        /// a following line is a continuation, or when the current line ends with
+        /// an opening brace and the next line is indented deeper (brace-terminated
+        /// multi-line construct).
         /// </summary>
         private static int ApplyMultiLineStatementBlankRule(List<NonBlankEntry>
             nonBlank, int curIdx, int curIndent, int prevIndent)
@@ -583,6 +585,22 @@ namespace GDScriptFormatter
             if (curIdx + 1 < nonBlank.Count &&
                 nonBlank[curIdx + 1].IsContinuation &&
                 !nonBlank[curIdx].IsContinuation &&
+                prevIndent == curIndent)
+            {
+                return 1;
+            }
+
+            // Brace-terminated multi-line: when the current line ends with
+            // an opening brace '{' (e.g., a dictionary literal) and the next
+            // non-blank line is indented deeper, insert a blank line above.
+            // This handles cases where the brace is consumed by
+            // IndentationProcessor (marked as BraceTerminated) so the
+            // continuation mechanism does not apply.
+
+            if (curIdx + 1 < nonBlank.Count &&
+                !nonBlank[curIdx].IsContinuation &&
+                nonBlank[curIdx].Line.Trim().EndsWith("{") &&
+                nonBlank[curIdx + 1].Indent > curIndent &&
                 prevIndent == curIndent)
             {
                 return 1;
