@@ -493,7 +493,20 @@ namespace GDScriptFormatter
                     lineInfo[i].BraceTerminated)
                 {
                     stack.Add(stack.Count + 1);
-                    previousWasColonOrBrace = true;
+                    // Only set previousWasColonOrBrace for non-continuation
+                    // lines. Continuation-colon lines (e.g. func() inside a
+                    // call argument's bracket context) do not represent real
+                    // block nesting — their blocks are scoped within the
+                    // continuation context. Setting previousWasColonOrBrace
+                    // for them would prevent the next non-continuation line
+                    // (e.g. a top-level func after the closing ')') from
+                    // properly popping the stack.
+
+                    if (!lineInfo[i].IsContinuation)
+                    {
+                        previousWasColonOrBrace = true;
+                    }
+
                     // Record colon pushes from continuation lines so
                     // they can be properly popped when the block exits.
 
