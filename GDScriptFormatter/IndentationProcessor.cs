@@ -652,13 +652,12 @@ namespace GDScriptFormatter
                     // fall through to pop
                 }
 
-                // Pop at same depth only when the current line is also
-                // colon-terminated (e.g. sibling case pattern).
-                // A non-colon-terminated line at the same depth is a body
-                // line inside the case pattern's block and should NOT pop.
+                // Pop at the same depth regardless of colon termination.
+                // A non-colon-terminated line at the same origDepth as a
+                // continuation-colon entry exits that block (e.g. a sibling
+                // statement after an if block inside a func lambda).
 
-                else if (origDepth == entryOrigDepth &&
-                    currentLineIsColonTerminated)
+                else if (origDepth == entryOrigDepth)
                 {
                     // fall through to pop
                 }

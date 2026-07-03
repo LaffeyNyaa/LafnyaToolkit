@@ -765,14 +765,23 @@ namespace GDScriptFormatter
                 }
 
                 // If this ## line had a blank line above it in the
-                // original, it marks the start of a new doc comment
-                // block. Since it is separated from any file headers
-                // by another ## block, this block is NOT file-level
-                // (it is a member-level doc comment).
+                // original, it may mark the start of a new doc comment
+                // block. Only treat it as non-file-level when the
+                // blank separates two ## blocks; if it separates a
+                // file header from this ##, the doc comment is still
+                // file-level.
 
                 if (nonBlank[j].HadBlankAbove)
                 {
-                    return false;
+                    if (j > 0 &&
+                        nonBlank[j - 1].Line.Trim().StartsWith("##"))
+                    {
+                        return false;
+                    }
+
+                    // Blank above was from a file header — this
+                    // doc comment is still file-level.
+                    continue;
                 }
             }
 
