@@ -147,12 +147,18 @@ namespace GDScriptFormatter
             }
 
             // If the current line is a continuation of the previous line
-            // (unclosed bracket or backslash), never insert blank lines
-            // between them.
+            // (unclosed bracket or backslash), only allow blank lines
+            // between two continuation lines (handled by the multi-line
+            // statement rules below).  When transitioning from a
+            // non-continuation to a continuation line, never insert
+            // blank lines — the opening bracket line stays attached.
 
             if (nonBlank[curIdx].IsContinuation)
             {
-                return 0;
+                if (curIdx == 0 || !nonBlank[curIdx - 1].IsContinuation)
+                {
+                    return 0;
+                }
             }
 
             if (IsAttachedComment(prevTrimmed, curTrimmed, nonBlank, curIdx))
@@ -163,43 +169,54 @@ namespace GDScriptFormatter
             bool sameIndent = prevIndent == curIndent;
             bool deeperThanPrev = curIndent > prevIndent;
 
-            int want = ApplyFuncClassBlankRule(prevTrimmed, curTrimmed,
-                sameIndent);
+            int want = 0;
+            // Continuation lines (anonymous func() lambdas inside argument
+            // lists, etc.) should not trigger most of the formatting rules.
+            // Only the preserve-author and multi-line statement rules apply.
 
-            if (want == 0)
+            if (!nonBlank[curIdx].IsContinuation)
             {
-                want = ApplyBlockStartBlankRule(prevTrimmed, curTrimmed,
-                    sameIndent, deeperThanPrev);
-            }
-
-            if (want == 0)
-            {
-                want = ApplyTopLevelMemberBlankRule(prevTrimmed, curTrimmed,
-                    sameIndent, nonBlank, curIdx);
-            }
-
-            if (want == 0)
-            {
-                want = ApplySetterGetterBlockRule(prevTrimmed, curTrimmed,
+                want = ApplyFuncClassBlankRule(prevTrimmed, curTrimmed,
                     sameIndent);
+
+                if (want == 0)
+                {
+                    want = ApplyBlockStartBlankRule(prevTrimmed, curTrimmed,
+                        sameIndent, deeperThanPrev);
+                }
+
+                if (want == 0)
+                {
+                    want = ApplyTopLevelMemberBlankRule(prevTrimmed, curTrimmed,
+                        sameIndent, nonBlank, curIdx);
+                }
+
+                if (want == 0)
+                {
+                    want = ApplySetterGetterBlockRule(prevTrimmed, curTrimmed,
+                        sameIndent);
+                }
+
+                if (want == 0)
+                {
+                    want = ApplyFileHeaderBlankRule(prevTrimmed, curTrimmed,
+                        deeperThanPrev);
+                }
+
+                if (want == 0)
+                {
+                    want = ApplyDocCommentBlankRule(prevTrimmed, curTrimmed,
+                        nonBlank, curIdx);
+                }
+
+                if (want == 0)
+                {
+                    want = ApplyDedentBlankRule(curIndent, prevIndent);
+                }
             }
 
-            if (want == 0)
-            {
-                want = ApplyFileHeaderBlankRule(prevTrimmed, curTrimmed,
-                    deeperThanPrev);
-            }
-
-            if (want == 0)
-            {
-                want = ApplyDocCommentBlankRule(prevTrimmed, curTrimmed,
-                    nonBlank, curIdx);
-            }
-
-            if (want == 0)
-            {
-                want = ApplyDedentBlankRule(curIndent, prevIndent);
-            }
+            // Preserve author-inserted blank lines (applies to all lines,
+            // including continuations).
 
             if (want == 0)
             {
@@ -604,6 +621,46 @@ namespace GDScriptFormatter
                 prevIndent == curIndent)
             {
                 return 1;
+            }
+
+            // Continuation-aware: multi-line statement just closed.
+            // When the previous line starts with a closing bracket
+            // and the current line is at the same or shallower indent,
+            // the multi-line construct ended — add a blank line.
+
+            if (curIdx > 0 &&
+                nonBlank[curIdx - 1].IsContinuation &&
+                nonBlank[curIdx].IsContinuation)
+            {
+                string prevTrimmedCheck = nonBlank[curIdx - 1].Line.Trim();
+
+                if ((prevTrimmedCheck.StartsWith(")") ||
+                    prevTrimmedCheck.StartsWith("]") ||
+                    prevTrimmedCheck.StartsWith("}")) &&
+                    nonBlank[curIdx - 1].Indent >= nonBlank[curIdx].Indent)
+                {
+                    return 1;
+                }
+            }
+
+            // Continuation-aware: multi-line statement just started.
+            // If the current line ends with '(', '[', or '{' and the
+            // next non-blank line is also a continuation, this line
+            // opens a multi-line construct — add a blank line above.
+
+            if (curIdx + 1 < nonBlank.Count &&
+                nonBlank[curIdx].IsContinuation &&
+                nonBlank[curIdx + 1].IsContinuation &&
+                prevIndent == curIndent)
+            {
+                string curTrimmed = nonBlank[curIdx].Line.Trim();
+
+                if (curTrimmed.EndsWith("(") ||
+                    curTrimmed.EndsWith("[") ||
+                    curTrimmed.EndsWith("{"))
+                {
+                    return 1;
+                }
             }
 
             return 0;

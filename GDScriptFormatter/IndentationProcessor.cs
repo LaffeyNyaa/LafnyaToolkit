@@ -174,6 +174,7 @@ namespace GDScriptFormatter
         {
             var info = new LineAnalysis[lines.Count];
             int parenBracketDepth = 0;
+            int suppressedBraceDepth = 0;
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -258,6 +259,7 @@ namespace GDScriptFormatter
 
                     if (info[i].BraceTerminated && ci == lastCodeIdx)
                     {
+                        suppressedBraceDepth++;
                         continue;
                     }
 
@@ -265,9 +267,20 @@ namespace GDScriptFormatter
                     {
                         parenBracketDepth++;
                     }
-                    else if (c == ')' || c == ']' || c == '}')
+                    else if (c == ')' || c == ']')
                     {
                         if (parenBracketDepth > 0)
+                        {
+                            parenBracketDepth--;
+                        }
+                    }
+                    else if (c == '}')
+                    {
+                        if (suppressedBraceDepth > 0)
+                        {
+                            suppressedBraceDepth--;
+                        }
+                        else if (parenBracketDepth > 0)
                         {
                             parenBracketDepth--;
                         }
@@ -465,7 +478,7 @@ namespace GDScriptFormatter
 
                 int origDepth = lineInfo[i].OriginalDepth;
 
-                if (lineInfo[i].IsCloseBrace)
+                if (lineInfo[i].IsCloseBrace && !lineInfo[i].IsContinuation)
                 {
                     HandleCloseBrace(i, stack, depths);
                     previousWasColonOrBrace = false;
@@ -562,7 +575,8 @@ namespace GDScriptFormatter
                 depths[i] = stack.Count;
 
                 if (lineInfo[i].ColonTerminated ||
-                    lineInfo[i].BraceTerminated)
+                    (lineInfo[i].BraceTerminated &&
+                    !lineInfo[i].IsContinuation))
                 {
                     stack.Add(stack.Count + 1);
                     // Only set previousWasColonOrBrace for non-continuation
