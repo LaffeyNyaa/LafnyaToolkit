@@ -49,10 +49,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlankLineProcessor.cs" />
+    <Compile Include="BlankLineHelpers.cs" />
+    <Compile Include="BlankLinePostProcess.cs" />
+    <Compile Include="BlankLineRules\AnnotationSuppressRule.cs" />
+    <Compile Include="BlankLineRules\BlockStartRule.cs" />
+    <Compile Include="BlankLineRules\DedentRule.cs" />
+    <Compile Include="BlankLineRules\DocCommentRule.cs" />
+    <Compile Include="BlankLineRules\ElifElseRule.cs" />
+    <Compile Include="BlankLineRules\FileHeaderRule.cs" />
+    <Compile Include="BlankLineRules\FuncClassRule.cs" />
+    <Compile Include="BlankLineRules\MultiLineStatementRule.cs" />
+    <Compile Include="BlankLineRules\PreserveAuthorRule.cs" />
+    <Compile Include="BlankLineRules\SetterGetterBlockRule.cs" />
+    <Compile Include="BlankLineRules\TopLevelMemberRule.cs" />
+    <Compile Include="NonBlankEntry.cs" />
     <Compile Include="BracketDepthTracker.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="Formatter.cs" />
+    <Compile Include="IndentationHelpers.cs" />
     <Compile Include="IndentationProcessor.cs" />
+    <Compile Include="LineAnalysis.cs" />
     <Compile Include="LineContinuationAnalyzer.cs" />
     <Compile Include="LineLengthProcessor.cs" />
     <Compile Include="Program.cs" />
