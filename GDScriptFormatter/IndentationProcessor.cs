@@ -345,32 +345,81 @@ namespace GDScriptFormatter
                 wordStart++;
             }
 
-            if (wordStart < text.Length &&
-                wordStart < isCode.Length &&
-                isCode[wordStart])
+            // If wordStart points to a non-Code character after skipping
+            // whitespace, the first meaningful content on this line is
+            // inside a string/comment literal (e.g., a match case pattern
+            // like "__SPEECH_CONFLICT__":). In this case, all characters
+            // before ':' are non-Code, so there are no Code brackets and
+            // bracketDepthBeforeColon would be 0. Treat it as a block
+            // starter — correct for match case patterns inside lambda bodies.
+
+            if (wordStart >= text.Length ||
+                wordStart >= isCode.Length ||
+                !isCode[wordStart])
             {
-                int wordEnd = wordStart;
+                info.ColonTerminated = true;
+                return;
+            }
 
-                while (wordEnd < text.Length &&
-                    wordEnd < isCode.Length &&
-                    isCode[wordEnd] &&
-                    !char.IsWhiteSpace(text[wordEnd]) &&
-                    text[wordEnd] != '(' &&
-                    text[wordEnd] != ':')
+            int wordEnd = wordStart;
+
+            while (wordEnd < text.Length &&
+                wordEnd < isCode.Length &&
+                isCode[wordEnd] &&
+                !char.IsWhiteSpace(text[wordEnd]) &&
+                text[wordEnd] != '(' &&
+                text[wordEnd] != ':')
+            {
+                wordEnd++;
+            }
+
+            string firstWord = text.Substring(wordStart,
+                wordEnd - wordStart);
+
+            if (firstWord == "func" || firstWord == "if" ||
+                firstWord == "for" || firstWord == "while" ||
+                firstWord == "match" || firstWord == "elif" ||
+                firstWord == "else")
+            {
+                info.ColonTerminated = true;
+                return;
+            }
+
+            // Check if this is a match case pattern inside brackets.
+            // A case pattern line has no unclosed brackets before its
+            // trailing colon (the colon operates at the line's bracket
+            // level, not inside any call arguments). This distinguishes
+            // case patterns like "pattern": from lines like
+            // some_func(func(...): where the colon is inside unclosed
+            // call brackets.
+            int bracketDepthBeforeColon = 0;
+
+            for (int ci = wordStart;
+            ci < lastCodeIdx && ci < isCode.Length; ci++)
+            {
+                if (!isCode[ci])
                 {
-                    wordEnd++;
+                    continue;
                 }
 
-                string firstWord = text.Substring(wordStart,
-                    wordEnd - wordStart);
+                char c = text[ci];
 
-                if (firstWord == "func" || firstWord == "if" ||
-                    firstWord == "for" || firstWord == "while" ||
-                    firstWord == "match" || firstWord == "elif" ||
-                    firstWord == "else")
+                if (c == '(' || c == '[' || c == '{')
                 {
-                    info.ColonTerminated = true;
+                    bracketDepthBeforeColon++;
                 }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (bracketDepthBeforeColon > 0)
+                    {
+                        bracketDepthBeforeColon--;
+                    }
+                }
+            }
+
+            if (bracketDepthBeforeColon == 0)
+            {
+                info.ColonTerminated = true;
             }
         }
 
@@ -506,7 +555,8 @@ namespace GDScriptFormatter
                     trimmed[0] != '}')
                 {
                     PopContinuationColonEntries(origDepth, stack,
-                        continuationColonPushes);
+                        continuationColonPushes,
+                        currentLineIsColonTerminated: true);
                 }
 
                 depths[i] = stack.Count;
@@ -587,13 +637,36 @@ namespace GDScriptFormatter
 
         private static void PopContinuationColonEntries(int origDepth,
             List<int> stack,
-            List<(int height, int origDepth)> continuationColonPushes)
+            List<(int height, int origDepth)> continuationColonPushes,
+            bool currentLineIsColonTerminated = false)
         {
-            while (continuationColonPushes.Count > 0 &&
-                origDepth <=
-                continuationColonPushes[
-            continuationColonPushes.Count - 1].origDepth)
+            while (continuationColonPushes.Count > 0)
             {
+                int entryOrigDepth =
+                    continuationColonPushes[
+                continuationColonPushes.Count - 1].origDepth;
+                // Always pop when strictly shallower (dedented).
+
+                if (origDepth < entryOrigDepth)
+                {
+                    // fall through to pop
+                }
+
+                // Pop at same depth only when the current line is also
+                // colon-terminated (e.g. sibling case pattern).
+                // A non-colon-terminated line at the same depth is a body
+                // line inside the case pattern's block and should NOT pop.
+
+                else if (origDepth == entryOrigDepth &&
+                    currentLineIsColonTerminated)
+                {
+                    // fall through to pop
+                }
+                else
+                {
+                    break;
+                }
+
                 var entry =
                     continuationColonPushes[
                 continuationColonPushes.Count - 1];
