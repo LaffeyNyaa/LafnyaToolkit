@@ -423,6 +423,28 @@ namespace GDScriptFormatter
                     continue;
                 }
 
+                // Comment lines must not affect the block stack — they
+                // are invisible to GDScript's block structure and should
+                // not trigger HandleNonContinuationPop or any other stack
+                // manipulation.
+
+                if (trimmed.StartsWith("#"))
+                {
+                    // Comment lines must not pop the block stack (they are
+                    // invisible to GDScript's block structure). Use the
+                    // minimum of origDepth and stack.Count so that:
+                    //   - Comments inside blocks use the block's depth
+                    //     (stack.Count caps origDepth to prevent runaway
+                    //     deep indents from wrong original indentation)
+                    //   - Comments at peer level (e.g., between if and
+                    //     else) preserve their original shallow depth
+                    //     rather than being pulled into the preceding block
+                    depths[i] = origDepth < stack.Count
+                    ? origDepth : stack.Count;
+                    previousWasColonOrBrace = false;
+                    continue;
+                }
+
                 // Continuation lines (inside brackets) have an unreliable
                 // origDepth because their indentation depends on the line
                 // that opened the bracket, not on their own block nesting.
