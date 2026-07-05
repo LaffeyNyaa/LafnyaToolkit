@@ -96,8 +96,11 @@ namespace GDScriptFormatter
                 string curTrimmed = nonBlank[curIdx].Line.Trim();
 
                 if (curTrimmed.EndsWith("(") ||
-                    curTrimmed.EndsWith("[") ||
-                    curTrimmed.EndsWith("{"))
+                    curTrimmed.EndsWith("{") ||
+                    (curTrimmed.EndsWith("[") &&
+                    !(curIdx > 0 &&
+                    nonBlank[curIdx - 1].IsContinuation &&
+                    curTrimmed.StartsWith("%"))))
                 {
                     return 1;
                 }

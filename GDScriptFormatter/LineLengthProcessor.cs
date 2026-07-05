@@ -287,6 +287,16 @@ namespace GDScriptFormatter
                 string closeLine = indent + ")";
 
                 var rhsSplit = SplitLongLine(rhsCont, contIndent);
+                // If the RHS could not be split further (still a single line
+                // exceeding the limit), wrapping it in parentheses is useless
+                // — return null to leave the original line unchanged.
+
+                if (rhsSplit.Count == 1 &&
+                    rhsSplit[0].TrimStart().Length > TextUtils.MaxLineLength)
+                {
+                    return null;
+                }
+
                 var res2 = new List<string> { firstLine };
                 res2.AddRange(rhsSplit);
                 res2.Add(closeLine);

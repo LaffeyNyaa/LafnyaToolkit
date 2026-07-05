@@ -72,7 +72,34 @@ namespace GDScriptFormatter
                         content[0] != '}') ||
                         lineInfo[i].EndBracketDepth > 0)
                     {
-                        baseDepth++;
+                        // Indent continuation lines based on bracket nesting depth.
+                        // Non-closing content uses StartBracketDepth (depth at line
+                        // start), so content inside nested brackets (e.g., elements
+                        // inside % [...] within print(...)) gets progressively deeper
+                        // indentation. Closing brackets that don't close all brackets
+                        // (EndBracketDepth > 0) use EndBracketDepth so they align
+                        // with same-level content rather than jumping deeper.
+                        int inc = 1;
+
+                        if (content.Length > 0)
+                        {
+                            if (content[0] == ')' || content[0] == ']' ||
+                                content[0] == '}')
+                            {
+                                inc = lineInfo[i].EndBracketDepth;
+                            }
+                            else
+                            {
+                                inc = lineInfo[i].StartBracketDepth;
+                            }
+
+                            if (inc < 1)
+                            {
+                                inc = 1;
+                            }
+                        }
+
+                        baseDepth += inc;
                     }
 
                     // Additional fix for continuation lines that close the
