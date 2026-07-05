@@ -63,6 +63,15 @@ namespace GDScriptFormatter
 
                 if (!trimmed.StartsWith("##"))
                 {
+                    // Standalone annotations (e.g. @rpc, @warning_ignore on
+                    // their own line before func/class) are part of the
+                    // declaration. Skip them to look for the func/class keyword.
+
+                    if (IsStandaloneAnnotation(trimmed))
+                    {
+                        continue;
+                    }
+
                     return IsFuncOrClassDecl(trimmed);
                 }
             }
