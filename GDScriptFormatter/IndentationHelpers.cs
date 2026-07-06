@@ -128,6 +128,21 @@ namespace GDScriptFormatter
 
                     if (info[i].BraceTerminated && ci == lastCodeIdx)
                     {
+                        // Reset parenBracketDepth for non-continuation
+                        // BraceTerminated lines. The trailing { absorbs all
+                        // brackets opened on this line (e.g. the ( in
+                        // func({), so they must not carry forward as
+                        // continuation depth. Without this reset, the
+                        // body of a block-style dict would be double-indented:
+                        // once via the BraceTerminated stack push, and
+                        // again via continuation indent from the absorbed
+                        // brackets.
+
+                        if (!info[i].IsContinuation)
+                        {
+                            parenBracketDepth = 0;
+                        }
+
                         suppressedBraceDepth++;
                         continue;
                     }
@@ -441,6 +456,25 @@ namespace GDScriptFormatter
                         currentLineIsColonTerminated: true);
                 }
 
+                // For continuation lines that start with a closing bracket
+                // at EndBracketDepth 0 (meaning all brackets from the
+                // current call context are closed), pop continuation-colon
+                // entries that were pushed by lambda/block bodies inside
+                // the continuation context. This ensures a ) closing
+                // connect(func(...): ...) returns to the correct indent
+                // rather than inheriting the lambda's colon push.
+
+                if (lineInfo[i].IsContinuation &&
+                    trimmed.Length > 0 &&
+                    (trimmed[0] == ')' || trimmed[0] == ']' ||
+                    trimmed[0] == '}') &&
+                    lineInfo[i].EndBracketDepth == 0)
+                {
+                    PopContinuationColonEntries(origDepth, stack,
+                        continuationColonPushes,
+                        currentLineIsColonTerminated: false);
+                }
+
                 depths[i] = stack.Count;
 
                 if (lineInfo[i].ColonTerminated ||
@@ -498,23 +532,34 @@ namespace GDScriptFormatter
                 stack.RemoveAt(stack.Count - 1);
             }
 
-            // When non-continuation lines pop the stack, any
-            // continuationColonPushes entries whose recorded height
-            // exceeds the new stack size are stale — they were
-            // pushed by colon-terminated continuation lines inside
-            // blocks that have now been closed. Cleaning them up
-            // prevents stale entries from persisting across
-            // function/block boundaries and incorrectly affecting
-            // continuation lines in other scopes.
+            // Clean up stale continuationColonPushes entries. An entry
+            // is stale when:
+            //   1. Its recorded height exceeds the new stack size
+            //      (the block it was in has been closed).
+            //   2. Its origDepth is >= the current line's origDepth,
+            //      meaning this non-continuation line is at or above
+            //      the level where the entry was created. This catches
+            //      cases where a function signature continuation-colon
+            //      (e.g. "-1.0)) -> void:") pushes an entry at the
+            //      function body's stack level, and the entry's height
+            //      equals the stack size rather than exceeding it.
 
-            while (continuationColonPushes.Count > 0 &&
-                continuationColonPushes[
-
-            continuationColonPushes.Count - 1].height >
-                stack.Count)
+            while (continuationColonPushes.Count > 0)
             {
-                continuationColonPushes.RemoveAt(
-                    continuationColonPushes.Count - 1);
+                var entry =
+                    continuationColonPushes[
+                continuationColonPushes.Count - 1];
+
+                if (entry.height > stack.Count ||
+                    entry.origDepth >= origDepth)
+                {
+                    continuationColonPushes.RemoveAt(
+                        continuationColonPushes.Count - 1);
+                }
+                else
+                {
+                    break;
+                }
             }
         }
 

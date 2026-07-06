@@ -188,6 +188,41 @@ namespace GDScriptFormatter
                 }
             }
 
+            // Even for continuation lines (e.g., inside a lambda body within
+            // unclosed outer brackets), block-start lines (if, for, while,
+            // match, etc.) should get a blank line above them when the
+            // preceding line is at the same or shallower indent.  This
+            // ensures visual separation of block constructs inside lambdas.
+            // Elif/else blocks are excluded — they should stay attached to
+            // the preceding if/elif.
+
+            if (want == 0 && nonBlank[curIdx].IsContinuation &&
+                TextUtils.IsBlockStartLine(curTrimmed) &&
+                !IsElifOrElseBlock(curTrimmed) &&
+                !TextUtils.IsBlockStartLine(prevTrimmed) &&
+                !prevTrimmed.EndsWith("(") &&
+                prevIndent <= curIndent &&
+                !nonBlank[curIdx - 1].Line.TrimEnd().EndsWith("\\"))
+            {
+                want = 1;
+            }
+
+            // For continuation lines, apply dedent blank rule when the current
+            // line is at a shallower indent than the previous line (exiting a
+            // block like if/for/while inside a lambda or other continuation
+            // context). Exclude closing brackets, comments, and elif/else lines.
+
+            if (want == 0 && nonBlank[curIdx].IsContinuation &&
+                curIndent < prevIndent &&
+                !curTrimmed.StartsWith("#") &&
+                !curTrimmed.StartsWith(")") &&
+                !curTrimmed.StartsWith("]") &&
+                !curTrimmed.StartsWith("}") &&
+                !IsElifOrElseBlock(curTrimmed))
+            {
+                want = 1;
+            }
+
             // Preserve author-inserted blank lines (applies to all lines,
             // including continuations).
 

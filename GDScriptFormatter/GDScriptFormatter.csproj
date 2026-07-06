@@ -79,6 +79,8 @@
     <Compile Include="MemberReorderer.cs" />
     <Compile Include="TextUtils.cs" />
     <Compile Include="Tokenizer.cs" />
+    <Compile Include="Token.cs" />
+    <Compile Include="FileIO.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

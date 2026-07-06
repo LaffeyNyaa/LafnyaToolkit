@@ -52,77 +52,16 @@ namespace GDScriptFormatter
 
                 if (lineInfo[i].IsContinuation)
                 {
-                    // A line that starts with a closing bracket returns
-                    // to the parent indent level rather than continuing
-                    // at the continuation indent — but only when closing
-                    // the outermost bracket (EndBracketDepth == 0).
-                    // When inside nested brackets (EndBracketDepth > 0),
-                    // keep the continuation indent so that synthetically
-                    // introduced wrapping brackets (e.g. from = (...) line
-                    // splitting) do not lose their indentation on a second
-                    // formatting pass. Using EndBracketDepth instead of
-                    // StartBracketDepth ensures stability across formatting
-                    // passes because EndBracketDepth reflects the bracket
-                    // depth after the line is fully processed, which is
-                    // independent of synthetic parentheses added on a prior
-                    // formatting pass.
-
-                    if (content.Length == 0 ||
-                        (content[0] != ')' && content[0] != ']' &&
-                        content[0] != '}') ||
-                        lineInfo[i].EndBracketDepth > 0)
+                    if (content[0] == ')' || content[0] == ']' ||
+                        content[0] == '}')
                     {
-                        // Indent continuation lines based on bracket nesting depth.
-                        // Non-closing content uses StartBracketDepth (depth at line
-                        // start), so content inside nested brackets (e.g., elements
-                        // inside % [...] within print(...)) gets progressively deeper
-                        // indentation. Closing brackets that don't close all brackets
-                        // (EndBracketDepth > 0) use EndBracketDepth so they align
-                        // with same-level content rather than jumping deeper.
-                        int inc = 1;
-
-                        if (content.Length > 0)
-                        {
-                            if (content[0] == ')' || content[0] == ']' ||
-                                content[0] == '}')
-                            {
-                                inc = lineInfo[i].EndBracketDepth;
-                            }
-                            else
-                            {
-                                inc = lineInfo[i].StartBracketDepth;
-                            }
-
-                            if (inc < 1)
-                            {
-                                inc = 1;
-                            }
-                        }
-
-                        baseDepth += inc;
+                        baseDepth = GetClosingBracketBaseDepth(lineInfo, depths,
+                            i);
                     }
-
-                    // Additional fix for continuation lines that close the
-                    // outermost bracket: block-stack entries pushed by
-                    // colon-terminated lines inside the continuation context
-                    // (e.g., func(): inside callback parens) inflate
-                    // depths[i]. The closing bracket should return to the
-                    // indentation level of the line that opened the bracket,
-                    // which is the last non-continuation line's depth.
-
-                    if (content.Length > 0 &&
-                        (content[0] == ')' || content[0] == ']') &&
-                        lineInfo[i].EndBracketDepth == 0 &&
-                        depths[i] > 0)
+                    else
                     {
-                        for (int j = i - 1; j >= 0; j--)
-                        {
-                            if (!lineInfo[j].IsContinuation)
-                            {
-                                baseDepth = depths[j];
-                                break;
-                            }
-                        }
+                        baseDepth += GetContinuationIncrement(lineInfo[i],
+                            content);
                     }
                 }
 
@@ -131,6 +70,53 @@ namespace GDScriptFormatter
             }
 
             return result;
+        }
+
+        private static int GetClosingBracketBaseDepth(LineAnalysis[] lineInfo,
+            int[] depths, int i)
+        {
+            int targetOpenDepth =
+                lineInfo[i].StartBracketDepth - 1;
+
+            for (int j = i - 1; j >= 0; j--)
+            {
+                if (lineInfo[j].StartBracketDepth ==
+                    targetOpenDepth &&
+                    lineInfo[j].EndBracketDepth >
+                    targetOpenDepth)
+                {
+                    return depths[j] +
+                        lineInfo[j].StartBracketDepth;
+                }
+            }
+
+            for (int j = i - 1; j >= 0; j--)
+            {
+                if (!lineInfo[j].IsContinuation)
+                {
+                    return depths[j];
+                }
+            }
+
+            return depths[i];
+        }
+
+        private static int GetContinuationIncrement(LineAnalysis lineInfo,
+            string content)
+        {
+            int inc = 1;
+
+            if (content.Length > 0)
+            {
+                inc = lineInfo.StartBracketDepth;
+
+                if (inc < 1)
+                {
+                    inc = 1;
+                }
+            }
+
+            return inc;
         }
     }
 }

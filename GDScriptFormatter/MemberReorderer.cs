@@ -27,17 +27,21 @@ namespace GDScriptFormatter
     internal static class MemberReorderer
     {
         /// <summary>
-        /// Physically reorders top-level class members to match the spec order
-        /// (signal → enum → const → static var → @export → regular var →
-        /// @onready → private → methods). Members already in spec order are
-        /// left unchanged. Multi-line members (var with setter, continuation
-        /// brackets, method bodies) are moved as a unit. Comments immediately
-        /// preceding a member stay attached through the reorder.
+        /// Collects one member block (leading lines, declaration line, body lines)
+        /// starting at <paramref name="startIdx"/>, without using ref parameters.
         /// </summary>
-        private static List<string> CollectLeadingLines(List<string> lines,
-            ref int idx)
+        /// <returns>
+        /// A tuple of (leading lines, declaration line, body lines, next index).
+        /// When no member is found (trailing comments or an indented top-level
+        /// line), <c>declLine</c> is <c>null</c> and <c>body</c> is <c>null</c>.
+        /// </returns>
+        private static (List<string> leading, string declLine, List<string>
+            body,
+            int nextIdx) CollectMemberInfo(List<string> lines, int startIdx)
         {
+            int idx = startIdx;
             var leading = new List<string>();
+            // 1. Collect leading blank / comment lines.
 
             while (idx < lines.Count)
             {
@@ -54,12 +58,39 @@ namespace GDScriptFormatter
                 }
             }
 
-            return leading;
-        }
+            if (idx >= lines.Count)
+            {
+                // Trailing blanks/comments — no member follows.
+                return (leading, null, null, idx);
+            }
 
-        private static List<string> CollectBodyLines(List<string> lines,
-            ref int idx)
-        {
+            if (IndentationProcessor.LineIndentLevel(lines[idx]) > 0)
+            {
+                // Unexpected indented line — not a top-level member.
+                return (leading, null, null, idx);
+            }
+
+            // 2. Collect the declaration line.
+            string declLine = lines[idx];
+            idx++;
+            // Merge bare annotation on its own line (e.g. @onready\nvar x).
+            string bareTrimmed = declLine.Trim();
+
+            if ((bareTrimmed == "@onready" || bareTrimmed == "@export") &&
+                idx < lines.Count)
+            {
+                string nextTrimmed = lines[idx].Trim();
+
+                if (nextTrimmed.StartsWith("var ") ||
+                    nextTrimmed.StartsWith("func "))
+                {
+                    declLine = bareTrimmed + " " + nextTrimmed;
+                    idx++;
+                }
+            }
+
+            // 3. Collect body lines (indented content, closing brackets
+            //    at indent 0, and blank lines before such lines).
             var body = new List<string>();
 
             while (idx < lines.Count)
@@ -98,9 +129,8 @@ namespace GDScriptFormatter
                     if (nextNonBlank >= 0)
                     {
                         string peekTrim = lines[nextNonBlank].Trim();
-
-                        int peekIndent =
-                            IndentationProcessor.LineIndentLevel(lines[nextNonBlank]);
+                        int peekIndent = IndentationProcessor
+                        .LineIndentLevel(lines[nextNonBlank]);
 
                         if (peekTrim.Length > 0 &&
                             (peekTrim[0] == ')' || peekTrim[0] == ']' ||
@@ -127,7 +157,7 @@ namespace GDScriptFormatter
                 }
             }
 
-            return body;
+            return (leading, declLine, body, idx);
         }
 
         internal static string ReorderMembers(string text)
@@ -175,60 +205,33 @@ namespace GDScriptFormatter
 
             while (idx < lines.Count)
             {
-                var leading = CollectLeadingLines(lines, ref idx);
+                var (leading, declLine, body, nextIdx) =
+                    CollectMemberInfo(lines, idx);
 
-                if (idx >= lines.Count)
+                if (declLine == null)
                 {
-                    // Trailing comments/blanks with no member — leave as trailing.
-                    // Attach them to the last block if any, otherwise discard.
-                    // (The CollapseBlankLines / TrimTrailingWhitespace passes
-                    // will clean up excess trailing whitespace.)
+                    // No member found — trailing comments or an indented skip.
 
-                    if (blocks.Count > 0)
+                    if (nextIdx >= lines.Count)
                     {
-                        blocks[blocks.Count - 1].BodyLines.AddRange(leading);
+                        // Trailing comments/blanks with no member.
+                        // Attach them to the last block if any.
+
+                        if (blocks.Count > 0)
+                        {
+                            blocks[blocks.Count - 1].BodyLines.AddRange(
+                                leading);
+                        }
+
+                        break;
                     }
 
-                    break;
-                }
-
-                // Check if this line is a top-level member declaration
-                // (at indent 0).
-                int lineIndent = IndentationProcessor.LineIndentLevel(
-                    lines[idx]);
-
-                if (lineIndent > 0)
-                {
-                    // Not a top-level member — something unusual.
-                    // Skip it to avoid data loss.
-                    leading.Add(lines[idx]);
-                    idx++;
+                    // Indented line at top level — skip to avoid data loss.
+                    idx = nextIdx + 1;
                     continue;
                 }
 
-                string declLine = lines[idx];
-                idx++;
-                // Handle bare annotations on their own line
-                // (e.g., @onready\nvar x). If the declaration line
-                // is just "@onready" or "@export" without a var/func
-                // on the same line, merge it with the next declaration
-                // line so that the member keeps its annotation.
-                string bareTrimmed = declLine.Trim();
-
-                if ((bareTrimmed == "@onready" || bareTrimmed == "@export") &&
-                    idx < lines.Count)
-                {
-                    string nextTrimmed = lines[idx].Trim();
-
-                    if (nextTrimmed.StartsWith("var ") ||
-                        nextTrimmed.StartsWith("func "))
-                    {
-                        declLine = bareTrimmed + " " + nextTrimmed;
-                        idx++;
-                    }
-                }
-
-                var body = CollectBodyLines(lines, ref idx);
+                idx = nextIdx;
 
                 string trimmedDecl = declLine.Trim();
 

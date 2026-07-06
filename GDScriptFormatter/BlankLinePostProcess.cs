@@ -95,9 +95,11 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Removes blank lines that immediately precede a closing brace '}',
-        /// ')' or ']' at the same or lower indent level. This cleans up
-        /// trailing blank lines inside dictionary literals and similar constructs.
+        /// Removes blank lines that immediately precede a closing brace '}'
+        /// or ']' at the same or lower indent level. This cleans up trailing
+        /// blank lines inside dictionary/array literals and similar constructs.
+        /// Closing parentheses are excluded because they may close continuation
+        /// contexts (e.g., lambda arguments) where blank lines should be preserved.
         /// </summary>
         private static List<string> RemoveBlanksBeforeClosingBraces(List<string>
             lines)
@@ -110,7 +112,7 @@ namespace GDScriptFormatter
                 // Check if this line is a closing brace/bracket
 
                 if (trimmed.Length > 0 && (trimmed[0] == '}' || trimmed[0] ==
-                    ')' || trimmed[0] == ']'))
+                    ']'))
                 {
                     // Remove any blank lines just before this closing brace
 

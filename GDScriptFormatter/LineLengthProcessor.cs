@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace GDScriptFormatter
@@ -150,6 +151,13 @@ namespace GDScriptFormatter
             // Try each splitting strategy in priority order
             var result = TryUnclosedBracketSplit(line, contIndent, isCode,
                 indentLen);
+
+            if (result != null)
+            {
+                return result;
+            }
+
+            result = TryBraceAlignSplit(line, contIndent, isCode, indentLen);
 
             if (result != null)
             {
@@ -432,6 +440,209 @@ namespace GDScriptFormatter
             }
 
             return -1;
+        }
+
+        /// <summary>
+        /// Attempts to split a line containing a dict/array literal as the sole argument
+        /// of a method call (e.g. <c>expr({"key": value, ...})</c>). Splits at the opening
+        /// brace boundary, expands each comma-separated item onto its own continuation line,
+        /// and places the closing <c>})</c> on its own line at the original indent.
+        ///
+        /// This strategy runs after unclosed-bracket splitting and before closed-bracket
+        /// comma splitting, so that dict/array literals are expanded in one step rather
+        /// than fragmented by simple comma-splitting.</summary>
+        private static List<string> TryBraceAlignSplit(string line,
+            string contIndent, bool[] isCode, int indentLen)
+        {
+            int bracketDepth = BracketDepthTracker.FindBracketDepth(line,
+                isCode, indentLen);
+
+            if (bracketDepth > 0)
+            {
+                return null;
+            }
+
+            string trimmed = line.TrimEnd();
+
+            if (!trimmed.EndsWith("})") && !trimmed.EndsWith("])"))
+            {
+                return null;
+            }
+
+            // Find the last opening brace/bracket that is directly inside a
+            // paren/bracket with only whitespace between (e.g. the { in
+            // append({...}) or the [ in some_func([...])).
+            int openBrace = -1;
+            int depth = 0;
+            int lastParenAtDepth0 = -1;
+
+            for (int i = indentLen; i < line.Length; i++)
+            {
+                if (!isCode[i])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if (c == '(' || c == '[')
+                {
+                    if (depth == 0)
+                    {
+                        lastParenAtDepth0 = i;
+                    }
+
+                    depth++;
+                }
+                else if (c == '{')
+                {
+                    if (depth == 1 && lastParenAtDepth0 >= 0)
+                    {
+                        // Check there is only whitespace between the
+                        // opening paren/bracket and this brace/bracket.
+                        bool onlyWhitespace = true;
+
+                        for (int j = lastParenAtDepth0 + 1; j < i; j++)
+                        {
+                            if (isCode[j] && !char.IsWhiteSpace(line[j]))
+                            {
+                                onlyWhitespace = false;
+                                break;
+                            }
+                        }
+
+                        if (onlyWhitespace)
+                        {
+                            openBrace = i;
+                        }
+                    }
+
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+            }
+
+            if (openBrace < 0)
+            {
+                return null;
+            }
+
+            // The first segment must fit within the line limit.
+            string first = line.Substring(0, openBrace).TrimEnd() + "{";
+
+            if (first.Length > TextUtils.MaxLineLength)
+            {
+                return null;
+            }
+
+            // Extract the content between { and the trailing }).
+            // Track leading whitespace trimmed so that the isCode offset passed
+            // to SplitByTopLevelCommas remains accurate (TrimStart shifts the
+            // substring, and the lineOffset must account for that shift).
+            string rawAfterBrace = line.Substring(openBrace + 1);
+            string afterBrace = rawAfterBrace.TrimStart();
+            int trimmedStart = rawAfterBrace.Length - afterBrace.Length;
+            // Extract closing suffix: collect trailing closing characters
+            string afterBraceTrimmed = afterBrace.TrimEnd();
+            int suffixStart = afterBraceTrimmed.Length;
+
+            while (suffixStart > 0 && (afterBraceTrimmed[suffixStart - 1] == ')'
+                || afterBraceTrimmed[suffixStart - 1] == ']'
+                || afterBraceTrimmed[suffixStart - 1] == '}'))
+            {
+                suffixStart--;
+            }
+
+            string suffix = afterBraceTrimmed.Substring(suffixStart);
+            string closingSuffix;
+
+            if (suffix.Length > 0)
+            {
+                closingSuffix = suffix;
+
+                afterBrace = afterBraceTrimmed.Substring(0,
+                    suffixStart).TrimEnd();
+            }
+            else
+            {
+                return null;
+            }
+
+            // Split the dict/array content by top-level commas.
+            var items = SplitByTopLevelCommas(afterBrace, isCode,
+                openBrace + 1 + trimmedStart);
+
+            var result = new List<string> { first };
+
+            foreach (var rawItem in items)
+            {
+                string item = rawItem.Trim();
+
+                if (item.Length > 0)
+                {
+                    result.Add(contIndent + item + ",");
+                }
+            }
+
+            string indent = line.Substring(0, indentLen);
+            result.Add(indent + closingSuffix);
+            return result;
+        }
+
+        /// <summary>
+        /// Splits <paramref name="text"/> by commas that are at bracket depth 0
+        /// (i.e., not inside nested parentheses, square brackets, or braces).
+        /// Uses the <paramref name="isCode"/> mask relative to the original line
+        /// via <paramref name="lineOffset"/> to skip non-code regions.
+        /// </summary>
+        private static List<string> SplitByTopLevelCommas(string text,
+            bool[] isCode, int lineOffset)
+        {
+            var items = new List<string>();
+            int start = 0;
+            int depth = 0;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                int globalIdx = lineOffset + i;
+
+                if (globalIdx < isCode.Length && !isCode[globalIdx])
+                {
+                    continue;
+                }
+
+                char c = text[i];
+
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    items.Add(text.Substring(start, i - start));
+                    start = i + 1;
+                }
+            }
+
+            if (start < text.Length)
+            {
+                items.Add(text.Substring(start));
+            }
+
+            return items;
         }
     }
 }
