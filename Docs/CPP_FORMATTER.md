@@ -263,6 +263,77 @@ The stream insertion (`<<`) and extraction (`>>`) operators are treated as safe 
 
 A break is permitted at `<<` or `>>` only when the preceding non-whitespace character is one of `)`, `]`, an identifier character (letter/digit/`_`), `"` (string close), or `'` (char close). This avoids breaking inside template parameter lists (e.g., `vector<vector<int>>`) where `>>` is part of a template closing bracket rather than a stream operator.
 
+#### Operator-First Placement
+
+When a line with stream operators exceeds 80 characters, ALL `<<` operators are placed at the START of their own continuation line (operator-first wrapping). Each `<<` appears on a new line indented one level from the expression's base indentation.
+
+*Incorrect*:
+```cpp
+    std::cerr << "[majo-cup] Failed to get executable path: " << e.what() << 
+        std::endl;
+```
+
+*Correct*:
+```cpp
+    std::cerr
+        << "[majo-cup] Failed to get executable path: "
+        << e.what()
+        << std::endl;
+```
+
+#### Short Lines Preserved
+
+Lines within 80 characters are NOT modified, even if they contain `<<` operators:
+```cpp
+    std::cerr << "Usage: majo-cup-backend --admin-password=<password>" << std::endl;
+```
+
+### Line Wrapping: Binary Operators (`+`, `-`, `*`, `/`, `%`)
+
+Binary arithmetic operators follow the same operator-first placement rule as stream operators:
+
+#### Operator-First Placement
+
+When a line with binary operators exceeds 80 characters, ALL operators are placed at the START of their own continuation line, each indented one level from the expression's base indentation.
+
+*Incorrect*:
+```cpp
+    int sum_long = a + b + c + d + e + f + g + h + i + j + a + b + c + d + e + f + g;
+```
+
+*Correct*:
+```cpp
+    int sum_long = a
+        + b
+        + c
+        + d
+        + e
+        + f
+        + g
+        + h
+        + i
+        + j
+        + a
+        + b
+        + c
+        + d
+        + e
+        + f
+        + g;
+```
+
+#### Code-Mask Protection
+
+Binary operator detection uses the tokenizer's code mask to skip non-code regions (comments, string literals). This prevents characters inside comments from being accidentally treated as binary operators.
+
+*Correct* (comment with `-` is not split):
+```cpp
+    // Function with multi-line parameter list
+    int result = a
+        + b
+        - c;
+```
+
 ### Line Wrapping: `->` Pointer Member Access Operator
 
 The pointer member access operator (`->`) is treated as an atomic unit and SHALL NOT be split across lines. When the formatter encounters `->`, both characters are skipped as a pair and no break point is recorded between them.

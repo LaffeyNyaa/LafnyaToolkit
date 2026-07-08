@@ -57,12 +57,6 @@ namespace CppFormatter
 
                 string line = lines[i];
 
-                if (line.Length <= TextUtils.MaxLineLength)
-                {
-                    result.Add(line);
-                    continue;
-                }
-
                 // If this line is itself a continuation of the previous line
                 // (previous line ends with a continuation indicator), the
                 // continuation indent equals this line's current indent — do
@@ -72,6 +66,28 @@ namespace CppFormatter
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
+
+                // Attempt to unwrap stream-operator chains that were
+                // previously wrapped with << at end of line (old style).
+                // When the current line ends with << in stream context and
+                // has continuation lines, we merge them into a single
+                // expression and re-split operator-first.
+
+                if (!isContinuation && TryUnwrapStreamChain(lines,
+                    line, i, out var unwrapped) &&
+                    unwrapped.Length > TextUtils.MaxLineLength)
+                {
+                    var split = SplitLongLine(unwrapped, null, null);
+                    result.AddRange(split);
+                    SkipContinuationLines(lines, lineContinuesNext, ref i);
+                    continue;
+                }
+
+                if (line.Length <= TextUtils.MaxLineLength)
+                {
+                    result.Add(line);
+                    continue;
+                }
 
                 string fixedContIndent;
 
@@ -92,8 +108,8 @@ namespace CppFormatter
                     fixedContIndent = null;
                 }
 
-                var split = SplitLongLine(line, fixedContIndent, null);
-                result.AddRange(split);
+                var split2 = SplitLongLine(line, fixedContIndent, null);
+                result.AddRange(split2);
             }
 
             return result;
@@ -140,8 +156,27 @@ namespace CppFormatter
                 baseIndent = indent;
             }
 
+            // Tokenize the line once for all code-mask-dependent checks
+            // (binary operators, safe break points).
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
+
+            // Stream operator lines: one-pass split at all << positions
+            if (HasStreamOperators(line, indentLen, out var streamPositions))
+            {
+                return SplitAtStreamOperators(line, streamPositions,
+                    fixedContIndent, baseIndent);
+            }
+
+            // Binary operator lines: one-pass split at all binary operator
+            // positions (+ - * / %) when the line exceeds the max length.
+            if (HasBinaryOperators(line, isCode, indentLen,
+                out var binaryPositions))
+            {
+                return SplitAtBinaryOperators(line, binaryPositions,
+                    fixedContIndent, baseIndent);
+            }
+
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
 
             if (breakAt < 0 || breakAt >= line.Length)
@@ -234,14 +269,14 @@ namespace CppFormatter
                     line[i + 1] == '<' &&
                     IsStreamOpContext(line, i, startIdx))
                 {
-                    bp = i + 2;
+                    bp = i;
                     i++;
                 }
                 else if (bp < 0 && c == '>' && i + 1 < line.Length &&
                     line[i + 1] == '>' &&
                     IsStreamOpContext(line, i, startIdx))
                 {
-                    bp = i + 2;
+                    bp = i;
                     i++;
                 }
                 else if (bp < 0 && c == ',')
@@ -346,6 +381,170 @@ namespace CppFormatter
         }
 
         /// <summary>
+        /// Scans a line for stream operator (&lt;&lt;) positions in stream context.
+        /// </summary>
+        private static bool HasStreamOperators(string line, int startIdx,
+            out List<int> positions)
+        {
+            positions = new List<int>();
+
+            for (int i = startIdx; i < line.Length - 1; i++)
+            {
+                if (line[i] == '<' && line[i + 1] == '<' &&
+                    IsStreamOpContext(line, i, startIdx))
+                {
+                    positions.Add(i);
+                    i++;
+                }
+            }
+
+            return positions.Count > 0;
+        }
+
+        /// <summary>
+        /// Performs a one-pass split of a line at all stream operator positions,
+        /// placing each &lt;&lt; at the start of its own continuation line.
+        /// </summary>
+        private static List<string> SplitAtStreamOperators(string line,
+            List<int> positions, string fixedContIndent, string baseIndent)
+        {
+            int indentLen = 0;
+
+            while (indentLen < line.Length && line[indentLen] == ' ')
+            {
+                indentLen++;
+            }
+
+            string indent = line.Substring(0, indentLen);
+
+            string contIndent;
+
+            if (fixedContIndent != null)
+            {
+                contIndent = fixedContIndent;
+            }
+            else
+            {
+                contIndent = indent + new string(' ', TextUtils.IndentSize);
+            }
+
+            var result = new List<string>();
+
+            // First segment: everything before the first <<
+            result.Add(line.Substring(0, positions[0]).TrimEnd());
+
+            // Subsequent segments: contIndent + << + content up to next <<
+            for (int j = 0; j < positions.Count; j++)
+            {
+                int end = (j + 1 < positions.Count)
+                    ? positions[j + 1]
+                    : line.Length;
+
+                string segment = contIndent +
+                    line.Substring(positions[j], end - positions[j])
+                        .TrimStart();
+
+                result.Add(segment.TrimEnd());
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Scans a line for binary operator (+ - * / %) positions in
+        /// binary context (preceded by an expression term). Excludes
+        /// pointer member access (-&gt;). Uses the code mask to skip
+        /// non-code regions (comments, string literals) so that
+        /// operator characters inside comments are not mistaken for
+        /// actual binary operators.
+        /// </summary>
+        private static bool HasBinaryOperators(string line, bool[] isCode,
+            int startIdx, out List<int> positions)
+        {
+            positions = new List<int>();
+
+            for (int i = startIdx; i < line.Length; i++)
+            {
+                // Skip non-code positions (comments, string literals)
+
+                if (i >= isCode.Length || !isCode[i])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if ((c == '+' || c == '-' || c == '*' || c == '/' ||
+                    c == '%') &&
+                    IsBinaryOpContext(line, i, startIdx))
+                {
+                    // Skip -> (pointer member access)
+                    if (c == '-' && i + 1 < line.Length &&
+                        line[i + 1] == '>')
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    positions.Add(i);
+                }
+            }
+
+            return positions.Count > 0;
+        }
+
+        /// <summary>
+        /// Performs a one-pass split of a line at all binary operator
+        /// positions, placing each operator at the start of its own
+        /// continuation line.
+        /// </summary>
+        private static List<string> SplitAtBinaryOperators(string line,
+            List<int> positions, string fixedContIndent, string baseIndent)
+        {
+            int indentLen = 0;
+
+            while (indentLen < line.Length && line[indentLen] == ' ')
+            {
+                indentLen++;
+            }
+
+            string indent = line.Substring(0, indentLen);
+
+            string contIndent;
+
+            if (fixedContIndent != null)
+            {
+                contIndent = fixedContIndent;
+            }
+            else
+            {
+                contIndent = indent + new string(' ', TextUtils.IndentSize);
+            }
+
+            var result = new List<string>();
+
+            // First segment: everything before the first operator
+            result.Add(line.Substring(0, positions[0]).TrimEnd());
+
+            // Subsequent segments: contIndent + operator + content up to
+            // next operator
+            for (int j = 0; j < positions.Count; j++)
+            {
+                int end = (j + 1 < positions.Count)
+                    ? positions[j + 1]
+                    : line.Length;
+
+                string segment = contIndent +
+                    line.Substring(positions[j], end - positions[j])
+                        .TrimStart();
+
+                result.Add(segment.TrimEnd());
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Determines whether the position at line[i] is in a binary operator context.
         /// </summary>
         private static bool IsBinaryOpContext(string line, int i,
@@ -367,6 +566,195 @@ namespace CppFormatter
 
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"';
+        }
+
+        /// <summary>
+        /// Checks whether <paramref name="line"/> ends with a stream operator
+        /// (&lt;&lt; or &gt;&gt;) in stream context, indicating it is the
+        /// first line of a wrapped multi-line stream expression. If so,
+        /// merges all continuation lines into a single unwrapped expression
+        /// string returned via <paramref name="unwrapped"/>.
+        /// </summary>
+        private static bool TryUnwrapStreamChain(List<string> lines,
+            string line, int startIndex, out string unwrapped)
+        {
+            string trimmed = line.TrimEnd();
+
+            // Check if the trimmed content ends with << in stream context.
+            // The << must be at a valid character position.
+
+            if (trimmed.Length < 2)
+            {
+                unwrapped = null;
+                return false;
+            }
+
+            if (!(trimmed[trimmed.Length - 2] == '<' &&
+                trimmed[trimmed.Length - 1] == '<'))
+            {
+                unwrapped = null;
+                return false;
+            }
+
+            // Verify stream context: preceding non-space char must be valid.
+
+            int lastCodeIdx = trimmed.Length - 3;
+
+            while (lastCodeIdx >= 0 && trimmed[lastCodeIdx] == ' ')
+            {
+                lastCodeIdx--;
+            }
+
+            if (lastCodeIdx < 0)
+            {
+                unwrapped = null;
+                return false;
+            }
+
+            char pc = trimmed[lastCodeIdx];
+
+            if (!(pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
+                pc == '_' || pc == '"' || pc == '\''))
+            {
+                unwrapped = null;
+                return false;
+            }
+
+            // Collect continuation lines: lines with greater indent than
+            // the current line, until we hit a line with same-or-less
+            // indent or the end of the list.
+
+            int indentLen = CountLeadingSpaces(line);
+
+            var parts = new List<string>();
+
+            // Strip trailing << from the first line.
+
+            parts.Add(line.Substring(0, trimmed.Length - 2).TrimEnd());
+
+            int j = startIndex + 1;
+
+            while (j < lines.Count)
+            {
+                string next = lines[j];
+
+                // Blank lines break the chain.
+
+                if (string.IsNullOrWhiteSpace(next))
+                {
+                    break;
+                }
+
+                int nextIndent = CountLeadingSpaces(next);
+
+                // Continuation must have greater indent.
+
+                if (nextIndent <= indentLen)
+                {
+                    break;
+                }
+
+                // Strip trailing << from this continuation part.
+
+                string nextTrimmed = next.TrimEnd();
+
+                if (nextTrimmed.EndsWith("<<") && nextTrimmed.Length >= 2)
+                {
+                    nextTrimmed = nextTrimmed.Substring(0,
+                        nextTrimmed.Length - 2).TrimEnd();
+                }
+
+                parts.Add(nextTrimmed.TrimStart());
+                j++;
+            }
+
+            // No continuation lines found.
+
+            if (parts.Count <= 1)
+            {
+                unwrapped = null;
+                return false;
+            }
+
+            // Build the combined (unwrapped) expression.
+
+            var sb = new System.Text.StringBuilder(parts[0]);
+
+            for (int k = 1; k < parts.Count; k++)
+            {
+                string part = parts[k];
+
+                // Skip empty parts (e.g. a standalone << on its own line
+                // that was stripped to nothing) — the connector from the
+                // previous part already provides the <<.
+
+                if (part.Length == 0)
+                {
+                    continue;
+                }
+
+                if (part.StartsWith("<<") || part.StartsWith(">>"))
+                {
+                    sb.Append(' ');
+                    sb.Append(part);
+                }
+                else
+                {
+                    sb.Append(" << ");
+                    sb.Append(part);
+                }
+            }
+
+            unwrapped = sb.ToString();
+            return true;
+        }
+
+        /// <summary>
+        /// Advances <paramref name="i"/> past all continuation lines
+        /// following the current line, so the outer loop skips them.
+        /// Uses indent-based detection (continuation has greater indent
+        /// than the first line of the chain).
+        /// </summary>
+        private static void SkipContinuationLines(List<string> lines,
+            bool[] lineContinuesNext, ref int i)
+        {
+            int indentLen = CountLeadingSpaces(lines[i]);
+
+            while (i + 1 < lines.Count)
+            {
+                string next = lines[i + 1];
+
+                if (string.IsNullOrWhiteSpace(next))
+                {
+                    break;
+                }
+
+                int nextIndent = CountLeadingSpaces(next);
+
+                if (nextIndent > indentLen)
+                {
+                    i++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Counts the number of leading space characters in a line.
+        /// </summary>
+        private static int CountLeadingSpaces(string line)
+        {
+            int count = 0;
+
+            while (count < line.Length && line[count] == ' ')
+            {
+                count++;
+            }
+
+            return count;
         }
     }
 }

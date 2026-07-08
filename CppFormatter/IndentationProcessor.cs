@@ -97,10 +97,57 @@ namespace CppFormatter
 
             // Backward continuation indicator scan
 
+            bool foundBackwardContinuation = false;
+
             if (i > 0 && !inEnumBlock[i] && !isConstructorColon)
             {
-                baseDepth = ApplyContinuationScan(i, lines, lineStarts,
+                int newBaseDepth = ApplyContinuationScan(i, lines, lineStarts,
                     text, isCode, baseDepth);
+
+                if (newBaseDepth > baseDepth)
+                {
+                    foundBackwardContinuation = true;
+                }
+
+                baseDepth = newBaseDepth;
+            }
+
+            // Stream operator continuation: a line starting with << or >>
+            // is a continuation even when the previous line does not end
+            // with a continuation indicator. BUT only apply this when the
+            // backward scan did NOT already detect a continuation — otherwise
+            // we would double-count (the trailing << before a string literal
+            // is already detected as a code-region continuation indicator).
+            // When the previous non-blank line also starts with << or >>,
+            // match its indent level rather than starting from baseDepth,
+            // so all lines in the stream chain share the same hanging indent.
+
+            if (!foundBackwardContinuation)
+            {
+                if (content.StartsWith("<<") || content.StartsWith(">>"))
+                {
+                    baseDepth = ComputeStreamOperatorDepth(i, lines,
+                        baseDepth);
+                }
+                // Binary operator continuation: a continuation line starting
+                // with +, -, *, /, or % (followed by a space) after operator-
+                // first wrapping also needs an extra indent.  When the
+                // previous non-blank line already starts with the same binary
+                // operator, match its indent level to keep all operator lines
+                // at the same hanging indent.
+
+                else if (content.Length > 1)
+                {
+                    char first = content[0];
+
+                    if ((first == '+' || first == '-' || first == '*' ||
+                        first == '/' || first == '%') &&
+                        content[1] == ' ')
+                    {
+                        baseDepth = ComputeBinaryOpDepth(i, lines, baseDepth,
+                            first);
+                    }
+                }
             }
 
             // Closing-brace backward matching for continuation bodies
@@ -474,6 +521,79 @@ namespace CppFormatter
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Computes the correct indent depth for a stream-operator line
+        /// (&lt;&lt; or &gt;&gt;). When the current line is the FIRST
+        /// &lt;&lt;/&gt;&gt; in a chain (previous non-blank line does NOT
+        /// start with &lt;&lt; or &gt;&gt;), returns <paramref name="baseDepth"/> + 1
+        /// so the operator gets an extra hanging indent.  When the previous
+        /// non-blank line already starts with &lt;&lt; or &gt;&gt;, returns
+        /// the indent depth of that previous line so all lines in the chain
+        /// share the same hanging indent.
+        /// </summary>
+        private static int ComputeStreamOperatorDepth(int i,
+            List<string> lines, int baseDepth)
+        {
+            int prev = i - 1;
+
+            while (prev >= 0 && lines[prev].Trim().Length == 0)
+            {
+                prev--;
+            }
+
+            if (prev >= 0)
+            {
+                string prevContent = lines[prev].TrimStart();
+
+                if (prevContent.StartsWith("<<") ||
+                    prevContent.StartsWith(">>"))
+                {
+                    int prevIndent = lines[prev].Length -
+                        lines[prev].TrimStart().Length;
+
+                    return prevIndent / TextUtils.IndentSize;
+                }
+            }
+
+            return baseDepth + 1;
+        }
+
+        /// <summary>
+        /// Computes the correct indent depth for a binary-operator line
+        /// (starting with +, -, *, /, or %). When the current line is the
+        /// FIRST such operator in a chain, returns <paramref name="baseDepth"/> + 1.
+        /// When the previous non-blank line already starts with the same
+        /// binary operator, returns its indent depth so all operator lines
+        /// stay at the same hanging indent.
+        /// </summary>
+        private static int ComputeBinaryOpDepth(int i, List<string> lines,
+            int baseDepth, char op)
+        {
+            int prev = i - 1;
+
+            while (prev >= 0 && lines[prev].Trim().Length == 0)
+            {
+                prev--;
+            }
+
+            if (prev >= 0)
+            {
+                string prevContent = lines[prev].TrimStart();
+
+                if (prevContent.Length > 1 &&
+                    prevContent[0] == op &&
+                    prevContent[1] == ' ')
+                {
+                    int prevIndent = lines[prev].Length -
+                        lines[prev].TrimStart().Length;
+
+                    return prevIndent / TextUtils.IndentSize;
+                }
+            }
+
+            return baseDepth + 1;
         }
     }
 }

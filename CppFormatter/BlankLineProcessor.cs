@@ -113,7 +113,8 @@ namespace CppFormatter
                 // Detect function parameter list closing lines to skip blank line insertion
                 bool isFunctionParamListEnd = trimmed.Contains(")") &&
                     trimmed.EndsWith("{") &&
-                    !TextUtils.IsBlockStartLine(trimmed);
+                    !TextUtils.IsBlockStartLine(trimmed) &&
+                    !trimmed.Contains("(");
 
                 bool wantBlankAbove = ShouldInsertBlankAbove(
                     nonBlank[i], result, isContinuation, prevWasDocComment,
