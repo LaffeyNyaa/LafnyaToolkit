@@ -57,6 +57,7 @@ namespace CppFormatter
 
                 // Protect preprocessor directive lines from being split
                 string trimmedLine = lines[i].TrimStart();
+
                 if (trimmedLine.StartsWith("#"))
                 {
                     result.Add(lines[i]);
@@ -64,7 +65,6 @@ namespace CppFormatter
                 }
 
                 string line = lines[i];
-
                 // If this line is itself a continuation of the previous line
                 // (previous line ends with a continuation indicator), the
                 // continuation indent equals this line's current indent — do
@@ -168,8 +168,8 @@ namespace CppFormatter
             // (binary operators, safe break points).
             var tokens = Tokenizer.Tokenize(line);
             bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
-
             // Stream operator lines: one-pass split at all << positions
+
             if (HasStreamOperators(line, indentLen, out var streamPositions))
             {
                 return SplitAtStreamOperators(line, streamPositions,
@@ -178,6 +178,7 @@ namespace CppFormatter
 
             // Binary operator lines: one-pass split at all binary operator
             // positions (+ - * / %) when the line exceeds the max length.
+
             if (HasBinaryOperators(line, isCode, indentLen,
                 out var binaryPositions))
             {
@@ -437,20 +438,19 @@ namespace CppFormatter
             }
 
             var result = new List<string>();
-
             // First segment: everything before the first <<
             result.Add(line.Substring(0, positions[0]).TrimEnd());
-
             // Subsequent segments: contIndent + << + content up to next <<
+
             for (int j = 0; j < positions.Count; j++)
             {
                 int end = (j + 1 < positions.Count)
-                    ? positions[j + 1]
-                    : line.Length;
+                ? positions[j + 1]
+                : line.Length;
 
                 string segment = contIndent +
                     line.Substring(positions[j], end - positions[j])
-                        .TrimStart();
+                .TrimStart();
 
                 result.Add(segment.TrimEnd());
             }
@@ -487,6 +487,7 @@ namespace CppFormatter
                     IsBinaryOpContext(line, i, startIdx))
                 {
                     // Skip -> (pointer member access)
+
                     if (c == '-' && i + 1 < line.Length &&
                         line[i + 1] == '>')
                     {
@@ -530,21 +531,20 @@ namespace CppFormatter
             }
 
             var result = new List<string>();
-
             // First segment: everything before the first operator
             result.Add(line.Substring(0, positions[0]).TrimEnd());
-
             // Subsequent segments: contIndent + operator + content up to
             // next operator
+
             for (int j = 0; j < positions.Count; j++)
             {
                 int end = (j + 1 < positions.Count)
-                    ? positions[j + 1]
-                    : line.Length;
+                ? positions[j + 1]
+                : line.Length;
 
                 string segment = contIndent +
                     line.Substring(positions[j], end - positions[j])
-                        .TrimStart();
+                .TrimStart();
 
                 result.Add(segment.TrimEnd());
             }
@@ -587,7 +587,6 @@ namespace CppFormatter
             string line, int startIndex, out string unwrapped)
         {
             string trimmed = line.TrimEnd();
-
             // Check if the trimmed content ends with << in stream context.
             // The << must be at a valid character position.
 
@@ -605,7 +604,6 @@ namespace CppFormatter
             }
 
             // Verify stream context: preceding non-space char must be valid.
-
             int lastCodeIdx = trimmed.Length - 3;
 
             while (lastCodeIdx >= 0 && trimmed[lastCodeIdx] == ' ')
@@ -631,13 +629,10 @@ namespace CppFormatter
             // Collect continuation lines: lines with greater indent than
             // the current line, until we hit a line with same-or-less
             // indent or the end of the list.
-
             int indentLen = CountLeadingSpaces(line);
 
             var parts = new List<string>();
-
             // Strip trailing << from the first line.
-
             parts.Add(line.Substring(0, trimmed.Length - 2).TrimEnd());
 
             int j = startIndex + 1;
@@ -645,7 +640,6 @@ namespace CppFormatter
             while (j < lines.Count)
             {
                 string next = lines[j];
-
                 // Blank lines break the chain.
 
                 if (string.IsNullOrWhiteSpace(next))
@@ -654,7 +648,6 @@ namespace CppFormatter
                 }
 
                 int nextIndent = CountLeadingSpaces(next);
-
                 // Continuation must have greater indent.
 
                 if (nextIndent <= indentLen)
@@ -663,7 +656,6 @@ namespace CppFormatter
                 }
 
                 // Strip trailing << from this continuation part.
-
                 string nextTrimmed = next.TrimEnd();
 
                 if (nextTrimmed.EndsWith("<<") && nextTrimmed.Length >= 2)
@@ -685,13 +677,11 @@ namespace CppFormatter
             }
 
             // Build the combined (unwrapped) expression.
-
             var sb = new System.Text.StringBuilder(parts[0]);
 
             for (int k = 1; k < parts.Count; k++)
             {
                 string part = parts[k];
-
                 // Skip empty parts (e.g. a standalone << on its own line
                 // that was stripped to nothing) — the connector from the
                 // previous part already provides the <<.

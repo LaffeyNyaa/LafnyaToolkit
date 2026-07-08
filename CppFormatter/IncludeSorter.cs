@@ -315,6 +315,7 @@ namespace CppFormatter
                     blockLines.Add(lines[i]);
 
                     int j = i + 1;
+
                     while (j <= lastInclude && depth > 0)
                     {
                         string jTrimmed = lines[j].Trim();
@@ -350,15 +351,18 @@ namespace CppFormatter
                             new List<string>(),
                             firstIncludeInBlock,
                             blockLines));
+
                         inPreprocessorBlock = false;
                     }
                     else
                     {
                         // Block has no #include — treat as preprocessor lines
+
                         foreach (var bl in blockLines)
                         {
                             preprocessorLines.Add(bl);
                         }
+
                         inPreprocessorBlock = true;
                     }
                 }
@@ -366,6 +370,7 @@ namespace CppFormatter
                 {
                     units.Add(new IncludeUnit(
                         new List<string>(), lines[i]));
+
                     inPreprocessorBlock = false;
                 }
                 else if (trimmed.Length > 0 && trimmed[0] == '#')

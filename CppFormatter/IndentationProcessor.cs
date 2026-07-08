@@ -108,7 +108,6 @@ namespace CppFormatter
             }
 
             // Backward continuation indicator scan
-
             bool foundBackwardContinuation = false;
 
             if (i > 0 && !inEnumBlock[i] && !isConstructorColon)
@@ -141,6 +140,7 @@ namespace CppFormatter
                     baseDepth = ComputeStreamOperatorDepth(i, lines,
                         baseDepth);
                 }
+
                 // Binary operator continuation: a continuation line starting
                 // with +, -, *, /, or % (followed by a space) after operator-
                 // first wrapping also needs an extra indent.  When the

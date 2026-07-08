@@ -118,7 +118,6 @@ namespace CppFormatter
             // directives (#if/#ifdef/#ifndef/#elif/#else/#endif).
             // Directive lines keep the enclosing scope depth; code lines
             // inside the conditional get an extra indent per nesting level.
-
             int preprocDepth = 0;
 
             for (int i = 0; i < lines.Count; i++)
