@@ -157,6 +157,16 @@ namespace CSharpFormatter
                 }
 
                 char c = line[i];
+                // Skip ++ and -- operator pairs (unary, never a valid break
+                // point).
+
+                if ((c == '+' || c == '-') && i + 1 < line.Length &&
+                    line[i + 1] == c)
+                {
+                    i += 2;
+                    continue;
+                }
+
                 int bp = -1;
                 bp = TryMatchTwoCharOperator(line, i, c);
 
