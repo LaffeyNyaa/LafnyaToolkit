@@ -115,39 +115,13 @@ namespace CppFormatter
                 string beforeColon = trimmed.Substring(0, trimmed.Length -
                     1).Trim();
 
-                if (IsPureIdentifier(beforeColon))
+                if (TextUtils.IsPureIdentifier(beforeColon))
                 {
                     return true;
                 }
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Determines whether a string is a pure C++ identifier.
-        /// </summary>
-        private static bool IsPureIdentifier(string s)
-        {
-            if (s.Length == 0)
-            {
-                return false;
-            }
-
-            if (!char.IsLetter(s[0]) && s[0] != '_')
-            {
-                return false;
-            }
-
-            foreach (char c in s)
-            {
-                if (!char.IsLetterOrDigit(c) && c != '_')
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         /// <summary>
@@ -371,7 +345,7 @@ namespace CppFormatter
                 // Check if it's an identifier that could be a class name
                 // (typically starts with capital letter or is a known naming pattern)
 
-                if (IsPureIdentifier(beforeParen))
+                if (TextUtils.IsPureIdentifier(beforeParen))
                 {
                     // Could be a constructor name (Class::Class or just Class)
                     // We need additional context to confirm, but this is a good heuristic
@@ -380,24 +354,6 @@ namespace CppFormatter
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Counts occurrences of a character in a string.
-        /// </summary>
-        private static int CountChar(string s, char c)
-        {
-            int count = 0;
-
-            foreach (char ch in s)
-            {
-                if (ch == c)
-                {
-                    count++;
-                }
-            }
-
-            return count;
         }
 
         /// <summary>
@@ -414,7 +370,7 @@ namespace CppFormatter
             string trimmed = lines[currentIdx].TrimStart();
             // Must look like a member initializer (identifier followed by parentheses or braces)
 
-            if (!LooksLikeMemberInitializer(trimmed))
+            if (!TextUtils.LooksLikeMemberInitializer(trimmed))
             {
                 return false;
             }
@@ -438,56 +394,6 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Determines whether a line looks like a member initializer
-        /// (identifier followed by parentheses or braces for initialization).
-        /// </summary>
-        private static bool LooksLikeMemberInitializer(string trimmed)
-        {
-            // Member initializer patterns:
-            // - member_(value)
-            // - member_{value}
-            // - member_(std::move(value))
-            // etc.
-
-            if (trimmed.Length == 0)
-            {
-                return false;
-            }
-
-            // Find first '(' or '{' that follows an identifier
-            int parenPos = trimmed.IndexOf('(');
-            int bracePos = trimmed.IndexOf('{');
-            int initPos = -1;
-
-            if (parenPos >= 0 && bracePos >= 0)
-            {
-                initPos = Math.Min(parenPos, bracePos);
-            }
-            else if (parenPos >= 0)
-            {
-                initPos = parenPos;
-            }
-            else if (bracePos >= 0)
-            {
-                initPos = bracePos;
-            }
-
-            if (initPos <= 0)
-            {
-                return false;
-            }
-
-            // Check if the part before '(' or '{' is an identifier (possibly with trailing underscore)
-            string beforeInit = trimmed.Substring(0, initPos);
-            // Allow identifiers with common member name patterns
-            // (letters, digits, underscores, ending with underscore is common for members)
-            return IsPureIdentifier(beforeInit) ||
-                (beforeInit.EndsWith("_") && beforeInit.Length > 1 &&
-                IsPureIdentifier(beforeInit.Substring(0, beforeInit.Length -
-                1)));
-        }
-
-        /// <summary>
         /// Finds the constructor base indent by looking at previous processed lines.
         /// </summary>
         private static int FindConstructorBaseIndentFromPrevious(List<string>
@@ -495,9 +401,8 @@ namespace CppFormatter
             List<string> processedResult)
         {
             // Scan backward through processed result to find colon line
-
-            for (int scanIdx = processedResult.Count - 1; scanIdx >= 0; scanIdx-
-                -)
+            for (int scanIdx = processedResult.Count - 1; scanIdx >= 0;
+            scanIdx--)
             {
                 string scanLine = processedResult[scanIdx];
                 string scanTrimmed = scanLine.TrimStart();

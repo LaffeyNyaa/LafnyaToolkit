@@ -17,6 +17,11 @@ namespace CppFormatter
         /// <returns>The processed token list.</returns>
         internal static List<Token> ApplyMandatoryBraces(List<Token> tokens)
         {
+            if (tokens == null || tokens.Count == 0)
+            {
+                return tokens;
+            }
+
             string text = Tokenizer.Reconstruct(tokens);
             bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
             var insertions = new List<TextUtils.Insertion>();

@@ -53,7 +53,7 @@ namespace CppFormatter
 
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = IndentationProcessor
+                preSplitContinues[i] = ContinuationScanner
 
                 .IsContinuationIndicator(lines[i],
                     lineStartsForLimit[i], currentText, isCodeForLimit);
@@ -65,7 +65,8 @@ namespace CppFormatter
             // lines and shift indices, causing LineLengthProcessor to read
             // the wrong continuation flag for each line.
             lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
-                currentText, preSplitContinues);
+                currentText, preSplitContinues, tokensForLimit,
+                isCodeForLimit);
 
             // Only join lines when they have been modified by a processor
             currentText = string.Join("\n", lines);

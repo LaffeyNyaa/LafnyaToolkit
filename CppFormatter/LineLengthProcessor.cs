@@ -34,9 +34,13 @@ namespace CppFormatter
         /// available.</param>
         /// <returns>The processed line list.</returns>
         internal static List<string> ApplyLineLengthLimit(List<string> lines,
-            string text, bool[] lineContinuesNext)
+            string text, bool[] lineContinuesNext,
+            List<Token> preTokens = null, bool[] preIsCode = null)
         {
-            var tokens = Tokenizer.Tokenize(text);
+            var tokens = preTokens ?? Tokenizer.Tokenize(text);
+
+            bool[] isCode = preIsCode ?? Tokenizer.BuildCodeMask(text,
+                tokens);
 
             bool[] protectedLines = Tokenizer.ComputeProtectedLines(text,
                 tokens, lines.Count);

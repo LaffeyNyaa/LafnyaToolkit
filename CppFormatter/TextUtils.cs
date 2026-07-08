@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -352,6 +353,145 @@ namespace CppFormatter
         internal static bool IsIncludeDirective(string trimmed)
         {
             return trimmed.StartsWith("#include");
+        }
+
+        /// <summary>
+        /// Determines whether a string is a pure C++ identifier: starts with
+        /// a letter or underscore and contains only letters, digits, or underscores.
+        /// </summary>
+        internal static bool IsPureIdentifier(string s)
+        {
+            if (s.Length == 0)
+            {
+                return false;
+            }
+
+            if (!char.IsLetter(s[0]) && s[0] != '_')
+            {
+                return false;
+            }
+
+            foreach (char c in s)
+            {
+                if (!char.IsLetterOrDigit(c) && c != '_')
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Counts the occurrences of a specific character in a string.
+        /// </summary>
+        internal static int CountChar(string s, char c)
+        {
+            int count = 0;
+
+            foreach (char ch in s)
+            {
+                if (ch == c)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Determines whether a string looks like a member initializer
+        /// (identifier followed by parentheses or braces for initialization).
+        /// </summary>
+        internal static bool LooksLikeMemberInitializer(string s)
+        {
+            if (s.Length == 0)
+            {
+                return false;
+            }
+
+            // Find first '(' or '{' that follows an identifier
+            int parenPos = s.IndexOf('(');
+            int bracePos = s.IndexOf('{');
+            int initPos = -1;
+
+            if (parenPos >= 0 && bracePos >= 0)
+            {
+                initPos = Math.Min(parenPos, bracePos);
+            }
+            else if (parenPos >= 0)
+            {
+                initPos = parenPos;
+            }
+            else if (bracePos >= 0)
+            {
+                initPos = bracePos;
+            }
+
+            if (initPos <= 0)
+            {
+                return false;
+            }
+
+            // Check if the part before '(' or '{' is an identifier
+            string beforeInit = s.Substring(0, initPos);
+
+            return IsPureIdentifier(beforeInit) ||
+                (beforeInit.EndsWith("_") && beforeInit.Length > 1 &&
+                IsPureIdentifier(beforeInit.Substring(0, beforeInit.Length -
+                1)));
+        }
+
+        /// <summary>
+        /// Represents a text insertion point used by brace enforcement.
+        /// </summary>
+        internal struct Insertion
+        {
+            /// <summary>The character position at which to insert.</summary>
+            public int Position;
+
+            /// <summary>The text to insert.</summary>
+            public string Text;
+
+            /// <summary>
+            /// Creates a new insertion record.
+            /// </summary>
+            /// <param name="position">The character position.</param>
+            /// <param name="text">The text to insert.</param>
+            public Insertion(int position, string text)
+            {
+                Position = position;
+                Text = text;
+            }
+        }
+
+        /// <summary>
+        /// Represents a text replacement range used by enum formatting.
+        /// </summary>
+        internal struct Replacement
+        {
+            /// <summary>The start position (inclusive).</summary>
+            public int Start;
+
+            /// <summary>The end position (exclusive).</summary>
+            public int End;
+
+            /// <summary>The replacement text.</summary>
+            public string NewText;
+
+            /// <summary>
+            /// Creates a new replacement record.
+            /// </summary>
+            /// <param name="start">The start position.</param>
+            /// <param name="end">The end position.</param>
+            /// <param name="newText">The replacement text.</param>
+            public Replacement(int start, int end, string newText)
+            {
+                Start = start;
+                End = end;
+                NewText = newText;
+            }
         }
     }
 }

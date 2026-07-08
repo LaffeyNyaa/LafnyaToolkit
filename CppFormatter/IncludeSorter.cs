@@ -50,43 +50,132 @@ namespace CppFormatter
             // directives that appear between include lines. Preprocessor
             // directives (#ifndef, #define, #endif, etc.) are extracted and
             // placed at the very top of the file, before any #include.
-            var units = new List<IncludeUnit>();
-            var preprocessorLines = new List<string>();
-            bool inPreprocessorBlock = false;
+            BuildIncludeUnits(lines, firstInclude, lastInclude,
+                out var units, out var preprocessorLines);
 
-            for (int i = firstInclude; i <= lastInclude; i++)
+            // Phase 3: Sort units by category, then by include path.
+            var sortedBlock = BuildSortedIncludeBlock(units,
+                preprocessorLines);
+
+            // Phase 5: Rebuild the source with the sorted block in place.
+            var result = new StringBuilder();
+
+            for (int i = 0; i < firstInclude; i++)
             {
-                string trimmed = lines[i].Trim();
-
-                if (TextUtils.IsIncludeDirective(trimmed))
+                if (result.Length > 0)
                 {
-                    units.Add(new IncludeUnit(
-                        new List<string>(), lines[i]));
+                    result.Append('\n');
                 }
-                else if (trimmed.Length > 0 && trimmed[0] == '#')
-                {
-                    // Preprocessor directive (not an #include) —
-                    // collect for placement before the include block.
-                    preprocessorLines.Add(lines[i]);
-                    inPreprocessorBlock = true;
-                }
-                else if (trimmed.Length == 0)
-                {
-                    // Blank line — add between preprocessor directives
-                    // only if we're inside a preprocessor block.
 
-                    if (inPreprocessorBlock)
+                result.Append(lines[i]);
+            }
+
+            // Ensure a blank line between a non-include preprocessor directive
+            // (e.g., #pragma once) or a comment block and the first #include
+            // directive. Scan backward past any blank lines to find the
+            // actual content line.
+
+            if (firstInclude > 0 && sortedBlock.Count > 0)
+            {
+                int scanIdx = firstInclude - 1;
+
+                while (scanIdx >= 0 &&
+                    lines[scanIdx].Trim().Length == 0)
+                {
+                    scanIdx--;
+                }
+
+                if (scanIdx >= 0)
+                {
+                    string lastBeforeInclude = lines[scanIdx].Trim();
+
+                    bool firstIsInclude =
+                        TextUtils.IsIncludeDirective(sortedBlock[0]);
+
+                    // Blank between non-include preprocessor directive and
+                    // first include.
+
+                    if (firstIsInclude &&
+                        !TextUtils.IsIncludeDirective(lastBeforeInclude) &&
+                        lastBeforeInclude.Length > 0 &&
+                        lastBeforeInclude[0] == '#')
                     {
-                        preprocessorLines.Add(string.Empty);
+                        result.Append('\n');
                     }
-                }
-                else
-                {
-                    // Non-preprocessor, non-include content — stop collecting.
-                    inPreprocessorBlock = false;
+
+                    // Blank between comment and first include.
+
+                    if (firstIsInclude &&
+                        TextUtils.IsCommentLine(lastBeforeInclude))
+                    {
+                        result.Append('\n');
+                    }
                 }
             }
 
+            foreach (var line in sortedBlock)
+            {
+                if (result.Length > 0)
+                {
+                    result.Append('\n');
+                }
+
+                result.Append(line);
+            }
+
+            int after = lastInclude + 1;
+
+            while (after < lines.Length && lines[after].Trim().Length == 0)
+            {
+                after++;
+            }
+
+            for (int i = after; i < lines.Length; i++)
+            {
+                if (result.Length > 0)
+                {
+                    result.Append('\n');
+                }
+
+                result.Append(lines[i]);
+            }
+
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Appends a group of include units to the block, with a blank line
+        /// separator if the block is non-empty. Each unit's preceding lines
+        /// (preprocessor directives, etc.) are emitted before the include
+        /// line.
+        /// </summary>
+        private static void AppendUnitGroup(List<string> block,
+            List<IncludeUnit> group)
+        {
+            if (group.Count == 0)
+            {
+                return;
+            }
+
+            if (block.Count > 0)
+            {
+                block.Add(string.Empty);
+            }
+
+            foreach (var unit in group)
+            {
+                block.AddRange(unit.PrecedingLines);
+                block.Add(unit.IncludeLine);
+            }
+        }
+
+        /// <summary>
+        /// Builds a sorted include block from the collected units and preprocessor lines.
+        /// </summary>
+        private static List<string> BuildSortedIncludeBlock(
+            List<IncludeUnit> units,
+            List<string> preprocessorLines)
+        {
             // Phase 3: Sort units by category, then by include path.
             var systemGroup = new List<IncludeUnit>();
             var thirdPartyGroup = new List<IncludeUnit>();
@@ -143,115 +232,48 @@ namespace CppFormatter
             AppendUnitGroup(newBlock, thirdPartyGroup);
             AppendUnitGroup(newBlock, projectModuleGroup);
             AppendUnitGroup(newBlock, currentModuleGroup);
-            // Phase 5: Rebuild the source with the sorted block in place.
-            var result = new StringBuilder();
 
-            for (int i = 0; i < firstInclude; i++)
-            {
-                if (result.Length > 0)
-                {
-                    result.Append('\n');
-                }
-
-                result.Append(lines[i]);
-            }
-
-            // Ensure a blank line between a non-include preprocessor directive
-            // (e.g., #pragma once) or a comment block and the first #include
-            // directive. Scan backward past any blank lines to find the
-            // actual content line.
-
-            if (firstInclude > 0 && newBlock.Count > 0)
-            {
-                int scanIdx = firstInclude - 1;
-
-                while (scanIdx >= 0 &&
-                    lines[scanIdx].Trim().Length == 0)
-                {
-                    scanIdx--;
-                }
-
-                if (scanIdx >= 0)
-                {
-                    string lastBeforeInclude = lines[scanIdx].Trim();
-
-                    bool firstIsInclude =
-                        TextUtils.IsIncludeDirective(newBlock[0]);
-
-                    // Blank between non-include preprocessor directive and
-                    // first include.
-
-                    if (firstIsInclude &&
-                        !TextUtils.IsIncludeDirective(lastBeforeInclude) &&
-                        lastBeforeInclude.Length > 0 &&
-                        lastBeforeInclude[0] == '#')
-                    {
-                        result.Append('\n');
-                    }
-
-                    // Blank between comment and first include.
-
-                    if (firstIsInclude &&
-                        TextUtils.IsCommentLine(lastBeforeInclude))
-                    {
-                        result.Append('\n');
-                    }
-                }
-            }
-
-            foreach (var line in newBlock)
-            {
-                if (result.Length > 0)
-                {
-                    result.Append('\n');
-                }
-
-                result.Append(line);
-            }
-
-            int after = lastInclude + 1;
-
-            while (after < lines.Length && lines[after].Trim().Length == 0)
-            {
-                after++;
-            }
-
-            for (int i = after; i < lines.Length; i++)
-            {
-                if (result.Length > 0)
-                {
-                    result.Append('\n');
-                }
-
-                result.Append(lines[i]);
-            }
-
-            return result.ToString();
+            return newBlock;
         }
 
         /// <summary>
-        /// Appends a group of include units to the block, with a blank line
-        /// separator if the block is non-empty. Each unit's preceding lines
-        /// (preprocessor directives, etc.) are emitted before the include
-        /// line.
+        /// Builds include units and collects preprocessor directives
+        /// within the include range.
         /// </summary>
-        private static void AppendUnitGroup(List<string> block,
-            List<IncludeUnit> group)
+        private static void BuildIncludeUnits(string[] lines,
+            int firstInclude, int lastInclude,
+            out List<IncludeUnit> units,
+            out List<string> preprocessorLines)
         {
-            if (group.Count == 0)
-            {
-                return;
-            }
+            units = new List<IncludeUnit>();
+            preprocessorLines = new List<string>();
+            bool inPreprocessorBlock = false;
 
-            if (block.Count > 0)
+            for (int i = firstInclude; i <= lastInclude; i++)
             {
-                block.Add(string.Empty);
-            }
+                string trimmed = lines[i].Trim();
 
-            foreach (var unit in group)
-            {
-                block.AddRange(unit.PrecedingLines);
-                block.Add(unit.IncludeLine);
+                if (TextUtils.IsIncludeDirective(trimmed))
+                {
+                    units.Add(new IncludeUnit(
+                        new List<string>(), lines[i]));
+                }
+                else if (trimmed.Length > 0 && trimmed[0] == '#')
+                {
+                    preprocessorLines.Add(lines[i]);
+                    inPreprocessorBlock = true;
+                }
+                else if (trimmed.Length == 0)
+                {
+                    if (inPreprocessorBlock)
+                    {
+                        preprocessorLines.Add(string.Empty);
+                    }
+                }
+                else
+                {
+                    inPreprocessorBlock = false;
+                }
             }
         }
 
