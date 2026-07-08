@@ -69,67 +69,114 @@ namespace GDScriptFormatter
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine("Error: failed to process " +
-                        relative +
-                        ": " + ex.Message);
+                    Console.Error.WriteLine("Error: " + relative + ": " +
+                        ex.Message);
+
                     failedCount++;
                 }
             }
 
-            int total = formattedCount + skippedCount + failedCount;
-
-            string summary = "Total: " + total + ", Formatted: " +
-                formattedCount + ", Skipped: " + skippedCount;
-
-            if (failedCount > 0)
-            {
-                summary += ", Failed: " + failedCount;
-            }
-
-            Console.WriteLine(summary);
-            Environment.Exit(failedCount);
+            PrintSummary(formattedCount, skippedCount, failedCount);
         }
 
         /// <summary>
-        /// Recursively discovers all .gd files under the target directory, sorted alphabetically.
-        /// Directories named "addons" (case-insensitive) and their contents are excluded.
+        /// Prints the summary line: Total, Formatted, Skipped, Failed.
+        /// </summary>
+        private static void PrintSummary(int formatted, int skipped, int failed)
+        {
+            int total = formatted + skipped + failed;
+
+            Console.WriteLine("Total: " + total + ", Formatted: " +
+                formatted + ", Skipped: " + skipped + ", Failed: " + failed);
+        }
+
+        /// <summary>
+        /// Recursively discovers all .gd files under the target directory,
+        /// sorted alphabetically (OrdinalIgnoreCase). Directories named "addons"
+        /// (case-insensitive) are excluded. Inaccessible subdirectories are skipped
+        /// with a warning to stderr.
         /// </summary>
         /// <param name="root">The root directory.</param>
         /// <returns>A sorted list of full paths to .gd files.</returns>
         private static List<string> DiscoverGdFiles(string root)
         {
             var files = new List<string>();
-            var dirsToVisit = new Queue<string>();
-            dirsToVisit.Enqueue(root);
+            var stack = new Stack<string>();
+            stack.Push(root);
 
-            while (dirsToVisit.Count > 0)
+            while (stack.Count > 0)
             {
-                string currentDir = dirsToVisit.Dequeue();
+                string current = stack.Pop();
+
+                string[] currentFiles;
 
                 try
                 {
-                    files.AddRange(Directory.EnumerateFiles(currentDir,
-                        "*.gd"));
+                    currentFiles = Directory.GetFiles(current, "*.gd",
+                        SearchOption.TopDirectoryOnly);
                 }
-                catch (UnauthorizedAccessException)
+                catch (UnauthorizedAccessException ex)
                 {
+                    Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
                 }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+
+                files.AddRange(currentFiles);
+
+                string[] subdirs;
 
                 try
                 {
-                    foreach (string subDir in Directory.EnumerateDirectories(currentDir))
+                    subdirs = Directory.GetDirectories(current, "*",
+                        SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+
+                foreach (string dir in subdirs)
+                {
+                    string dirName = Path.GetFileName(dir);
+
+                    if (!string.Equals(dirName, "addons",
+                        StringComparison.OrdinalIgnoreCase))
                     {
-                        string dirName = Path.GetFileName(subDir);
-
-                        if (!string.Equals(dirName, "addons",
-                            StringComparison.OrdinalIgnoreCase))
-                        {
-                            dirsToVisit.Enqueue(subDir);
-                        }
+                        stack.Push(dir);
                     }
-                }
-                catch (UnauthorizedAccessException)
-                {
                 }
             }
 

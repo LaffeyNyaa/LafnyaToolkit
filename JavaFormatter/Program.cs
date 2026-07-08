@@ -12,12 +12,28 @@ namespace JavaFormatter
     public class Program
     {
         /// <summary>
+        /// UTF-8 encoding without BOM, reused across all file writes.
+        /// </summary>
+        private static readonly UTF8Encoding Utf8NoBom =
+            new UTF8Encoding(false);
+
+        /// <summary>
+        /// Result of processing a single Java file.
+        /// </summary>
+        private enum ProcessFileResult
+        {
+            Formatted,
+            Skipped,
+            Failed
+        }
+
+        /// <summary>
         /// Program entry point.
         /// </summary>
         /// <param name="args">Command-line arguments; args[0] should be the target directory path.</param>
         public static void Main(string[] args)
         {
-            if (args.Length < 1)
+            if (args == null || args.Length < 1)
             {
                 Console.Error.WriteLine("Error: missing target directory argument.");
                 Environment.Exit(2);
@@ -36,89 +52,200 @@ namespace JavaFormatter
             }
 
             var files = DiscoverJavaFiles(targetPath);
-            int formattedCount = 0;
-            int skippedCount = 0;
-            int failedCount = 0;
+            int formatted = 0;
+            int skipped = 0;
+            int failed = 0;
 
             foreach (var file in files)
             {
-                ProcessFile(file, targetPath, ref formattedCount,
-                    ref skippedCount, ref failedCount);
+                ProcessFileResult result = ProcessFile(file, targetPath);
+
+                switch (result)
+                {
+                    case ProcessFileResult.Formatted:
+                        formatted++;
+                        break;
+                    case ProcessFileResult.Skipped:
+                        skipped++;
+                        break;
+                    case ProcessFileResult.Failed:
+                        failed++;
+                        break;
+                }
             }
 
-            PrintSummary(formattedCount, skippedCount, failedCount);
+            PrintSummary(formatted, skipped, failed);
         }
 
         /// <summary>
-        /// Processes a single .java file: reads its content, invokes the formatter,
-        /// writes the formatted result back when it differs, and updates the counters.
+        /// Reads, formats, compares, and optionally writes a single Java file.
+        /// Prints the per-file progress line and returns the processing result.
         /// </summary>
-        /// <param name="file">The full path of the file to process.</param>
-        /// <param name="targetPath">The target directory root used for relative path computation.</param>
-        /// <param name="formattedCount">Counter incremented when a file is reformatted.</param>
-        /// <param name="skippedCount">Counter incremented when a file is left unchanged.</param>
-        /// <param name="failedCount">Counter incremented when processing raises an exception.</param>
-        private static void ProcessFile(string file, string targetPath,
-            ref int formattedCount, ref int skippedCount, ref int failedCount)
+        /// <param name="file">The full path to the Java file.</param>
+        /// <param name="root">The root directory used for computing the relative path.</param>
+        /// <returns>The processing result.</returns>
+        private static ProcessFileResult ProcessFile(string file, string root)
         {
-            string relative = GetRelativePath(targetPath, file);
+            string relative = GetRelativePath(root, file);
 
             try
             {
                 string original = File.ReadAllText(file, Encoding.UTF8);
-                string formatted = Formatter.Format(original, targetPath);
+                string formatted = Formatter.Format(original, root);
 
                 if (!string.Equals(original, formatted,
                     StringComparison.Ordinal))
                 {
-                    File.WriteAllText(file, formatted, new UTF8Encoding(false));
+                    string directory = Path.GetDirectoryName(file);
+
+                    string tempPath = Path.Combine(directory,
+                        Path.GetFileName(file) + ".tmp");
+
+                    try
+                    {
+                        File.WriteAllText(tempPath, formatted, Utf8NoBom);
+
+                        try
+                        {
+                            File.Replace(tempPath, file, null);
+                        }
+                        catch (Exception)
+                        {
+                            File.Delete(file);
+                            File.Move(tempPath, file);
+                        }
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempPath))
+                        {
+                            try
+                            {
+                                File.Delete(tempPath);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                    }
+
                     Console.WriteLine("Formatting: " + relative);
-                    formattedCount++;
-                } else
-                {
-                    Console.WriteLine("Skipped: " + relative);
-                    skippedCount++;
+                    return ProcessFileResult.Formatted;
                 }
-            } catch (Exception ex)
+
+                Console.WriteLine("Skipped: " + relative);
+                return ProcessFileResult.Skipped;
+            }
+            catch (Exception ex)
             {
                 Console.Error.WriteLine("Error: " + relative + ": " +
                     ex.Message);
 
-                failedCount++;
+                return ProcessFileResult.Failed;
             }
         }
 
         /// <summary>
-        /// Prints the processing summary, including total, formatted, skipped, and failed counts.
+        /// Prints the summary line: Total, Formatted, Skipped, Failed.
         /// </summary>
-        /// <param name="formattedCount">The number of files reformatted.</param>
-        /// <param name="skippedCount">The number of files left unchanged.</param>
-        /// <param name="failedCount">The number of files that failed to process.</param>
-        private static void PrintSummary(int formattedCount, int skippedCount,
-            int failedCount)
+        private static void PrintSummary(int formatted, int skipped, int failed)
         {
-            int total = formattedCount + skippedCount + failedCount;
+            int total = formatted + skipped + failed;
 
             Console.WriteLine("Total: " + total + ", Formatted: " +
-                formattedCount + ", Skipped: " + skippedCount + ", Failed: " +
-                failedCount);
+                formatted + ", Skipped: " + skipped + ", Failed: " + failed);
         }
 
         /// <summary>
-        /// Recursively discovers all .java files in the target directory, sorted alphabetically.
+        /// Recursively discovers all .java files under the target directory,
+        /// sorted alphabetically (OrdinalIgnoreCase). Inaccessible subdirectories
+        /// are skipped with a warning to stderr.
         /// </summary>
         /// <param name="root">The root directory.</param>
-        /// <returns>The sorted list of full paths to .java files.</returns>
+        /// <returns>A sorted list of full paths to .java files.</returns>
         private static List<string> DiscoverJavaFiles(string root)
         {
-            var files = new List<string>(Directory.EnumerateFiles(root,
-                "*.java", SearchOption.AllDirectories));
+            var files = new List<string>();
+            var stack = new Stack<string>();
+            stack.Push(root);
+
+            while (stack.Count > 0)
+            {
+                string current = stack.Pop();
+
+                string[] currentFiles;
+
+                try
+                {
+                    currentFiles = Directory.GetFiles(current, "*.java",
+                        SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+
+                files.AddRange(currentFiles);
+
+                string[] subdirs;
+
+                try
+                {
+                    subdirs = Directory.GetDirectories(current, "*",
+                        SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+
+                foreach (string dir in subdirs)
+                {
+                    stack.Push(dir);
+                }
+            }
+
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return files;
         }
 
         /// <summary>
-        /// Computes the relative path of a file with respect to the root directory.
+        /// Computes the relative path of <paramref name="file"/> with respect to
+        /// <paramref name="root"/>, using the system directory separator.
         /// </summary>
         /// <param name="root">The root directory.</param>
         /// <param name="file">The full file path.</param>
@@ -128,15 +255,16 @@ namespace JavaFormatter
             string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
                 Path.AltDirectorySeparatorChar);
 
+            string normalizedFile = file;
             string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
 
-            if (file.StartsWith(rootWithSep,
+            if (normalizedFile.StartsWith(rootWithSep,
                 StringComparison.OrdinalIgnoreCase))
             {
-                return file.Substring(rootWithSep.Length);
+                return normalizedFile.Substring(rootWithSep.Length);
             }
 
-            return file;
+            return normalizedFile;
         }
     }
 }

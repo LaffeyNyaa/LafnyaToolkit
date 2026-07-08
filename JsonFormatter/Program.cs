@@ -96,7 +96,39 @@ namespace JsonFormatter
                 if (!string.Equals(original, formatted,
                     StringComparison.Ordinal))
                 {
-                    File.WriteAllText(file, formatted, Utf8NoBom);
+                    string directory = Path.GetDirectoryName(file);
+
+                    string tempPath = Path.Combine(directory,
+                        Path.GetFileName(file) + ".tmp");
+
+                    try
+                    {
+                        File.WriteAllText(tempPath, formatted, Utf8NoBom);
+
+                        try
+                        {
+                            File.Replace(tempPath, file, null);
+                        }
+                        catch (Exception)
+                        {
+                            File.Delete(file);
+                            File.Move(tempPath, file);
+                        }
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempPath))
+                        {
+                            try
+                            {
+                                File.Delete(tempPath);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                    }
+
                     Console.WriteLine("Formatting: " + relative);
                     return ProcessFileResult.Formatted;
                 }

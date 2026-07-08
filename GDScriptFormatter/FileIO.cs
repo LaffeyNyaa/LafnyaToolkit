@@ -53,7 +53,7 @@ namespace GDScriptFormatter
             }
             catch (Exception)
             {
-                return (Encoding.Default, 0);
+                return (Encoding.UTF8, 0);
             }
         }
 

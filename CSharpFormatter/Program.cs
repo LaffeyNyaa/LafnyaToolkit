@@ -12,6 +12,12 @@ namespace CSharpFormatter
     public class Program
     {
         /// <summary>
+        /// UTF-8 encoding without BOM, reused across all file writes.
+        /// </summary>
+        private static readonly UTF8Encoding Utf8NoBom =
+            new UTF8Encoding(false);
+
+        /// <summary>
         /// Describes the outcome of processing a single source file.
         /// </summary>
         private enum FileProcessResult
@@ -116,8 +122,38 @@ namespace CSharpFormatter
                 if (!string.Equals(original, formatted,
                     StringComparison.Ordinal))
                 {
-                    File.WriteAllText(file, formatted,
-                        new UTF8Encoding(false));
+                    string directory = Path.GetDirectoryName(file);
+
+                    string tempPath = Path.Combine(directory,
+                        Path.GetFileName(file) + ".tmp");
+
+                    try
+                    {
+                        File.WriteAllText(tempPath, formatted, Utf8NoBom);
+
+                        try
+                        {
+                            File.Replace(tempPath, file, null);
+                        }
+                        catch (Exception)
+                        {
+                            File.Delete(file);
+                            File.Move(tempPath, file);
+                        }
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempPath))
+                        {
+                            try
+                            {
+                                File.Delete(tempPath);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                    }
 
                     Console.WriteLine("Formatting: " + relativePath);
                     return FileProcessResult.Formatted;
@@ -158,14 +194,86 @@ namespace CSharpFormatter
 
         /// <summary>
         /// Recursively discovers all .cs files under the target directory,
-        /// sorted alphabetically.
+        /// sorted alphabetically (OrdinalIgnoreCase). Inaccessible subdirectories
+        /// are skipped with a warning to stderr.
         /// </summary>
         /// <param name="root">The root directory.</param>
         /// <returns>A sorted list of absolute paths to .cs files.</returns>
         private static List<string> DiscoverCsFiles(string root)
         {
-            var files = new List<string>(Directory.EnumerateFiles(root, "*.cs",
-                SearchOption.AllDirectories));
+            var files = new List<string>();
+            var stack = new Stack<string>();
+            stack.Push(root);
+
+            while (stack.Count > 0)
+            {
+                string current = stack.Pop();
+
+                string[] currentFiles;
+
+                try
+                {
+                    currentFiles = Directory.GetFiles(current, "*.cs",
+                        SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+
+                files.AddRange(currentFiles);
+
+                string[] subdirs;
+
+                try
+                {
+                    subdirs = Directory.GetDirectories(current, "*",
+                        SearchOption.TopDirectoryOnly);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (PathTooLongException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
+                    continue;
+                }
+
+                foreach (string dir in subdirs)
+                {
+                    stack.Push(dir);
+                }
+            }
 
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return files;
