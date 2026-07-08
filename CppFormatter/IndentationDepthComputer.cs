@@ -18,6 +18,12 @@ namespace CppFormatter
         ///
         /// Namespace bodies do not increase depth (they match the enclosing
         /// scope's indentation level).
+        ///
+        /// A second pass scans preprocessor conditional directives
+        /// (<c>#if</c>/<c>#ifdef</c>/<c>#ifndef</c>/<c>#elif</c>/<c>#else</c>/<c>#endif</c>)
+        /// and adjusts depths so that code inside a conditional block receives
+        /// an extra indentation level.  Directive lines themselves retain the
+        /// enclosing scope depth.
         /// </summary>
         internal static int[] ComputeDepths(List<string> lines, string text,
             bool[] isCode)
@@ -108,7 +114,81 @@ namespace CppFormatter
                 }
             }
 
+            // Second pass: adjust depths for preprocessor conditional
+            // directives (#if/#ifdef/#ifndef/#elif/#else/#endif).
+            // Directive lines keep the enclosing scope depth; code lines
+            // inside the conditional get an extra indent per nesting level.
+
+            int preprocDepth = 0;
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string trimmed = lines[i].TrimStart();
+                string keyword = GetPreprocessorKeyword(trimmed);
+
+                if (keyword == "if" || keyword == "ifdef" ||
+                    keyword == "ifndef")
+                {
+                    depths[i] += preprocDepth;
+                    preprocDepth++;
+                }
+                else if (keyword == "elif" || keyword == "else")
+                {
+                    if (preprocDepth > 0)
+                    {
+                        depths[i] += (preprocDepth - 1);
+                    }
+                }
+                else if (keyword == "endif")
+                {
+                    if (preprocDepth > 0)
+                    {
+                        depths[i] += (preprocDepth - 1);
+                        preprocDepth--;
+                    }
+                }
+                else
+                {
+                    depths[i] += preprocDepth;
+                }
+            }
+
             return depths;
+        }
+
+        /// <summary>
+        /// Extracts the preprocessor directive keyword from a trimmed line.
+        /// Returns <c>null</c> if the line does not start with <c>#</c>
+        /// followed by a letter-based keyword.
+        /// </summary>
+        private static string GetPreprocessorKeyword(string trimmedLine)
+        {
+            if (trimmedLine.Length == 0 || trimmedLine[0] != '#')
+            {
+                return null;
+            }
+
+            string afterHash = trimmedLine.Substring(1).TrimStart();
+
+            if (afterHash.Length == 0)
+            {
+                return null;
+            }
+
+            int kwEnd = 0;
+
+            while (kwEnd < afterHash.Length &&
+                char.IsLetter(afterHash[kwEnd]))
+            {
+                kwEnd++;
+            }
+
+            if (kwEnd == 0)
+            {
+                return null;
+            }
+
+            return afterHash.Substring(0, kwEnd);
         }
     }
 }

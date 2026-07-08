@@ -244,13 +244,21 @@ namespace CppFormatter
                 return true;
             }
 
-            // Ensure blank line between a non-include preprocessor
-            // directive (e.g. #pragma once) and the first #include.
+            // Ensure blank line between a standalone non-include preprocessor
+            // directive (e.g. #pragma once) and an #include directive.
+            // Skip this rule when the previous line is a preprocessor
+            // conditional directive or #define, so that #if blocks
+            // containing both #define and #include remain compact.
 
             if (TextUtils.IsIncludeDirective(trimmed) &&
                 prevTrimmed.Length > 0 &&
                 prevTrimmed[0] == '#' &&
-                !TextUtils.IsIncludeDirective(prevTrimmed))
+                !TextUtils.IsIncludeDirective(prevTrimmed) &&
+                !prevTrimmed.StartsWith("#if") &&
+                !prevTrimmed.StartsWith("#elif") &&
+                !prevTrimmed.StartsWith("#else") &&
+                !prevTrimmed.StartsWith("#endif") &&
+                !prevTrimmed.StartsWith("#define"))
             {
                 return true;
             }
@@ -377,6 +385,7 @@ namespace CppFormatter
                 !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
                 !TextUtils.IsBlockEndLine(trimmed) &&
                 !trimmed.StartsWith(":") &&
+                !trimmed.StartsWith("#") &&
                 !isFunctionParamListEnd)
             {
                 if (trimmed.EndsWith(";"))

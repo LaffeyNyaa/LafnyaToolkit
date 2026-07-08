@@ -17,6 +17,11 @@ namespace CppFormatter
         /// unit, sorts units by category (System / Third-party / Other
         /// Project / Current Module), then rebuilds the source with the
         /// sorted include region.
+        ///
+        /// Preprocessor conditional blocks (#if/#ifdef/#ifndef ... #endif)
+        /// that contain at least one #include directive are treated as a
+        /// single include unit. The block is classified and sorted by
+        /// the first #include encountered inside the block.
         /// </summary>
         /// <param name="source">The source string.</param>
         /// <returns>The source string with sorted #include directives.</returns>
@@ -46,10 +51,43 @@ namespace CppFormatter
                 return source;
             }
 
+            // Expand lastInclude to cover complete #if/#ifdef/#ifndef blocks
+            // whose closing #endif lies beyond the last #include line.
+            int openBlocks = 0;
+
+            for (int i = firstInclude; i < lines.Length; i++)
+            {
+                if (i > lastInclude && openBlocks == 0)
+                {
+                    break;
+                }
+
+                string trimmed = lines[i].Trim();
+
+                if (IsPreprocessorConditionalStart(trimmed))
+                {
+                    openBlocks++;
+                }
+                else if (trimmed.StartsWith("#endif"))
+                {
+                    if (openBlocks > 0)
+                    {
+                        openBlocks--;
+                    }
+                }
+
+                if (i > lastInclude)
+                {
+                    lastInclude = i;
+                }
+            }
+
             // Phase 2: Build include units and collect non-include preprocessor
             // directives that appear between include lines. Preprocessor
             // directives (#ifndef, #define, #endif, etc.) are extracted and
             // placed at the very top of the file, before any #include.
+            // Preprocessor conditional blocks that contain #include directives
+            // are treated as single include units.
             BuildIncludeUnits(lines, firstInclude, lastInclude,
                 out var units, out var preprocessorLines);
 
@@ -145,9 +183,10 @@ namespace CppFormatter
 
         /// <summary>
         /// Appends a group of include units to the block, with a blank line
-        /// separator if the block is non-empty. Each unit's preceding lines
-        /// (preprocessor directives, etc.) are emitted before the include
-        /// line.
+        /// separator if the block is non-empty. For a simple include unit,
+        /// the preceding lines are emitted before the include line. For a
+        /// preprocessor conditional block unit (IsBlock == true), the
+        /// entire block content is emitted as-is.
         /// </summary>
         private static void AppendUnitGroup(List<string> block,
             List<IncludeUnit> group)
@@ -164,8 +203,16 @@ namespace CppFormatter
 
             foreach (var unit in group)
             {
-                block.AddRange(unit.PrecedingLines);
-                block.Add(unit.IncludeLine);
+                if (unit.IsBlock)
+                {
+                    block.AddRange(unit.PrecedingLines);
+                    block.AddRange(unit.BlockLines);
+                }
+                else
+                {
+                    block.AddRange(unit.PrecedingLines);
+                    block.Add(unit.IncludeLine);
+                }
             }
         }
 
@@ -239,6 +286,11 @@ namespace CppFormatter
         /// <summary>
         /// Builds include units and collects preprocessor directives
         /// within the include range.
+        ///
+        /// Preprocessor conditional blocks (#if/#ifdef/#ifndef ... #endif)
+        /// that contain at least one #include directive are collected as
+        /// a single include unit (BlockLines). Blocks without any #include
+        /// are treated as regular preprocessor lines.
         /// </summary>
         private static void BuildIncludeUnits(string[] lines,
             int firstInclude, int lastInclude,
@@ -253,10 +305,68 @@ namespace CppFormatter
             {
                 string trimmed = lines[i].Trim();
 
-                if (TextUtils.IsIncludeDirective(trimmed))
+                if (IsPreprocessorConditionalStart(trimmed))
+                {
+                    // Collect the entire #if/#ifdef/#ifndef ... #endif block
+                    var blockLines = new List<string>();
+                    int depth = 1;
+                    bool hasInclude = false;
+                    string firstIncludeInBlock = null;
+                    blockLines.Add(lines[i]);
+
+                    int j = i + 1;
+                    while (j <= lastInclude && depth > 0)
+                    {
+                        string jTrimmed = lines[j].Trim();
+                        blockLines.Add(lines[j]);
+
+                        if (IsPreprocessorConditionalStart(jTrimmed))
+                        {
+                            depth++;
+                        }
+                        else if (jTrimmed.StartsWith("#endif"))
+                        {
+                            depth--;
+                        }
+
+                        if (depth > 0 &&
+                            TextUtils.IsIncludeDirective(jTrimmed) &&
+                            firstIncludeInBlock == null)
+                        {
+                            firstIncludeInBlock = lines[j];
+                            hasInclude = true;
+                        }
+
+                        j++;
+                    }
+
+                    i = j - 1; // advance past the block
+
+                    if (hasInclude)
+                    {
+                        // Treat the entire #if block as an include unit,
+                        // classified by its first #include.
+                        units.Add(new IncludeUnit(
+                            new List<string>(),
+                            firstIncludeInBlock,
+                            blockLines));
+                        inPreprocessorBlock = false;
+                    }
+                    else
+                    {
+                        // Block has no #include — treat as preprocessor lines
+                        foreach (var bl in blockLines)
+                        {
+                            preprocessorLines.Add(bl);
+                        }
+                        inPreprocessorBlock = true;
+                    }
+                }
+                else if (TextUtils.IsIncludeDirective(trimmed))
                 {
                     units.Add(new IncludeUnit(
                         new List<string>(), lines[i]));
+                    inPreprocessorBlock = false;
                 }
                 else if (trimmed.Length > 0 && trimmed[0] == '#')
                 {
@@ -275,6 +385,19 @@ namespace CppFormatter
                     inPreprocessorBlock = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed line starts a preprocessor
+        /// conditional block: #if, #ifdef, or #ifndef.
+        /// Note: #if checks must come after #ifdef and #ifndef since
+        /// those also start with "#if".
+        /// </summary>
+        private static bool IsPreprocessorConditionalStart(string trimmed)
+        {
+            return trimmed.StartsWith("#ifdef") ||
+                trimmed.StartsWith("#ifndef") ||
+                trimmed.StartsWith("#if");
         }
 
         /// <summary>

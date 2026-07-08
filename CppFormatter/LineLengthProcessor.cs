@@ -55,6 +55,14 @@ namespace CppFormatter
                     continue;
                 }
 
+                // Protect preprocessor directive lines from being split
+                string trimmedLine = lines[i].TrimStart();
+                if (trimmedLine.StartsWith("#"))
+                {
+                    result.Add(lines[i]);
+                    continue;
+                }
+
                 string line = lines[i];
 
                 // If this line is itself a continuation of the previous line

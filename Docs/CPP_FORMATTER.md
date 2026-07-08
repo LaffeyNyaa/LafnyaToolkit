@@ -41,6 +41,56 @@
 
 - **Indent Size**: Uses exactly **4 spaces** per indentation level.
 
+### Preprocessor Conditional Indentation
+
+Preprocessor conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`) are indented at the enclosing scope's indentation level — the same level as the surrounding code at that brace depth. Content inside a preprocessor conditional block is indented by one additional level relative to the directive itself.
+
+- **Directive line indentation**: The directive line itself (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`) is indented at the enclosing scope's depth before the conditional's effect.
+- **Content indentation**: Code inside a `#if`/`#ifdef`/`#ifndef` ... `#endif` block receives one extra indentation level, just like the body of an `if` statement.
+- **Nested conditionals**: Nested preprocessor conditionals increment the indentation level for each nesting level.
+
+*Incorrect*:
+```cpp
+void ProcessData() {
+    int status = 0;
+
+#ifdef ENABLE_FEATURE_X
+    status = InitFeatureX();
+
+    if (status != 0) {
+#ifdef DEBUG_MODE
+        LogError("Feature X failed");
+#endif
+
+        return;
+    }
+#endif
+
+    DoOtherStuff();
+}
+```
+
+*Correct*:
+```cpp
+void ProcessData() {
+    int status = 0;
+
+    #ifdef ENABLE_FEATURE_X
+        status = InitFeatureX();
+
+        if (status != 0) {
+            #ifdef DEBUG_MODE
+                LogError("Feature X failed");
+            #endif
+
+            return;
+        }
+    #endif
+
+    DoOtherStuff();
+}
+```
+
 ### Line Length Limit & Wrapping
 
 - **Maximum Length**: Each line of code must not exceed **80 characters**.
@@ -53,7 +103,7 @@
 - **Exceptions**:
   - Do not add an empty line above if the block is at the very beginning of its parent block.
   - Do not add an empty line below if the block is at the very end of its parent block.
-- **Preprocessor Conditionals**: Preprocessor conditional blocks (`#if`/`#ifdef`/`#ifndef` ... `#endif`) are treated as code blocks and follow the same blank-line rules as other blocks.
+- **Preprocessor Conditionals**: Preprocessor conditional blocks (`#if`/`#ifdef`/`#ifndef` ... `#endif`) are treated as code blocks and follow the same blank-line rules as other blocks. `#else` and `#elif` directives are also treated as block boundaries.
 - *Incorrect*:
   ```cpp
   int i = 0;
@@ -564,6 +614,10 @@ struct UrlParts {
 The full formatted output should be verified with the latest formatter version.
 
 ---
+
+### Idempotency
+
+The preprocessor conditional formatting rules are designed to be idempotent — running the formatter multiple times on the same file produces identical output. This is verified by the test suite.
 
 ### Skip Build Directory
 

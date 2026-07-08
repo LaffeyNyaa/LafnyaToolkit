@@ -75,6 +75,18 @@ namespace CppFormatter
                 return string.Empty;
             }
 
+            // Preprocessor conditional directives (#if/#ifdef/#ifndef/
+            // #elif/#else/#endif) keep the enclosing scope depth.  The
+            // depths[] array from ComputeDepths already includes the
+            // correct depth for these lines, so return immediately
+            // before any other adjustment can modify it.
+
+            if (IsPreprocessorConditionalDirective(content))
+            {
+                return new string(' ', depths[i] * TextUtils.IndentSize) +
+                    content;
+            }
+
             int baseDepth = depths[i];
 
             bool isConstructorColon = content.StartsWith(":") &&
@@ -594,6 +606,45 @@ namespace CppFormatter
             }
 
             return baseDepth + 1;
+        }
+
+        /// <summary>
+        /// Determines whether the trimmed line content is a preprocessor
+        /// conditional directive (<c>#if</c>, <c>#ifdef</c>, <c>#ifndef</c>,
+        /// <c>#elif</c>, <c>#else</c>, <c>#endif</c>).
+        /// </summary>
+        private static bool IsPreprocessorConditionalDirective(string content)
+        {
+            if (content.Length == 0 || content[0] != '#')
+            {
+                return false;
+            }
+
+            string afterHash = content.Substring(1).TrimStart();
+
+            if (afterHash.Length == 0)
+            {
+                return false;
+            }
+
+            int kwEnd = 0;
+
+            while (kwEnd < afterHash.Length &&
+                char.IsLetter(afterHash[kwEnd]))
+            {
+                kwEnd++;
+            }
+
+            if (kwEnd == 0)
+            {
+                return false;
+            }
+
+            string keyword = afterHash.Substring(0, kwEnd);
+
+            return keyword == "if" || keyword == "ifdef" ||
+                keyword == "ifndef" || keyword == "elif" ||
+                keyword == "else" || keyword == "endif";
         }
     }
 }
