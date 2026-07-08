@@ -117,6 +117,11 @@ namespace CppFormatter
                     trimmed.StartsWith("#ifndef") ||
                     trimmed.StartsWith("#if");
 
+                // Detect function parameter list closing lines to skip blank line insertion
+                bool isFunctionParamListEnd = trimmed.Contains(")") &&
+                    trimmed.EndsWith("{") &&
+                    !TextUtils.IsBlockStartLine(trimmed);
+
                 bool wantBlankAbove = false;
 
                 if (result.Count > 0)
@@ -151,12 +156,16 @@ namespace CppFormatter
                         }
 
                         // [Improvement 2] block-end: add #endif detection
+                        // Skip blank line when previous line ends with continuation indicator
+                        // (comma) - we are still inside a parameter list or expression
+                        bool prevIsContinuation = prevTrimmed.EndsWith(",");
 
                         if (!wantBlankAbove &&
                             (TextUtils.IsBlockEndLine(prevTrimmed) ||
                             prevTrimmed.StartsWith("#endif")) &&
                             trimmed.Length > 0 && trimmed != "}" &&
-                            !trimmed.StartsWith("}"))
+                            !trimmed.StartsWith("}") &&
+                            !prevIsContinuation)
                         {
                             wantBlankAbove = true;
                         }
@@ -175,7 +184,8 @@ namespace CppFormatter
                             prevTrimmed.Length > 0 &&
                             prevTrimmed != "{" &&
                             !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
-                            !TextUtils.IsAccessSpecifier(prevTrimmed))
+                            !TextUtils.IsAccessSpecifier(prevTrimmed) &&
+                            !isFunctionParamListEnd)
                         {
                             wantBlankAbove = true;
                         }
@@ -325,7 +335,8 @@ namespace CppFormatter
                             prevTrimmed != "{" &&
                             !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
                             !TextUtils.IsBlockEndLine(trimmed) &&
-                            !trimmed.StartsWith(":"))
+                            !trimmed.StartsWith(":") &&
+                            !isFunctionParamListEnd)
                         {
                             if (trimmed.EndsWith(";"))
                             {

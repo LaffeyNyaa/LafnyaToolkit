@@ -32,6 +32,8 @@ namespace CppFormatter
             lines = IndentationProcessor.Reindent(lines, currentText, tokens,
                 isCode);
 
+            lines = ConstructorInitializerProcessor.Format(lines);
+
             lines = NamespaceBodyTrimmer.TrimNamespaceBodyBlankLines(lines,
                 currentText, tokens, isCode);
 

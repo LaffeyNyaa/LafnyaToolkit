@@ -53,6 +53,7 @@
     <Compile Include="BlankLinePostProcess.cs" />
     <Compile Include="BraceEnforcer.cs" />
     <Compile Include="BraceMerger.cs" />
+    <Compile Include="ConstructorInitializerProcessor.cs" />
     <Compile Include="DoWhileMerger.cs" />
     <Compile Include="CaseScopeDetector.cs" />
     <Compile Include="EndifCommentProcessor.cs" />
