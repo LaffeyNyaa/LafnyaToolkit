@@ -205,8 +205,11 @@ namespace CppFormatter
                 // Consecutive namespace declarations are kept at the same
                 // indentation level as their enclosing block's content:
                 // reduce namespace keyword depth by 1.
+                // However, namespace alias declarations (ending with ';')
+                // should not have their depth reduced.
 
-                if (TextUtils.StartsWithKeyword(content, "namespace"))
+                if (TextUtils.StartsWithKeyword(content, "namespace") &&
+                    !content.TrimEnd().EndsWith(";"))
                 {
                     baseDepth = baseDepth > 0 ? baseDepth - 1 : 0;
                 }
