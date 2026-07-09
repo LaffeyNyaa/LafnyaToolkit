@@ -232,7 +232,8 @@ namespace CppFormatter
                 prevTrimmed != "{" &&
                 !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
                 !TextUtils.IsAccessSpecifier(prevTrimmed) &&
-                !isFunctionParamListEnd)
+                !isFunctionParamListEnd &&
+                !IsDocCommentLine(prevTrimmed))
             {
                 return true;
             }

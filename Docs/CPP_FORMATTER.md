@@ -161,6 +161,23 @@ void ProcessData() {
   private const int MaxLineLength = 80;
   ```
 
+### Empty Lines: Doc Comment before Function Definition
+
+- **General Rule**: No blank line is inserted between a documentation comment block (`///` or `/**`) and an immediately following function/method definition (a line ending with `{`). The doc comment is considered part of the function declaration for blank-line purposes.
+- **Rationale**: The doc comment already serves as a visual separator for the function it documents. Inserting a blank line between them would separate the comment from its documented entity.
+- **Code statement before doc comment**: When the preceding non-blank line is a regular code statement, a blank line is still inserted above the doc comment (existing behavior preserved).
+- *Incorrect*:
+  ```cpp
+  /// Count banned maps
+
+  static int count_banned_maps(const std::vector<bp_map>& maps) {
+  ```
+- *Correct*:
+  ```cpp
+  /// Count banned maps
+  static int count_banned_maps(const std::vector<bp_map>& maps) {
+  ```
+
 ### Preserve blank lines between single-line statements
 
 - **General Rule**: After all other blank-line rules in `ApplyBlankLineRules` (`CppFormatter/BlankLineProcessor.cs`) have decided *not* to insert a blank line above the current line, this fallback rule preserves an author-inserted blank line when both the current line and the previous non-blank line are plain single-line statements. It keeps author-inserted blank separators between adjacent single-line statements at the same indentation level.
