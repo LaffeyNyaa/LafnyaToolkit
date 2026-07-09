@@ -408,11 +408,22 @@ namespace CppFormatter
                     {
                         // New statement at base indent —
                         // insert blank above this line.
-                        return true;
+                        // Exception: ");" closing a function parameter list
+                        // is not a new statement but the end of a multi-line
+                        // function declaration.
+                        if (!trimmed.StartsWith(")"))
+                        {
+                            return true;
+                        }
                     }
                 }
 
-                return true;
+                // Lines starting with ")" (closing a parameter list) are
+                // not new statements; skip inserting a blank above them.
+                if (!trimmed.StartsWith(")"))
+                {
+                    return true;
+                }
             }
 
             // [Task 3] Blank line below a single-line statement that was preceded by a
