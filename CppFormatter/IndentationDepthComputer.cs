@@ -155,7 +155,6 @@ namespace CppFormatter
                     // #if/#ifdef/#ifndef is a header guard, preprocDepth was
                     // not incremented, so use preprocDepth directly.
                     // Otherwise use (preprocDepth - 1).
-
                     bool enclosingIsHeaderGuard =
                         isHeaderGuardLevel.Count > 0 &&
                         isHeaderGuardLevel[isHeaderGuardLevel.Count - 1];
@@ -221,7 +220,9 @@ namespace CppFormatter
             }
 
             string trimmed = lines[ifndefIndex].TrimStart();
-            string afterIfndef = trimmed.Substring("#ifndef".Length).TrimStart();
+
+            string afterIfndef =
+                trimmed.Substring("#ifndef".Length).TrimStart();
 
             if (afterIfndef.Length == 0)
             {
