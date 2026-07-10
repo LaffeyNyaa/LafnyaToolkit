@@ -7,6 +7,10 @@ namespace CppFormatter
     /// Adjusts depth based on namespace declarations (no extra indent for
     /// namespace bodies) and handles closing braces that reduce depth below
     /// the line-start depth.
+    ///
+    /// Include-guard #ifndef blocks (#ifndef NAME immediately followed by
+    /// #define NAME) are detected and do NOT add an indentation level; code
+    /// inside an include guard stays at the enclosing scope depth.
     /// </summary>
     internal static class IndentationDepthComputer
     {
@@ -20,10 +24,11 @@ namespace CppFormatter
         /// scope's indentation level).
         ///
         /// A second pass scans preprocessor conditional directives
-        /// (<c>#if</c>/<c>#ifdef</c>/<c>#ifndef</c>/<c>#elif</c>/<c>#else</c>/<c>#endif</c>)
-        /// and adjusts depths so that code inside a conditional block receives
-        /// an extra indentation level.  Directive lines themselves retain the
-        /// enclosing scope depth.
+        /// (#if/#ifdef/#ifndef/#elif/#else/#endif) and adjusts depths so that
+        /// code inside a conditional block receives an extra indentation level.
+        /// Directive lines themselves retain the enclosing scope depth.
+        /// Include-guard #ifndef blocks are detected and skipped (they do not
+        /// contribute an indentation level).
         /// </summary>
         internal static int[] ComputeDepths(List<string> lines, string text,
             bool[] isCode)
@@ -118,29 +123,68 @@ namespace CppFormatter
             // directives (#if/#ifdef/#ifndef/#elif/#else/#endif).
             // Directive lines keep the enclosing scope depth; code lines
             // inside the conditional get an extra indent per nesting level.
+            // Include-guard #ifndef blocks are detected and skipped so they
+            // do not contribute an indentation level (the #define guard-name
+            // that follows immediately is not "code" that needs indenting).
             int preprocDepth = 0;
+            // Stack tracks whether each nested preprocessor conditional level
+            // is an include-guard. true = this level is a header guard and
+            // should not contribute to preprocDepth.
+            var isHeaderGuardLevel = new List<bool>();
 
             for (int i = 0; i < lines.Count; i++)
             {
                 string trimmed = lines[i].TrimStart();
                 string keyword = GetPreprocessorKeyword(trimmed);
 
-                if (keyword == "if" || keyword == "ifdef" ||
+                if (keyword == "ifndef" && IsHeaderGuard(lines, i))
+                {
+                    depths[i] += preprocDepth;
+                    isHeaderGuardLevel.Add(true);
+                }
+                else if (keyword == "if" || keyword == "ifdef" ||
                     keyword == "ifndef")
                 {
                     depths[i] += preprocDepth;
+                    isHeaderGuardLevel.Add(false);
                     preprocDepth++;
                 }
                 else if (keyword == "elif" || keyword == "else")
                 {
-                    if (preprocDepth > 0)
+                    // Use the enclosing level's depth. If the enclosing
+                    // #if/#ifdef/#ifndef is a header guard, preprocDepth was
+                    // not incremented, so use preprocDepth directly.
+                    // Otherwise use (preprocDepth - 1).
+
+                    bool enclosingIsHeaderGuard =
+                        isHeaderGuardLevel.Count > 0 &&
+                        isHeaderGuardLevel[isHeaderGuardLevel.Count - 1];
+
+                    if (enclosingIsHeaderGuard)
+                    {
+                        depths[i] += preprocDepth;
+                    }
+                    else if (preprocDepth > 0)
                     {
                         depths[i] += (preprocDepth - 1);
                     }
                 }
                 else if (keyword == "endif")
                 {
-                    if (preprocDepth > 0)
+                    bool wasHeaderGuard = false;
+
+                    if (isHeaderGuardLevel.Count > 0)
+                    {
+                        int lastIdx = isHeaderGuardLevel.Count - 1;
+                        wasHeaderGuard = isHeaderGuardLevel[lastIdx];
+                        isHeaderGuardLevel.RemoveAt(lastIdx);
+                    }
+
+                    if (wasHeaderGuard)
+                    {
+                        depths[i] += preprocDepth;
+                    }
+                    else if (preprocDepth > 0)
                     {
                         depths[i] += (preprocDepth - 1);
                         preprocDepth--;
@@ -153,6 +197,105 @@ namespace CppFormatter
             }
 
             return depths;
+        }
+
+        /// <summary>
+        /// Determines whether the #ifndef at the given index is an include
+        /// guard. An include guard has the pattern:
+        ///
+        ///     #ifndef NAME
+        ///     #define NAME
+        ///
+        /// where NAME is the same identifier on both directives, and the
+        /// #ifndef is at file scope (brace depth 0 before adjustment).
+        /// </summary>
+        private static bool IsHeaderGuard(List<string> lines, int ifndefIndex)
+        {
+            // Only detect header guards at file scope (brace depth 0).
+            // depths[ifndefIndex] is the brace depth from pass 1, which
+            // has not yet been adjusted by the preprocessor pass.
+
+            if (ifndefIndex >= lines.Count)
+            {
+                return false;
+            }
+
+            string trimmed = lines[ifndefIndex].TrimStart();
+            string afterIfndef = trimmed.Substring("#ifndef".Length).TrimStart();
+
+            if (afterIfndef.Length == 0)
+            {
+                return false;
+            }
+
+            string guardName = ExtractPreprocessorIdentifier(afterIfndef);
+
+            if (guardName.Length == 0)
+            {
+                return false;
+            }
+
+            // Scan forward for the next non-blank, non-comment line.
+
+            for (int j = ifndefIndex + 1; j < lines.Count; j++)
+            {
+                string nextTrimmed = lines[j].TrimStart();
+
+                if (nextTrimmed.Length == 0)
+                {
+                    continue;
+                }
+
+                // Skip single-line comments.
+
+                if (nextTrimmed.StartsWith("//"))
+                {
+                    continue;
+                }
+
+                // Skip block-comment start lines.
+
+                if (nextTrimmed.StartsWith("/*"))
+                {
+                    continue;
+                }
+
+                string nextKeyword = GetPreprocessorKeyword(nextTrimmed);
+
+                if (nextKeyword == "define")
+                {
+                    string afterDefine = nextTrimmed.Substring(
+                        "#define".Length).TrimStart();
+
+                    string defineName = ExtractPreprocessorIdentifier(
+                        afterDefine);
+
+                    return defineName == guardName;
+                }
+
+                // Any other non-blank, non-comment line means this is not
+                // an include guard.
+                break;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Extracts the first identifier-like token from a string
+        /// (sequence of letters, digits, and underscores).
+        /// </summary>
+        private static string ExtractPreprocessorIdentifier(string s)
+        {
+            int end = 0;
+
+            while (end < s.Length &&
+                (char.IsLetterOrDigit(s[end]) || s[end] == '_'))
+            {
+                end++;
+            }
+
+            return s.Substring(0, end);
         }
 
         /// <summary>
