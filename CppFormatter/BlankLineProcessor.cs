@@ -245,11 +245,34 @@ namespace CppFormatter
                 return true;
             }
 
+            // Ensure blank line between an include-guard-style #define
+            // (empty #define preceded by #ifndef with the same name) and
+            // the first #include. This keeps header-guard blocks visually
+            // separated from the actual includes.
+            //
+            // Only triggers when the #define is an empty define (no value)
+            // and is preceded by #ifndef — the classic include-guard pattern.
+            // Standalone empty defines (e.g. inside a #if block) are NOT
+            // affected.
+
+            if (TextUtils.IsIncludeDirective(trimmed) &&
+                prevTrimmed.StartsWith("#define") &&
+                !IsDefineWithValue(prevTrimmed) &&
+                result.Count >= 2)
+            {
+                string prevPrevTrimmed = result[result.Count - 2].Trim();
+
+                if (prevPrevTrimmed.StartsWith("#ifndef"))
+                {
+                    return true;
+                }
+            }
+
             // Ensure blank line between a standalone non-include preprocessor
             // directive (e.g. #pragma once) and an #include directive.
             // Skip this rule when the previous line is a preprocessor
             // conditional directive or #define, so that #if blocks
-            // containing both #define and #include remain compact.
+            // containing related #define and #include remain compact.
 
             if (TextUtils.IsIncludeDirective(trimmed) &&
                 prevTrimmed.Length > 0 &&
@@ -470,6 +493,58 @@ namespace CppFormatter
             return trimmed.StartsWith("///") ||
                 trimmed.StartsWith("/**") ||
                 trimmed.StartsWith("*");
+        }
+
+        /// <summary>
+        /// Determines whether a trimmed preprocessor line is a #define that
+        /// defines a value (e.g. #define MAX_SIZE 1024) as opposed to an
+        /// empty include-guard-style #define (e.g. #define MY_HEADER_H).
+        /// Returns false for non-#define lines.
+        /// </summary>
+        private static bool IsDefineWithValue(string trimmed)
+        {
+            if (!trimmed.StartsWith("#define"))
+            {
+                return false;
+            }
+
+            string rest = trimmed.Substring("#define".Length).TrimStart();
+
+            if (rest.Length == 0)
+            {
+                return false;
+            }
+
+            // Skip the macro name (identifier).
+            int nameEnd = 0;
+
+            while (nameEnd < rest.Length &&
+                (char.IsLetterOrDigit(rest[nameEnd]) ||
+                rest[nameEnd] == '_'))
+            {
+                nameEnd++;
+            }
+
+            if (nameEnd == 0)
+            {
+                return false;
+            }
+
+            string afterName = rest.Substring(nameEnd).TrimStart();
+            // Anything after the name (that isn't just a comment) counts as
+            // a value — function-like macros, numeric/string literals, etc.
+
+            if (afterName.Length == 0)
+            {
+                return false;
+            }
+
+            if (afterName.StartsWith("//") || afterName.StartsWith("/*"))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
