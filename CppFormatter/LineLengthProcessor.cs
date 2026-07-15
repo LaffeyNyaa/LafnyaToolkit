@@ -172,8 +172,20 @@ namespace CppFormatter
 
             if (HasStreamOperators(line, indentLen, out var streamPositions))
             {
-                return SplitAtStreamOperators(line, streamPositions,
-                    fixedContIndent, baseIndent);
+                var streamResult = SplitAtStreamOperators(line,
+                    streamPositions, fixedContIndent, baseIndent);
+                // Recursively split the first segment if it still exceeds
+                // the max line length, ensuring idempotent behavior.
+
+                if (streamResult.Count > 0 &&
+                    streamResult[0].Length > TextUtils.MaxLineLength)
+                {
+                    var split = SplitLongLine(streamResult[0], null, null);
+                    streamResult.RemoveAt(0);
+                    streamResult.InsertRange(0, split);
+                }
+
+                return streamResult;
             }
 
             // Binary operator lines: one-pass split at all binary operator
@@ -182,8 +194,24 @@ namespace CppFormatter
             if (HasBinaryOperators(line, isCode, indentLen,
                 out var binaryPositions))
             {
-                return SplitAtBinaryOperators(line, binaryPositions,
-                    fixedContIndent, baseIndent);
+                var binaryResult = SplitAtBinaryOperators(line,
+                    binaryPositions, fixedContIndent, baseIndent);
+                // Recursively split the first segment if it still exceeds
+                // the max line length.  This prevents non-idempotent
+                // behavior where a binary-operator split leaves the first
+                // segment over 80 chars (e.g. when a comma before the
+                // operator is a better break point but the binary operator
+                // path fires first).
+
+                if (binaryResult.Count > 0 &&
+                    binaryResult[0].Length > TextUtils.MaxLineLength)
+                {
+                    var split = SplitLongLine(binaryResult[0], null, null);
+                    binaryResult.RemoveAt(0);
+                    binaryResult.InsertRange(0, split);
+                }
+
+                return binaryResult;
             }
 
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);

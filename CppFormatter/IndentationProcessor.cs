@@ -413,6 +413,18 @@ namespace CppFormatter
                 return;
             }
 
+            // Check if scanLine itself contains the lambda introducer '['.
+            // If not, the continuation indicator on the line before scanLine
+            // is part of this lambda's own multi-line parameter list
+            // (e.g., after LineLengthProcessor has split the lambda signature),
+            // not an external continuation. Skip the extra indent to avoid
+            // non-idempotent behavior.
+
+            if (!lines[scanLine].Trim().Contains("["))
+            {
+                return;
+            }
+
             // Check if the line before the lambda is a continuation.
             int prevScanLine = scanLine - 1;
 

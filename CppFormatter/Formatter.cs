@@ -71,6 +71,15 @@ namespace CppFormatter
             // Only join lines when they have been modified by a processor
             currentText = string.Join("\n", lines);
 
+            // Re-indent lines created by LineLengthProcessor to ensure
+            // idempotent indentation across passes (Root Cause 3).
+            tokens = Tokenizer.Tokenize(currentText);
+            isCode = Tokenizer.BuildCodeMask(currentText, tokens);
+            lines = IndentationProcessor.Reindent(lines, currentText, tokens,
+                isCode);
+
+            currentText = string.Join("\n", lines);
+
             lines = BlankLineProcessor.ApplyBlankLineRules(lines,
                 currentText);
 
