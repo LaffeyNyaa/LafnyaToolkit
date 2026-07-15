@@ -174,6 +174,7 @@ namespace CppFormatter
             {
                 var streamResult = SplitAtStreamOperators(line,
                     streamPositions, fixedContIndent, baseIndent);
+
                 // Recursively split the first segment if it still exceeds
                 // the max line length, ensuring idempotent behavior.
 
@@ -196,6 +197,7 @@ namespace CppFormatter
             {
                 var binaryResult = SplitAtBinaryOperators(line,
                     binaryPositions, fixedContIndent, baseIndent);
+
                 // Recursively split the first segment if it still exceeds
                 // the max line length.  This prevents non-idempotent
                 // behavior where a binary-operator split leaves the first
