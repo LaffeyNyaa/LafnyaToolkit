@@ -108,6 +108,7 @@ namespace CSharpFormatter
                     // double-count the nesting level, producing one indent too
                     // many.  Skip the continuation indent when brace depth
                     // has already increased from the previous line.
+
                     if (depths[i] <= depths[i - 1])
                     {
                         baseDepth++;

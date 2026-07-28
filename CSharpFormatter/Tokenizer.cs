@@ -116,8 +116,10 @@ namespace CSharpFormatter
                     continue;
                 }
 
-                if ((c == '$' && i + 1 < n && source[i + 1] == '@' && i + 2 < n && source[i + 2] == '"') ||
-                    (c == '@' && i + 1 < n && source[i + 1] == '$' && i + 2 < n && source[i + 2] == '"'))
+                if ((c == '$' && i + 1 < n && source[i + 1] == '@' && i + 2 <
+                    n && source[i + 2] == '"') ||
+                    (c == '@' && i + 1 < n && source[i + 1] == '$' && i + 2 <
+                    n && source[i + 2] == '"'))
                 {
                     FlushCode(tokens, code);
                     int start = i;
@@ -126,7 +128,8 @@ namespace CSharpFormatter
 
                     while (i < n)
                     {
-                        if (source[i] == '"' && i + 1 < n && source[i + 1] == '"')
+                        if (source[i] == '"' && i + 1 < n && source[i + 1] ==
+                            '"')
                         {
                             i += 2;
                             continue;
@@ -152,13 +155,15 @@ namespace CSharpFormatter
                         i++;
                     }
 
-                    tokens.Add(new Token { Kind = TokenKind.InterpolatedVerbatimString,
+                    tokens.Add(new Token { Kind =
+                        TokenKind.InterpolatedVerbatimString,
                         Text = source.Substring(start, i - start) });
 
                     continue;
                 }
 
-                if (c == '@' && i + 1 < n && source[i + 1] == '"' && (i + 2 >= n || source[i + 2] != '$'))
+                if (c == '@' && i + 1 < n && source[i + 1] == '"' && (i + 2 >=
+                    n || source[i + 2] != '$'))
                 {
                     FlushCode(tokens, code);
                     int start = i;

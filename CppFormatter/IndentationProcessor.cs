@@ -530,7 +530,7 @@ namespace CppFormatter
             }
 
             string[] blockKeywords = { "namespace", "struct", "switch",
-                    "catch", "class", "while", "union", "enum", "else",
+                "catch", "class", "while", "union", "enum", "else",
                 "for", "try", "do", "if" };
 
             foreach (var kw in blockKeywords)
