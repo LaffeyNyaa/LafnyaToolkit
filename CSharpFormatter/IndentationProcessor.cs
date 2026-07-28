@@ -100,7 +100,18 @@ namespace CSharpFormatter
                     IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
                     text, isCode))
                 {
-                    baseDepth++;
+                    // When the previous line contains both a block-start brace
+                    // ({) and a continuation-ending character (e.g.
+                    // "tokens.Add(new Token { Kind ="), the { already
+                    // increases brace depth for this line.  Adding the
+                    // continuation indent on top of that increased depth would
+                    // double-count the nesting level, producing one indent too
+                    // many.  Skip the continuation indent when brace depth
+                    // has already increased from the previous line.
+                    if (depths[i] <= depths[i - 1])
+                    {
+                        baseDepth++;
+                    }
                 }
 
                 if (caseBody[i])
