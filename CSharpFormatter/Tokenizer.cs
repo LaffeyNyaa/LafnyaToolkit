@@ -30,7 +30,15 @@ namespace CSharpFormatter
 
         /// <summary>Preprocessor directive #... covering the entire line
         /// (including backslash line continuations).</summary>
-        Preprocessor
+        Preprocessor,
+
+        /// <summary>Interpolated string literal $"..." (with escapes and
+        /// brace-depth tracking for interpolation expressions).</summary>
+        InterpolatedString,
+
+        /// <summary>Interpolated verbatim string literal $@"..." / @$"..."
+        /// (with "" escapes and brace-depth tracking).</summary>
+        InterpolatedVerbatimString
     }
 
     /// <summary>
@@ -108,7 +116,49 @@ namespace CSharpFormatter
                     continue;
                 }
 
-                if (c == '@' && i + 1 < n && source[i + 1] == '"')
+                if ((c == '$' && i + 1 < n && source[i + 1] == '@' && i + 2 < n && source[i + 2] == '"') ||
+                    (c == '@' && i + 1 < n && source[i + 1] == '$' && i + 2 < n && source[i + 2] == '"'))
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+                    i += 3;
+                    int braceDepth = 0;
+
+                    while (i < n)
+                    {
+                        if (source[i] == '"' && i + 1 < n && source[i + 1] == '"')
+                        {
+                            i += 2;
+                            continue;
+                        }
+
+                        if (source[i] == '{')
+                        {
+                            braceDepth++;
+                        }
+                        else if (source[i] == '}')
+                        {
+                            if (braceDepth > 0)
+                            {
+                                braceDepth--;
+                            }
+                        }
+                        else if (source[i] == '"' && braceDepth == 0)
+                        {
+                            i++;
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.InterpolatedVerbatimString,
+                        Text = source.Substring(start, i - start) });
+
+                    continue;
+                }
+
+                if (c == '@' && i + 1 < n && source[i + 1] == '"' && (i + 2 >= n || source[i + 2] != '$'))
                 {
                     FlushCode(tokens, code);
                     int start = i;
@@ -132,6 +182,47 @@ namespace CSharpFormatter
                     }
 
                     tokens.Add(new Token { Kind = TokenKind.VerbatimString,
+                        Text = source.Substring(start, i - start) });
+
+                    continue;
+                }
+
+                if (c == '$' && i + 1 < n && source[i + 1] == '"')
+                {
+                    FlushCode(tokens, code);
+                    int start = i;
+                    i += 2;
+                    int braceDepth = 0;
+
+                    while (i < n)
+                    {
+                        if (source[i] == '\\' && i + 1 < n)
+                        {
+                            i += 2;
+                            continue;
+                        }
+
+                        if (source[i] == '{')
+                        {
+                            braceDepth++;
+                        }
+                        else if (source[i] == '}')
+                        {
+                            if (braceDepth > 0)
+                            {
+                                braceDepth--;
+                            }
+                        }
+                        else if (source[i] == '"' && braceDepth == 0)
+                        {
+                            i++;
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    tokens.Add(new Token { Kind = TokenKind.InterpolatedString,
                         Text = source.Substring(start, i - start) });
 
                     continue;

@@ -133,7 +133,9 @@ namespace CSharpFormatter
                 int tokenEnd = tokenPos + token.Text.Length;
 
                 if (token.Kind == TokenKind.VerbatimString ||
-                    token.Kind == TokenKind.MultiLineComment)
+                    token.Kind == TokenKind.MultiLineComment ||
+                    token.Kind == TokenKind.InterpolatedString ||
+                    token.Kind == TokenKind.InterpolatedVerbatimString)
                 {
                     for (int i = 0; i < lines.Count; i++)
                     {

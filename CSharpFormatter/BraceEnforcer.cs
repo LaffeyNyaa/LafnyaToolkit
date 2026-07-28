@@ -229,6 +229,23 @@ namespace CSharpFormatter
                         depth--;
                     }
                 }
+                else if (c == '{')
+                {
+                    depth++;
+                }
+                else if (c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+
+                    if (depth == 0)
+                    {
+                        j++;
+                        break;
+                    }
+                }
                 else if (c == ';' && depth == 0)
                 {
                     break;
