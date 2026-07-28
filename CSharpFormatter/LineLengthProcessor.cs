@@ -123,6 +123,21 @@ namespace CSharpFormatter
                 return new List<string> { line };
             }
 
+            // If the remaining content after the break point is only a
+            // comment (starts with //, /*, or * after trimming), use the
+            // base indent instead of the continuation indent. This prevents
+            // a non-idempotent reindent on the next pass where
+            // IndentationProcessor.Reindent would reset the comment line
+            // indent back to base depth, causing an extra formatting pass.
+            string afterTrimmed = line.Substring(breakAt).TrimStart();
+
+            if (afterTrimmed.StartsWith("//") ||
+                afterTrimmed.StartsWith("/*") ||
+                afterTrimmed.StartsWith("*"))
+            {
+                fixedContIndent = indent;
+            }
+
             string first = line.Substring(0, breakAt).TrimEnd();
             string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
 
