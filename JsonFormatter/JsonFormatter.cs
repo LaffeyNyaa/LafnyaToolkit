@@ -5,40 +5,40 @@ using System.Text;
 namespace JsonFormatter
 {
     /// <summary>
-    /// JSON serializer that outputs a JsonValue abstract syntax tree according to
-    /// formatting rules. Indentation uses 2 spaces, newlines use \n, no trailing
-    /// whitespace, and a single trailing newline is appended at end of file.
+    /// JSON serializer that converts a <see cref="JsonValue"/> abstract
+    /// syntax tree into formatted text. Indentation uses 2 spaces, newlines
+    /// use '\n', no trailing whitespace, and a single trailing newline is
+    /// appended at end of file.
     /// </summary>
-    public static class JsonFormatter
+    public sealed class JsonFormatter
     {
-        /// <summary>
-        /// Number of spaces per indentation level.
-        /// </summary>
-        private const int IndentSize = 2;
+        /// <summary>Number of spaces per indentation level.</summary>
+        public const int IndentSize = 2;
+
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly JsonFormatter Instance = new JsonFormatter();
+
+        private static readonly string IndentUnit = new string(' ', IndentSize);
+
+        private JsonFormatter()
+        {
+        }
 
         /// <summary>
         /// Parses and formats JSON text.
         /// </summary>
         /// <param name="text">The raw JSON text.</param>
         /// <returns>The formatted JSON text with a single trailing newline.</returns>
-        public static string Format(string text)
+        public string Format(string text)
         {
-            JsonValue root = JsonParser.Parse(text);
+            JsonValue root = JsonParser.Instance.Parse(text);
             var sb = new StringBuilder(text.Length + 16);
             SerializeValue(root, 0, sb);
             sb.Append('\n');
             return sb.ToString();
         }
 
-        /// <summary>
-        /// Dispatches to the appropriate serialization logic based on the
-        /// <see cref="JsonValue.Kind"/> of the value.
-        /// </summary>
-        /// <param name="value">The value to serialize.</param>
-        /// <param name="indent">The current indentation level (2 spaces per level).</param>
-        /// <param name="sb">The output buffer.</param>
-        private static void SerializeValue(JsonValue value, int indent,
-            StringBuilder sb)
+        private void SerializeValue(JsonValue value, int indent, StringBuilder sb)
         {
             switch (value.Kind)
             {
@@ -62,14 +62,11 @@ namespace JsonFormatter
                     sb.Append("null");
                     break;
                 default:
-
-                    throw new InvalidOperationException(
-                        "Unknown JSON type: " + value.Kind);
+                    throw new InvalidOperationException("Unknown JSON type: " + value.Kind);
             }
         }
 
-        private static void SerializeObject(JsonValue value, int indent,
-            StringBuilder sb)
+        private void SerializeObject(JsonValue value, int indent, StringBuilder sb)
         {
             if (value.Properties.Count == 0)
             {
@@ -99,8 +96,7 @@ namespace JsonFormatter
             sb.Append('}');
         }
 
-        private static void SerializeArray(JsonValue value, int indent,
-            StringBuilder sb)
+        private void SerializeArray(JsonValue value, int indent, StringBuilder sb)
         {
             if (value.Elements.Count == 0)
             {
@@ -127,14 +123,12 @@ namespace JsonFormatter
             sb.Append(']');
         }
 
-        /// <summary>
-        /// Appends the specified number of indentation levels (2 spaces per level).
-        /// </summary>
-        /// <param name="sb">The output buffer.</param>
-        /// <param name="indent">The indentation level.</param>
         private static void AppendIndent(StringBuilder sb, int indent)
         {
-            sb.Append(' ', indent * IndentSize);
+            for (int i = 0; i < indent; i++)
+            {
+                sb.Append(IndentUnit);
+            }
         }
     }
 }

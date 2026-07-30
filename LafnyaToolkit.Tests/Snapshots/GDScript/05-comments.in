@@ -1,0 +1,11 @@
+# Multi-line comment test
+class_name Foo
+extends Node
+# This is a doc comment
+## Another doc comment
+var x:int=0
+func _ready()->void:
+    if x>0:
+        do_something()
+    else:
+        do_other()

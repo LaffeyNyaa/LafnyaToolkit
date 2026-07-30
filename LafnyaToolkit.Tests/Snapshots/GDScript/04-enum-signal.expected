@@ -1,0 +1,21 @@
+class_name Utils
+extends Node
+
+signal pressed
+signal value_changed(new_value:int)
+
+enum Color{
+    RED,
+    GREEN,
+    BLUE,
+}
+
+const MAX_SPEED:int=100
+
+
+func square(n:int)->int:
+    return n*n
+
+
+func is_even(n:int)->bool:
+    return n%2==0

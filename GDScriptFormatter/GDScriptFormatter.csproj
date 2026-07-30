@@ -48,6 +48,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LafnyaToolkit.Core\LafnyaToolkit.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="BlankLineProcessor.cs" />
     <Compile Include="BlankLineHelpers.cs" />
     <Compile Include="BlankLinePostProcess.cs" />
@@ -62,11 +65,13 @@
     <Compile Include="BlankLineRules\PreserveAuthorRule.cs" />
     <Compile Include="BlankLineRules\SetterGetterBlockRule.cs" />
     <Compile Include="BlankLineRules\TopLevelMemberRule.cs" />
-    <Compile Include="NonBlankEntry.cs" />
     <Compile Include="BracketDepthTracker.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="Formatter.cs" />
-    <Compile Include="IndentationHelpers.cs" />
+    <Compile Include="GDScriptTextUtils.cs" />
+    <Compile Include="IndentationComputeDepths.cs" />
+    <Compile Include="IndentationComputeLineInfo.cs" />
+    <Compile Include="IndentationComputePreserve.cs" />
     <Compile Include="IndentationProcessor.cs" />
     <Compile Include="LineAnalysis.cs" />
     <Compile Include="LineContinuationAnalyzer.cs" />
@@ -77,10 +82,7 @@
     <Compile Include="DocCommentMover.cs" />
     <Compile Include="MemberClassifier.cs" />
     <Compile Include="MemberReorderer.cs" />
-    <Compile Include="TextUtils.cs" />
     <Compile Include="Tokenizer.cs" />
-    <Compile Include="Token.cs" />
-    <Compile Include="FileIO.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

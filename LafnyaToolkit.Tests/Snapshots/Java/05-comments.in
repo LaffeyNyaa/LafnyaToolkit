@@ -1,0 +1,15 @@
+// Multi-line comment test
+package com.example;
+/* Block
+   comment
+   spanning lines */
+public class Foo {
+    public void method() {
+        if (x) {
+            doSomething();
+        } else {
+            doOther();
+        }
+    }
+    private int x = 0;
+}

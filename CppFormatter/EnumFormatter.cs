@@ -1,24 +1,36 @@
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CppFormatter
 {
     /// <summary>
-    /// Expands single-line enum declarations into multi-line form with
-    /// each member on its own line. Supports enum class/enum struct.
+    /// Expands single-line enum declarations into multi-line form
+    /// with each member on its own line. Supports enum class and
+    /// enum struct. Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class EnumFormatter
+    internal sealed class EnumFormatter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly EnumFormatter Instance = new EnumFormatter();
+
+        private EnumFormatter()
+        {
+        }
+
         /// <summary>
-        /// Finds all enum declarations and expands their members into multiple lines. Supports enum class/enum struct.
+        /// Finds all enum declarations and expands their members into
+        /// multiple lines. Supports enum class/enum struct.
         /// </summary>
         /// <param name="text">The source text.</param>
         /// <returns>The text with enum members expanded.</returns>
-        internal static string FormatEnums(string text)
+        public string FormatEnums(string text)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
-            var replacements = new List<TextUtils.Replacement>();
+            var tokens = CppTokenizer.Instance.Tokenize(text);
+            bool[] isCode = CppTokenizer.Instance.BuildCodeMask(text, tokens);
+            var replacements = new List<Replacement>();
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -49,24 +61,21 @@ namespace CppFormatter
                     afterEnum = nextNonWs + 6;
                 }
 
-                int braceStart = TextUtils.FindOpenBrace(text, isCode,
-                    afterEnum);
+                int braceStart = CppTextUtils.Instance.FindOpenBrace(text, isCode, afterEnum);
 
                 if (braceStart < 0)
                 {
                     continue;
                 }
 
-                int braceEnd = TextUtils.FindMatchingClose(text, isCode,
-                    braceStart);
+                int braceEnd = CppTextUtils.Instance.FindMatchingClose(text, isCode, braceStart);
 
                 if (braceEnd < 0)
                 {
                     continue;
                 }
 
-                string content = text.Substring(braceStart + 1,
-                    braceEnd - braceStart - 1);
+                string content = text.Substring(braceStart + 1, braceEnd - braceStart - 1);
 
                 if (content.IndexOf('\n') >= 0)
                 {
@@ -96,9 +105,6 @@ namespace CppFormatter
                     sb.Append('\n');
                 }
 
-                // Include the closing brace in the replacement so that
-                // IndentationProcessor can re-indent the }; on the same pass,
-                // making the formatter idempotent.
                 sb.Append('}');
 
                 int closeEnd = braceEnd;
@@ -109,8 +115,7 @@ namespace CppFormatter
                     sb.Append(';');
                 }
 
-                replacements.Add(new TextUtils.Replacement(braceStart + 1,
-                    closeEnd + 1, sb.ToString()));
+                replacements.Add(new Replacement(braceStart + 1, closeEnd + 1, sb.ToString()));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);
@@ -120,10 +125,9 @@ namespace CppFormatter
         /// Splits enum member content by top-level commas, respecting
         /// nested brackets and parentheses.
         /// </summary>
-        /// <param name="content">The content between enum braces.
-        /// </param>
+        /// <param name="content">The content between enum braces.</param>
         /// <returns>A list of trimmed member strings.</returns>
-        private static List<string> SplitEnumMembers(string content)
+        private List<string> SplitEnumMembers(string content)
         {
             var members = new List<string>();
             var sb = new StringBuilder();

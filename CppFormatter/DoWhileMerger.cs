@@ -1,24 +1,36 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
 {
     /// <summary>
-    /// Merges a lone closing brace that terminates a do-while body with the
-    /// following while line, producing K&amp;R style "} while (cond);".
+    /// Merges a lone closing brace that terminates a do-while body
+    /// with the following while line, producing K&amp;R style
+    /// "} while (cond);". Stateless; the shared instance is exposed
+    /// via <see cref="Instance"/>.
     /// </summary>
-    internal static class DoWhileMerger
+    internal sealed class DoWhileMerger
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly DoWhileMerger Instance = new DoWhileMerger();
+
+        private DoWhileMerger()
+        {
+        }
+
         /// <summary>
-        /// Merges a lone closing brace that terminates a do-while body with the
-        /// following while line, producing K&amp;R style "} while (cond);". Only
-        /// braces in code regions are considered; braces inside strings or
-        /// comments are left untouched.
+        /// Merges a lone closing brace that terminates a do-while body
+        /// with the following while line. Only braces in code regions
+        /// are considered; braces inside strings or comments are left
+        /// untouched.
         /// </summary>
-        internal static string MergeDoWhileCloseBrace(string text)
+        /// <param name="text">The source text.</param>
+        /// <returns>The text with merged do-while closing braces.</returns>
+        public string MergeDoWhileCloseBrace(string text)
         {
             string[] lines = text.Split('\n');
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = CppTokenizer.Instance.Tokenize(text);
+            bool[] isCode = CppTokenizer.Instance.BuildCodeMask(text, tokens);
             var result = new List<string>(lines.Length);
             var merged = new bool[lines.Length];
             int pos = 0;
@@ -39,37 +51,27 @@ namespace CppFormatter
 
                 string trimmed = lines[i].Trim();
 
-                if ((trimmed == "}" || trimmed == "};") &&
-                    i + 1 < lines.Length)
+                if ((trimmed == "}" || trimmed == "};") && i + 1 < lines.Length)
                 {
                     int braceOffset = lines[i].IndexOf('}');
                     int bracePos = lineStart + braceOffset;
 
                     if (bracePos < isCode.Length && isCode[bracePos])
                     {
-                        int openBracePos =
-                            BraceMerger.FindMatchingOpenBrace(text, isCode,
-                            bracePos);
+                        int openBracePos = BraceMerger.Instance.FindMatchingOpenBrace(text, isCode, bracePos);
 
-                        if (openBracePos >= 0 &&
-                            BraceMerger.IsDoKeywordBefore(text, isCode,
-                            openBracePos))
+                        if (openBracePos >= 0 && BraceMerger.Instance.IsDoKeywordBefore(text, isCode, openBracePos))
                         {
                             int j = i + 1;
 
-                            while (j < lines.Length &&
-                                lines[j].Trim().Length == 0)
+                            while (j < lines.Length && lines[j].Trim().Length == 0)
                             {
                                 j++;
                             }
 
-                            if (j < lines.Length &&
-                                TextUtils.StartsWithKeyword(lines[j].Trim(),
-                                "while"))
+                            if (j < lines.Length && TextUtils.StartsWithKeyword(lines[j].Trim(), "while"))
                             {
-                                result.Add(lines[i].TrimEnd() + " " +
-                                    lines[j].Trim());
-
+                                result.Add(lines[i].TrimEnd() + " " + lines[j].Trim());
                                 merged[j] = true;
                                 continue;
                             }

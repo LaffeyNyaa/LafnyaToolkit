@@ -1,29 +1,38 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CppFormatter
 {
     /// <summary>
-    /// Removes blank lines immediately after the opening { and immediately
-    /// before the closing } of a namespace body.
+    /// Removes blank lines immediately after the opening <c>{</c> and
+    /// immediately before the closing <c>}</c> of a namespace body.
+    /// Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class NamespaceBodyTrimmer
+    internal sealed class NamespaceBodyTrimmer
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly NamespaceBodyTrimmer Instance = new NamespaceBodyTrimmer();
+
+        private NamespaceBodyTrimmer()
+        {
+        }
+
         /// <summary>
-        /// Removes blank lines immediately after the opening { and immediately
-        /// before the closing } of a namespace body.
+        /// Removes blank lines immediately after the opening <c>{</c>
+        /// and immediately before the closing <c>}</c> of a namespace
+        /// body.
         /// </summary>
         /// <param name="lines">The line list.</param>
         /// <param name="text">The full source text.</param>
         /// <param name="tokens">The token list.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>The processed line list.</returns>
-        internal static List<string> TrimNamespaceBodyBlankLines(
-            List<string> lines, string text, List<Token> tokens,
-            bool[] isCode)
+        public List<string> TrimNamespaceBodyBlankLines(List<string> lines, string text, List<Token> tokens, bool[] isCode)
         {
             var result = new List<string>(lines.Count);
-
-            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
+            int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
 
             var nsBlocks = new List<KeyValuePair<int, int>>();
             int braceDepth = 0;
@@ -39,9 +48,7 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i -
-                    1])) &&
-                    TextUtils.MatchesWord(text, i, "namespace"))
+                if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) && TextUtils.MatchesWord(text, i, "namespace"))
                 {
                     pendingNamespace = true;
                 }
@@ -71,8 +78,7 @@ namespace CppFormatter
 
                         if (idx >= 0 && idx < nsBlocks.Count)
                         {
-                            nsBlocks[idx] = new KeyValuePair<int, int>(
-                                nsBlocks[idx].Key, i);
+                            nsBlocks[idx] = new KeyValuePair<int, int>(nsBlocks[idx].Key, i);
                         }
                     }
 
@@ -112,24 +118,19 @@ namespace CppFormatter
 
                     int nextNonBlank = li + 1;
 
-                    while (nextNonBlank < lines.Count &&
-                        lines[nextNonBlank].Trim().Length == 0)
+                    while (nextNonBlank < lines.Count && lines[nextNonBlank].Trim().Length == 0)
                     {
                         nextNonBlank++;
                     }
 
-                    bool isAfterOpenBrace = li > 0 &&
-                        lineStarts[li - 1] + lines[li - 1].Length <=
-                        openBracePos + 1;
+                    bool isAfterOpenBrace = li > 0 && lineStarts[li - 1] + lines[li - 1].Length <= openBracePos + 1;
 
                     if (isAfterOpenBrace)
                     {
                         removeSet.Add(li);
                     }
 
-                    bool isBeforeCloseBrace = nextNonBlank <
-                        lines.Count &&
-                        lineStarts[nextNonBlank] >= closeBracePos;
+                    bool isBeforeCloseBrace = nextNonBlank < lines.Count && lineStarts[nextNonBlank] >= closeBracePos;
 
                     if (isBeforeCloseBrace)
                     {

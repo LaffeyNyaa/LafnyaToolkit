@@ -1,28 +1,44 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace JavaFormatter
 {
     /// <summary>
     /// Applies blank-line spacing rules and trims trailing whitespace.
-    /// All keyword/brace detection is token-aware so that comment and string
-    /// content is never mistaken for structural code.
+    /// All keyword/brace detection is token-aware so that comment and
+    /// string content is never mistaken for structural code. Split into
+    /// this primary orchestrator plus per-rule files under
+    /// <c>BlankLineRules/</c> and shared helpers in
+    /// <c>BlankLineRules/BlankLineHelpers.cs</c>. Stateless; the
+    /// shared instance is exposed via <see cref="Instance"/>.
     /// </summary>
-    internal static class BlankLineProcessor
+    internal sealed partial class BlankLineProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+
+        private BlankLineProcessor()
+        {
+        }
+
         /// <summary>
         /// Ensures exactly one blank line above blocks, multi-line statements, and
         /// declarations (with exceptions for the beginning/end of file). Annotation
         /// lines (starting with @) do not get blank lines inserted above them.
         /// Consecutive import lines also do not get blank lines inserted between them
-        /// unless they were already separated by a blank line.
+        /// unless they were already separated by a blank line. The per-rule
+        /// decisions are made by the partial method files under
+        /// <c>BlankLineRules/</c>; this orchestrator computes the
+        /// predicates and dispatches them in the order declared by
+        /// <see cref="BlankLineMainRules.RunOrder"/>.
         /// </summary>
         /// <param name="lines">The current lines.</param>
         /// <returns>The lines with blank-line rules applied.</returns>
-        public static List<string> ApplyBlankLineRules(List<string> lines)
+        public List<string> ApplyBlankLineRules(List<string> lines)
         {
             string text = string.Join("\n", lines);
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = JavaTokenizer.Instance.Tokenize(text);
+            bool[] isCode = JavaTokenizer.Instance.BuildCodeMask(text, tokens);
 
             var lineStarts = new int[lines.Count];
             int pos = 0;
@@ -33,7 +49,7 @@ namespace JavaFormatter
                 pos += lines[i].Length + 1;
             }
 
-            var nonBlank = new List<NonBlankEntry>(lines.Count);
+            var nonBlank = new List<JavaNonBlankEntry>(lines.Count);
             bool prevWasBlank = false;
             bool isFirst = true;
 
@@ -48,7 +64,7 @@ namespace JavaFormatter
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
-                nonBlank.Add(new NonBlankEntry(hadBlankAbove, line, i));
+                nonBlank.Add(new JavaNonBlankEntry(hadBlankAbove, line, i));
                 prevWasBlank = false;
                 isFirst = false;
             }
@@ -62,20 +78,20 @@ namespace JavaFormatter
                 int lineStart = lineStarts[entry.OriginalIndex];
                 string trimmed = line.Trim();
 
-                bool lineStartsInCode = FirstNonWsInCode(line, lineStart,
-                    isCode);
+                bool lineStartsInCode = BlankLineHelpers.FirstNonWsInCode(line,
+                    lineStart, isCode);
 
                 bool isBlockStart = lineStartsInCode &&
-                    LineClassifier.IsBlockStartLine(trimmed);
+                    LineClassifier.Instance.IsBlockStartLine(trimmed);
 
                 bool currentIsImport = lineStartsInCode &&
-                    LineClassifier.IsImportDirective(trimmed);
+                    LineClassifier.Instance.IsImportDirective(trimmed);
 
                 bool currentIsDoWhileTail = lineStartsInCode &&
-                    LineClassifier.IsDoWhileTail(trimmed);
+                    LineClassifier.Instance.IsDoWhileTail(trimmed);
 
                 bool currentIsBlockCont = lineStartsInCode &&
-                    LineClassifier.IsBlockContinuation(trimmed);
+                    LineClassifier.Instance.IsBlockContinuation(trimmed);
 
                 bool currentIsAnnotation = lineStartsInCode &&
                     trimmed.StartsWith("@");
@@ -92,11 +108,11 @@ namespace JavaFormatter
                     int prevLineStart = lineStarts[prevEntry.OriginalIndex];
                     string prevTrimmed = prevLine.Trim();
 
-                    bool prevStartsInCode = FirstNonWsInCode(prevLine,
-                        prevLineStart, isCode);
+                    bool prevStartsInCode = BlankLineHelpers.FirstNonWsInCode(
+                        prevLine, prevLineStart, isCode);
 
-                    bool prevEndsInCode = LastNonWsInCode(prevLine,
-                        prevLineStart, isCode);
+                    bool prevEndsInCode = BlankLineHelpers.LastNonWsInCode(
+                        prevLine, prevLineStart, isCode);
 
                     bool prevIsOpenBraceOnly = prevStartsInCode &&
                         prevTrimmed == "{";
@@ -105,89 +121,59 @@ namespace JavaFormatter
                         TextUtils.EndsWithOpenBrace(prevTrimmed);
 
                     bool prevIsBlockEnd = prevStartsInCode &&
-                        LineClassifier.IsBlockEndLine(prevTrimmed);
+                        LineClassifier.Instance.IsBlockEndLine(prevTrimmed);
 
                     bool prevIsImport = prevStartsInCode &&
-                        LineClassifier.IsImportDirective(prevTrimmed);
+                        LineClassifier.Instance.IsImportDirective(prevTrimmed);
 
                     bool prevIsPackage = prevStartsInCode &&
                         prevTrimmed.StartsWith("package ");
 
-                    if (isBlockStart && prevTrimmed.Length > 0 &&
-                        !prevIsOpenBraceOnly && !prevEndsWithOpenBrace)
+                    if (ApplyBlockStartRule(trimmed, prevTrimmed, isBlockStart,
+                        prevIsOpenBraceOnly, prevEndsWithOpenBrace) ==
+                        BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                     }
 
-                    if (!wantBlankAbove && prevIsBlockEnd &&
-                        trimmed.Length > 0 && !currentStartsWithCloseBrace)
+                    if (!wantBlankAbove && ApplyBlockEndRule(trimmed,
+                        prevTrimmed, prevIsBlockEnd, currentStartsWithCloseBrace) ==
+                        BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                     }
 
-                    if (!wantBlankAbove && currentIsImport && prevIsImport &&
-                        entry.HadBlankAbove)
+                    if (ApplyConsecutiveImportsRule(currentIsImport, prevIsImport,
+                        entry.HadBlankAbove) == BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                     }
 
-                    if (!wantBlankAbove && currentIsImport && prevIsPackage)
+                    if (ApplyImportAfterPackageRule(currentIsImport, prevIsPackage) ==
+                        BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                     }
 
-                    bool currentIsDocCommentStart =
-                        trimmed.StartsWith("/**");
-
-                    if (!wantBlankAbove && currentIsDocCommentStart)
+                    if (ApplyDocCommentRule(trimmed, prevTrimmed) ==
+                        BlankLineRuleResult.Decided)
                     {
-                        bool prevIsRegularComment =
-                            prevTrimmed.StartsWith("//") ||
-                            (prevTrimmed.StartsWith("/*") &&
-                            !prevTrimmed.StartsWith("/**")) ||
-                            (prevTrimmed.StartsWith("*") &&
-                            !prevTrimmed.EndsWith("*/"));
-
-                        bool prevIsBlockOpenBrace =
-                            prevTrimmed == "{" ||
-                            TextUtils.EndsWithOpenBrace(prevTrimmed);
-
-                        if (prevTrimmed.Length > 0 &&
-                            !prevIsRegularComment &&
-                            !prevIsBlockOpenBrace)
-                        {
-                            wantBlankAbove = true;
-                        }
+                        wantBlankAbove = true;
                     }
 
-                    if (!wantBlankAbove && entry.HadBlankAbove)
+                    if (ApplyPlainStatementBlankRule(trimmed, prevTrimmed,
+                        entry.HadBlankAbove, lineStartsInCode, prevStartsInCode) ==
+                        BlankLineRuleResult.Decided)
                     {
-                        bool currentIsPlainStmt = IsPlainSingleLineStatement(
-                            trimmed, lineStartsInCode);
-
-                        bool prevIsPlainStmt = IsPlainSingleLineStatement(
-                            prevTrimmed, prevStartsInCode);
-
-                        if (currentIsPlainStmt && prevIsPlainStmt)
-                        {
-                            wantBlankAbove = true;
-                        }
+                        wantBlankAbove = true;
                     }
-                }
 
-                if (wantBlankAbove && currentIsAnnotation)
-                {
-                    wantBlankAbove = false;
-                }
-
-                if (wantBlankAbove && currentIsDoWhileTail)
-                {
-                    wantBlankAbove = false;
-                }
-
-                if (wantBlankAbove && currentIsBlockCont)
-                {
-                    wantBlankAbove = false;
+                    if (ApplySuppressBlankAboveRule(currentIsAnnotation,
+                        currentIsDoWhileTail, currentIsBlockCont) ==
+                        BlankLineRuleResult.Decided)
+                    {
+                        wantBlankAbove = false;
+                    }
                 }
 
                 if (wantBlankAbove)
@@ -206,7 +192,7 @@ namespace JavaFormatter
         /// </summary>
         /// <param name="lines">The current lines.</param>
         /// <returns>The lines with blank runs collapsed.</returns>
-        public static List<string> CollapseBlankLines(List<string> lines)
+        public List<string> CollapseBlankLines(List<string> lines)
         {
             var result = new List<string>(lines.Count);
             int blankRun = 0;
@@ -237,7 +223,7 @@ namespace JavaFormatter
         /// </summary>
         /// <param name="lines">The current lines.</param>
         /// <returns>The lines with trailing whitespace removed.</returns>
-        public static List<string> TrimTrailingWhitespace(List<string> lines)
+        public List<string> TrimTrailingWhitespace(List<string> lines)
         {
             var result = new List<string>(lines.Count);
 
@@ -247,146 +233,6 @@ namespace JavaFormatter
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Determines whether the first non-whitespace character of the line is in
-        /// a code region.
-        /// </summary>
-        /// <param name="line">The line text.</param>
-        /// <param name="lineStart">The line's start offset in the source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <returns>True if the first non-whitespace character is code; otherwise false.</returns>
-        private static bool FirstNonWsInCode(string line, int lineStart,
-            bool[] isCode)
-        {
-            int i = 0;
-
-            while (i < line.Length && char.IsWhiteSpace(line[i]))
-            {
-                i++;
-            }
-
-            if (i >= line.Length)
-            {
-                return false;
-            }
-
-            int p = lineStart + i;
-            return p >= 0 && p < isCode.Length && isCode[p];
-        }
-
-        /// <summary>
-        /// Determines whether the last non-whitespace character of the line is in
-        /// a code region.
-        /// </summary>
-        /// <param name="line">The line text.</param>
-        /// <param name="lineStart">The line's start offset in the source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <returns>True if the last non-whitespace character is code; otherwise false.</returns>
-        private static bool LastNonWsInCode(string line, int lineStart,
-            bool[] isCode)
-        {
-            int i = line.Length - 1;
-
-            while (i >= 0 && char.IsWhiteSpace(line[i]))
-            {
-                i--;
-            }
-
-            if (i < 0)
-            {
-                return false;
-            }
-
-            int p = lineStart + i;
-            return p >= 0 && p < isCode.Length && isCode[p];
-        }
-
-        /// <summary>
-        /// Determines whether the trimmed line is a comment line: a line
-        /// comment, a block comment start, or a block comment continuation.
-        /// </summary>
-        /// <param name="trimmed">The trimmed line.</param>
-        /// <returns>True if the line is a comment line; otherwise false.</returns>
-        private static bool IsCommentLine(string trimmed)
-        {
-            return trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
-                trimmed.StartsWith("*");
-        }
-
-        /// <summary>
-        /// Determines whether the line is a plain single-line statement:
-        /// code that ends with a semicolon and is not a block boundary,
-        /// do-while tail, or comment.
-        /// </summary>
-        /// <param name="trimmed">The trimmed line.</param>
-        /// <param name="startsInCode">Whether the line's first non-whitespace
-        /// character is in a code region.</param>
-        /// <returns>True if the line is a plain single-line statement;
-        /// otherwise false.</returns>
-        private static bool IsPlainSingleLineStatement(string trimmed,
-            bool startsInCode)
-        {
-            if (!startsInCode)
-            {
-                return false;
-            }
-
-            if (trimmed.Length == 0 || !trimmed.EndsWith(";"))
-            {
-                return false;
-            }
-
-            if (LineClassifier.IsBlockEndLine(trimmed))
-            {
-                return false;
-            }
-
-            if (LineClassifier.IsBlockStartLine(trimmed))
-            {
-                return false;
-            }
-
-            if (LineClassifier.IsDoWhileTail(trimmed))
-            {
-                return false;
-            }
-
-            if (IsCommentLine(trimmed))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Records a non-blank line along with whether a blank line preceded it in
-        /// the original input and its original line index.
-        /// </summary>
-        private struct NonBlankEntry
-        {
-            /// <summary>Whether a blank line preceded this line in the input.</summary>
-            public bool HadBlankAbove;
-
-            /// <summary>The line text.</summary>
-            public string Line;
-
-            /// <summary>The original index of the line in the input list.</summary>
-            public int OriginalIndex;
-
-            /// <summary>Creates a new entry.</summary>
-            /// <param name="hadBlankAbove">Whether a blank line preceded it.</param>
-            /// <param name="line">The line text.</param>
-            /// <param name="originalIndex">The original line index.</param>
-            public NonBlankEntry(bool hadBlankAbove, string line,
-                int originalIndex)
-            {
-                HadBlankAbove = hadBlankAbove;
-                Line = line;
-                OriginalIndex = originalIndex;
-            }
         }
     }
 }

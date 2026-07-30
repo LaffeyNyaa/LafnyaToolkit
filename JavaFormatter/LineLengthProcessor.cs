@@ -1,29 +1,41 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace JavaFormatter
 {
     /// <summary>
-    /// Splits lines that exceed the configured maximum length at safe break points.
+    /// Splits lines that exceed the configured maximum length at safe
+    /// break points. Continuation lines are indented one level deeper
+    /// than the statement base indent. Stateless; the shared instance
+    /// is exposed via <see cref="Instance"/>.
     /// </summary>
-    internal static class LineLengthProcessor
+    internal sealed class LineLengthProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly LineLengthProcessor Instance = new LineLengthProcessor();
+
+        private LineLengthProcessor()
+        {
+        }
+
         /// <summary>
-        /// Splits lines exceeding the maximum length at safe break points;
-        /// continuation lines are indented one level deeper than the statement
-        /// base indent.
-        /// <paramref name="lineContinuesNext"/> flags whether each line ends
-        /// with a continuation indicator; when a line is itself a continuation
-        /// of the previous line, its split segments reuse the line's current
-        /// indent (no extra level) so that splitting a continuation line does
-        /// not cascade into deeper indents on a second pass.
+        /// Splits lines exceeding the maximum length at safe break
+        /// points; continuation lines are indented one level deeper than
+        /// the statement base indent.
+        /// <paramref name="lineContinuesNext"/> flags whether each line
+        /// ends with a continuation indicator; when a line is itself a
+        /// continuation of the previous line, its split segments reuse
+        /// the line's current indent (no extra level) so that splitting
+        /// a continuation line does not cascade into deeper indents on a
+        /// second pass.
         /// </summary>
         /// <param name="lines">The current lines.</param>
-        /// <param name="lineContinuesNext">Per-line flags indicating whether
-        /// the line ends with a continuation indicator; entry i corresponds
-        /// to line i. May be null when continuation detection is not
-        /// available.</param>
+        /// <param name="lineContinuesNext">Per-line flags indicating
+        /// whether the line ends with a continuation indicator; entry i
+        /// corresponds to line i. May be null when continuation
+        /// detection is not available.</param>
         /// <returns>The lines with long lines split.</returns>
-        public static List<string> ApplyLineLengthLimit(List<string> lines,
+        public List<string> ApplyLineLengthLimit(List<string> lines,
             bool[] lineContinuesNext)
         {
             var result = new List<string>(lines.Count);
@@ -32,18 +44,12 @@ namespace JavaFormatter
             {
                 var line = lines[i];
 
-                if (line.Length <= Formatter.MaxLineLength)
+                if (line.Length <= TextUtils.MaxLineLength)
                 {
                     result.Add(line);
                     continue;
                 }
 
-                // If this line is itself a continuation of the previous line
-                // (previous line ends with a continuation indicator), the
-                // continuation indent equals this line's current indent — do
-                // NOT add another indent level. Otherwise, continuation
-                // segments are indented one level deeper than the statement
-                // base indent (handled by passing null to SplitLongLine).
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
@@ -75,23 +81,25 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Recursively splits a single line so each segment does not exceed the
-        /// maximum length; only breaks at Code token boundaries. Never breaks
-        /// inside String/TextBlock/Char/Comment tokens. If no safe break point
-        /// is found, the original line is preserved.
-        /// <paramref name="fixedContIndent"/> is the fixed continuation indent
-        /// reused across all continuation segments so that 3+ segment splits do
-        /// not cascade; pass null on the first call to trigger computation
-        /// from the original line's indent.
+        /// Recursively splits a single line so each segment does not
+        /// exceed the maximum length; only breaks at Code token
+        /// boundaries. Never breaks inside String/TextBlock/Char/
+        /// Comment tokens. If no safe break point is found, the
+        /// original line is preserved.
+        /// <paramref name="fixedContIndent"/> is the fixed continuation
+        /// indent reused across all continuation segments so that 3+
+        /// segment splits do not cascade; pass null on the first call
+        /// to trigger computation from the original line's indent.
         /// </summary>
         /// <param name="line">The line to split.</param>
-        /// <param name="fixedContIndent">The fixed continuation indent, or null
-        /// to compute from the line's indent on the first split.</param>
+        /// <param name="fixedContIndent">The fixed continuation indent,
+        /// or null to compute from the line's indent on the first
+        /// split.</param>
         /// <returns>The list of split segments.</returns>
         private static List<string> SplitLongLine(string line,
             string fixedContIndent)
         {
-            if (line.Length <= Formatter.MaxLineLength)
+            if (line.Length <= TextUtils.MaxLineLength)
             {
                 return new List<string> { line };
             }
@@ -109,20 +117,15 @@ namespace JavaFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            // On the first call (fixedContIndent == null), compute the fixed
-            // continuation indent from the original line's indent. This indent
-            // is reused for ALL continuation segments so that 3+ segment
-            // splits do not cascade (parent+4 for every continuation line,
-            // matching IndentationProcessor's behaviour).
 
             if (fixedContIndent == null)
             {
                 fixedContIndent = indent +
-                    new string(' ', Formatter.IndentSize);
+                    new string(' ', TextUtils.IndentSize);
             }
 
-            var tokens = Tokenizer.Tokenize(line);
-            bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
+            var tokens = JavaTokenizer.Instance.Tokenize(line);
+            bool[] isCode = JavaTokenizer.Instance.BuildCodeMask(line, tokens);
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
 
             if (breakAt < 0 || breakAt >= line.Length)
@@ -144,11 +147,12 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Finds a safe break point within Code tokens: prefers the latest break
-        /// point that does not exceed the maximum length; if none, returns the
-        /// first break point beyond the maximum length. Breaks after operators:
-        /// , ; + - * / % == != &lt; &gt; &lt;= &gt;= = += -= &amp;&amp; ||.
-        /// Does NOT break at . (member access).
+        /// Finds a safe break point within Code tokens: prefers the
+        /// latest break point that does not exceed the maximum length;
+        /// if none, returns the first break point beyond the maximum
+        /// length. Breaks after operators: , ; + - * / % == != &lt; &gt;
+        /// &lt;= &gt;= = += -= &amp;&amp; ||. Does NOT break at .
+        /// (member access).
         /// </summary>
         /// <param name="line">The line text.</param>
         /// <param name="isCode">The code mask.</param>
@@ -201,7 +205,7 @@ namespace JavaFormatter
 
                 if (bp > 0)
                 {
-                    if (bp <= Formatter.MaxLineLength)
+                    if (bp <= TextUtils.MaxLineLength)
                     {
                         bestInRange = bp;
                     }
@@ -223,14 +227,16 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Determines whether line[i] is in a binary operator context: the previous
-        /// non-whitespace character is ), ], an identifier character, _, or ".
-        /// Used to exclude unary operators and generic type parameters.
+        /// Determines whether line[i] is in a binary operator context:
+        /// the previous non-whitespace character is ), ], an identifier
+        /// character, _, or ". Used to exclude unary operators and
+        /// generic type parameters.
         /// </summary>
         /// <param name="line">The line text.</param>
         /// <param name="i">The current operator position.</param>
         /// <param name="startIdx">The scan start position.</param>
-        /// <returns>True if in a binary operator context; otherwise false.</returns>
+        /// <returns>True if in a binary operator context; otherwise
+        /// false.</returns>
         private static bool IsBinaryOpContext(string line, int i, int startIdx)
         {
             int prev = i - 1;
@@ -252,12 +258,14 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Determines whether the character pair forms a two-character breakable
-        /// operator (==, !=, &lt;=, &gt;=, +=, -=, &amp;&amp;, ||).
+        /// Determines whether the character pair forms a two-character
+        /// breakable operator (==, !=, &lt;=, &gt;=, +=, -=, &amp;&amp;,
+        /// ||).
         /// </summary>
         /// <param name="c">The first character.</param>
         /// <param name="next">The second character.</param>
-        /// <returns>True if the pair is a breakable two-character operator.</returns>
+        /// <returns>True if the pair is a breakable two-character
+        /// operator.</returns>
         private static bool IsDoubleOpBreak(char c, char next)
         {
             switch (c)

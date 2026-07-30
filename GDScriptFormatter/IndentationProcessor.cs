@@ -1,26 +1,38 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Recomputes indentation for each line based on colon/brace block depth,
-    /// bracket continuation, and triple-quoted string preservation.
+    /// Recomputes indentation for each line based on colon/brace block
+    /// depth, bracket continuation, and triple-quoted string
+    /// preservation.
     /// </summary>
-    internal static partial class IndentationProcessor
+    public sealed partial class IndentationProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+
+        private IndentationProcessor()
+        {
+        }
+
         /// <summary>
-        /// Colon-based indentation recalculation: infers block depth stack from original indentation,
-        /// colon-terminated code lines (not inside brackets) open a new block, bracket depth &gt; 0 or
-        /// previous line ending with \ indicates a continuation line (indented one extra level). Lines inside
-        /// triple-quoted strings preserve their original indentation. Reuses the caller-provided tokens
-        /// and code mask instead of re-tokenizing.
+        /// Colon-based indentation recalculation: infers block depth
+        /// stack from original indentation, colon-terminated code lines
+        /// (not inside brackets) open a new block, bracket depth &gt; 0 or
+        /// previous line ending with \ indicates a continuation line
+        /// (indented one extra level). Lines inside triple-quoted
+        /// strings preserve their original indentation. Reuses the
+        /// caller-provided tokens and code mask instead of
+        /// re-tokenizing.
         /// </summary>
         /// <param name="lines">The input lines.</param>
         /// <param name="text">The full text corresponding to the lines.</param>
         /// <param name="tokens">The tokenization of text (reused).</param>
         /// <param name="isCode">The code mask of text (reused).</param>
         /// <returns>The re-indented lines.</returns>
-        internal static List<string> Reindent(List<string> lines, string text,
+        public List<string> Reindent(List<string> lines, string text,
             List<Token> tokens, bool[] isCode)
         {
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
@@ -66,7 +78,7 @@ namespace GDScriptFormatter
                 }
 
                 result.Add(new string(' ',
-                    baseDepth * TextUtils.IndentSize) + content);
+                    baseDepth * GDScriptTextUtils.IndentSize) + content);
             }
 
             return result;

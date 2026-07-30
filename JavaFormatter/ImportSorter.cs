@@ -6,20 +6,31 @@ using System.Text;
 namespace JavaFormatter
 {
     /// <summary>
-    /// Collects top-level import directives and sorts them into four groups:
-    /// System (java.*/javax.*) / Third-party / Project other modules / Current module.
+    /// Collects top-level import directives and sorts them into four
+    /// groups: System (java.*/javax.*) / Third-party / Project other
+    /// modules / Current module. Stateless; the shared instance is
+    /// exposed via <see cref="Instance"/>.
     /// </summary>
-    internal static class ImportSorter
+    internal sealed class ImportSorter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly ImportSorter Instance = new ImportSorter();
+
+        private ImportSorter()
+        {
+        }
+
         /// <summary>
-        /// Resolves the current module name and project root from the package declaration in the source.
+        /// Resolves the current module name and project root from the
+        /// package declaration in the source.
         /// </summary>
         /// <param name="source">The source code string.</param>
-        /// <param name="targetRoot">The target root directory path (used as fallback).</param>
-        /// <param name="currentModule">Output: the fully qualified package name, or null if no package.</param>
+        /// <param name="targetRoot">The target root directory path
+        /// (used as fallback).</param>
+        /// <param name="currentModule">Output: the fully qualified
+        /// package name, or null if no package.</param>
         /// <param name="projectRoot">Output: the project root prefix.</param>
-        public static void ResolveCurrentModule(string source,
-            string targetRoot,
+        public void ResolveCurrentModule(string source, string targetRoot,
             out string currentModule, out string projectRoot)
         {
             currentModule = null;
@@ -73,13 +84,16 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Identifies the top-level import block in the source, regroups and sorts the imports,
-        /// and replaces the original block. If there are no top-level import directives, returns the source unchanged.
+        /// Identifies the top-level import block in the source, regroups
+        /// and sorts the imports, and replaces the original block. If
+        /// there are no top-level import directives, returns the source
+        /// unchanged.
         /// </summary>
         /// <param name="source">The source code string.</param>
-        /// <param name="targetRoot">The target root directory path (used as fallback when no package).</param>
+        /// <param name="targetRoot">The target root directory path
+        /// (used as fallback when no package).</param>
         /// <returns>The source with sorted imports.</returns>
-        public static string Sort(string source, string targetRoot)
+        public string Sort(string source, string targetRoot)
         {
             string currentModule;
             string projectRoot;

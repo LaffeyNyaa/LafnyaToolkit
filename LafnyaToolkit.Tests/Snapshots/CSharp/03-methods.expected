@@ -1,0 +1,24 @@
+using System.Collections.Generic;
+
+namespace Example
+{
+    public class Service
+    {
+        private readonly List<string> items = new List<string>();
+        public void Add(string item)
+        {
+            if (!string.IsNullOrEmpty(item))
+            {
+                items.Add(item);
+            }
+        }
+
+        public int Count
+        {
+            get
+            {
+                return items.Count;
+            }
+        }
+    }
+}

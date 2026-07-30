@@ -1,22 +1,34 @@
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace JavaFormatter
 {
     /// <summary>
     /// Expands single-line enum bodies into one member per line.
+    /// Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class EnumFormatter
+    internal sealed class EnumFormatter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly EnumFormatter Instance = new EnumFormatter();
+
+        private EnumFormatter()
+        {
+        }
+
         /// <summary>
-        /// Finds all enum declarations and expands members to multiple lines.
+        /// Finds all enum declarations and expands members to multiple
+        /// lines.
         /// </summary>
         /// <param name="text">The source text.</param>
         /// <returns>The text with enum members expanded.</returns>
-        public static string FormatEnums(string text)
+        public string FormatEnums(string text)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = JavaTokenizer.Instance.Tokenize(text);
+            bool[] isCode = JavaTokenizer.Instance.BuildCodeMask(text, tokens);
             var replacements = new List<Replacement>();
 
             for (int i = 0; i < text.Length; i++)
@@ -41,23 +53,21 @@ namespace JavaFormatter
                     continue;
                 }
 
-                int braceStart = TextUtils.FindOpenBrace(text, isCode, i + 4);
+                int braceStart = JavaTextUtils.Instance.FindOpenBrace(text, isCode, i + 4);
 
                 if (braceStart < 0)
                 {
                     continue;
                 }
 
-                int braceEnd = TextUtils.FindMatchingClose(text, isCode,
-                    braceStart);
+                int braceEnd = JavaTextUtils.Instance.FindMatchingClose(text, isCode, braceStart);
 
                 if (braceEnd < 0)
                 {
                     continue;
                 }
 
-                string content = text.Substring(braceStart + 1,
-                    braceEnd - braceStart - 1);
+                string content = text.Substring(braceStart + 1, braceEnd - braceStart - 1);
 
                 if (content.IndexOf('\n') >= 0)
                 {
@@ -76,7 +86,7 @@ namespace JavaFormatter
 
                 for (int k = 0; k < members.Count; k++)
                 {
-                    sb.Append(new string(' ', Formatter.IndentSize));
+                    sb.Append(new string(' ', TextUtils.IndentSize));
                     sb.Append(members[k].Trim());
 
                     if (k < members.Count - 1)
@@ -87,16 +97,15 @@ namespace JavaFormatter
                     sb.Append('\n');
                 }
 
-                replacements.Add(new Replacement(braceStart + 1, braceEnd,
-                    sb.ToString()));
+                replacements.Add(new Replacement(braceStart + 1, braceEnd, sb.ToString()));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);
         }
 
         /// <summary>
-        /// Splits the body of an enum declaration into individual member strings,
-        /// respecting nested parentheses, brackets and braces.
+        /// Splits the body of an enum declaration into individual member
+        /// strings, respecting nested parentheses, brackets, and braces.
         /// </summary>
         /// <param name="content">The text between the enum braces.</param>
         /// <returns>The list of trimmed member strings.</returns>

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
 {
@@ -7,21 +9,27 @@ namespace CSharpFormatter
     /// Expands single-line enum declarations into multi-line form with
     /// each member on its own line.
     /// </summary>
-    internal static class EnumFormatter
+    internal sealed class EnumFormatter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly EnumFormatter Instance = new EnumFormatter();
+
+        private EnumFormatter()
+        {
+        }
+
         /// <summary>
-        /// Finds all enum declarations and expands their members
-        /// onto separate lines.
+        /// Finds all enum declarations and expands their members onto
+        /// separate lines.
         /// </summary>
         /// <param name="text">The source text.</param>
         /// <returns>The text with enum members expanded.</returns>
-        public static string FormatEnums(string text)
+        public string FormatEnums(string text)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = CSharpTokenizer.Instance.Tokenize(text);
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokens);
 
-            var replacements =
-                new List<TextUtils.Replacement>();
+            var replacements = new List<Replacement>();
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -46,16 +54,16 @@ namespace CSharpFormatter
                     continue;
                 }
 
-                int braceStart = TextUtils.FindOpenBrace(text, isCode,
-                    i + 4);
+                int braceStart = CSharpTextUtils.Instance.FindOpenBrace(text,
+                    isCode, i + 4);
 
                 if (braceStart < 0)
                 {
                     continue;
                 }
 
-                int braceEnd = TextUtils.FindMatchingClose(text, isCode,
-                    braceStart);
+                int braceEnd = CSharpTextUtils.Instance.FindMatchingClose(text,
+                    isCode, braceStart);
 
                 if (braceEnd < 0)
                 {
@@ -93,7 +101,7 @@ namespace CSharpFormatter
                     sb.Append('\n');
                 }
 
-                replacements.Add(new TextUtils.Replacement(braceStart + 1,
+                replacements.Add(new Replacement(braceStart + 1,
                     braceEnd, sb.ToString()));
             }
 
@@ -104,8 +112,7 @@ namespace CSharpFormatter
         /// Splits enum member content by top-level commas, respecting
         /// nested brackets and parentheses.
         /// </summary>
-        /// <param name="content">The content between enum braces.
-        /// </param>
+        /// <param name="content">The content between enum braces.</param>
         /// <returns>A list of trimmed member strings.</returns>
         private static List<string> SplitEnumMembers(string content)
         {

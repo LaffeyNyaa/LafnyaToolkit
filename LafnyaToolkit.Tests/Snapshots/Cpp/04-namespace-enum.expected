@@ -1,0 +1,19 @@
+#include <string>
+#include <vector>
+
+enum class Color {
+    Red,
+    Green,
+    Blue
+};
+
+struct Point {
+    int x;
+    int y;
+    Point(int x, int y) : x(x), y(y) {}
+};
+
+namespace utils {
+int square(int n) { return n * n; }
+bool isEven(int n) { return n % 2 == 0; }
+}

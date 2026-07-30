@@ -1,26 +1,39 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace JavaFormatter
 {
     /// <summary>
-    /// Recomputes leading whitespace for each line based on nesting depth and
-    /// continuation context. Lines inside text blocks and multi-line comments
-    /// preserve their original indentation.
+    /// Recomputes leading whitespace for each line based on nesting
+    /// depth and continuation context. Lines inside text blocks and
+    /// multi-line comments preserve their original indentation.
+    /// Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class IndentationProcessor
+    internal sealed class IndentationProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+
+        private IndentationProcessor()
+        {
+        }
+
         /// <summary>
-        /// Recomputes leading whitespace for each line based on nesting depth.
-        /// Lines entirely inside a TextBlock or MultiLineComment token (non-first line)
-        /// preserve their original leading whitespace.
+        /// Recomputes leading whitespace for each line based on nesting
+        /// depth. Lines entirely inside a VerbatimString (text block) or
+        /// MultiLineComment token (non-first line) preserve their
+        /// original leading whitespace.
         /// </summary>
         /// <param name="lines">The current lines.</param>
-        /// <param name="text">The full source text corresponding to <paramref name="lines"/>.</param>
+        /// <param name="text">The full source text corresponding to
+        /// <paramref name="lines"/>.</param>
         /// <returns>The re-indented lines.</returns>
-        public static List<string> Reindent(List<string> lines, string text)
+        public List<string> Reindent(List<string> lines, string text)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = JavaTokenizer.Instance.Tokenize(text);
+            bool[] isCode = JavaTokenizer.Instance.BuildCodeMask(text, tokens);
             int[] depths = new int[lines.Count];
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
             bool[] inEnumBlock = ComputeInEnumBlock(lines, text, isCode);
@@ -97,13 +110,13 @@ namespace JavaFormatter
                 int baseDepth = depths[i];
 
                 if (i > 0 && !inEnumBlock[i] &&
-                    LineClassifier.IsContinuationIndicator(lines[i - 1],
+                    LineClassifier.Instance.IsContinuationIndicator(lines[i - 1],
                     lineStarts[i - 1], text, isCode))
                 {
                     baseDepth++;
                 }
 
-                result.Add(new string(' ', baseDepth * Formatter.IndentSize) +
+                result.Add(new string(' ', baseDepth * TextUtils.IndentSize) +
                     content);
             }
 
@@ -111,14 +124,17 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Computes whether each line should preserve its original leading whitespace:
-        /// true when the line starts inside a TextBlock or MultiLineComment token
+        /// Computes whether each line should preserve its original
+        /// leading whitespace: true when the line starts inside a
+        /// VerbatimString (text block) or MultiLineComment token
         /// (non-first line).
         /// </summary>
         /// <param name="lines">The current lines.</param>
-        /// <param name="tokens">The token list for the corresponding text.</param>
-        /// <returns>A boolean array indicating preserve-indent flags per line.</returns>
-        public static bool[] ComputePreserveIndent(List<string> lines,
+        /// <param name="tokens">The token list for the corresponding
+        /// text.</param>
+        /// <returns>A boolean array indicating preserve-indent flags
+        /// per line.</returns>
+        public bool[] ComputePreserveIndent(List<string> lines,
             List<Token> tokens)
         {
             var preserveIndent = new bool[lines.Count];
@@ -143,7 +159,7 @@ namespace JavaFormatter
                 int tokenStart = tokenPos;
                 int tokenEnd = tokenPos + token.Text.Length;
 
-                if (token.Kind == TokenKind.TextBlock ||
+                if (token.Kind == TokenKind.VerbatimString ||
                     token.Kind == TokenKind.MultiLineComment)
                 {
                     for (int i = 0; i < lines.Count; i++)
@@ -163,13 +179,16 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Computes whether each line is inside an enum block (between enum's { and }).
-        /// Enum member lines ending with , should not be treated as continuation indicators.
+        /// Computes whether each line is inside an enum block (between
+        /// enum's { and }). Enum member lines ending with , should not
+        /// be treated as continuation indicators.
         /// </summary>
         /// <param name="lines">The current lines.</param>
         /// <param name="text">The full source text.</param>
-        /// <param name="isCode">The code mask for <paramref name="text"/>.</param>
-        /// <returns>A boolean array indicating in-enum-block flags per line.</returns>
+        /// <param name="isCode">The code mask for
+        /// <paramref name="text"/>.</param>
+        /// <returns>A boolean array indicating in-enum-block flags per
+        /// line.</returns>
         private static bool[] ComputeInEnumBlock(List<string> lines,
             string text, bool[] isCode)
         {

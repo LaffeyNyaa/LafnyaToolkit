@@ -1,25 +1,34 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
 {
     /// <summary>
     /// Moves leading ## doc-comment blocks from the top of the file to
-    /// immediately after the last file header line (class_name, extends,
-    /// @tool, @icon, @static_unload).
+    /// immediately after the last file header line (class_name,
+    /// extends, @tool, @icon, @static_unload).
     /// </summary>
-    internal static class DocCommentMover
+    public sealed class DocCommentMover
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly DocCommentMover Instance = new DocCommentMover();
+
+        private DocCommentMover()
+        {
+        }
+
         /// <summary>
-        /// Moves leading ## doc-comment blocks from the top of the file to
-        /// immediately after the last file header line (class_name, extends,
-        /// @tool, @icon, @static_unload). Returns the text unchanged if no
-        /// leading ## comments or no file headers are found.
+        /// Moves leading ## doc-comment blocks from the top of the file
+        /// to immediately after the last file header line (class_name,
+        /// extends, @tool, @icon, @static_unload). Returns the text
+        /// unchanged if no leading ## comments or no file headers are
+        /// found.
         /// </summary>
         /// <param name="text">The line-ending-normalized text.</param>
-        /// <returns>The text with leading ## doc comments moved after the
-        /// last file header, or the original text if no move is needed.
-        /// </returns>
-        internal static string MoveFileDocComments(string text)
+        /// <returns>The text with leading ## doc comments moved after
+        /// the last file header, or the original text if no move is
+        /// needed.</returns>
+        public string MoveFileDocComments(string text)
         {
             var lines = TextUtils.SplitLines(text);
 
@@ -70,7 +79,7 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                if (DeclarationClassifier.IsFileHeaderLine(trimmed) &&
+                if (DeclarationClassifier.Instance.IsFileHeaderLine(trimmed) &&
                     !trimmed.StartsWith("##"))
                 {
                     lastFileHeaderIdx = j;

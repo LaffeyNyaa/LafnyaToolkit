@@ -1,29 +1,44 @@
 using System.Collections.Generic;
-
-using static GDScriptFormatter.DeclarationClassifier;
-using static GDScriptFormatter.MemberClassifier;
+using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Applies blank-line rules: ensures the correct number of blank lines
-    /// around blocks and declarations, collapses excess blank lines, and
-    /// trims trailing whitespace.
+    /// Applies blank-line rules: ensures the correct number of blank
+    /// lines around blocks and declarations, collapses excess blank
+    /// lines, and trims trailing whitespace. Split into a primary
+    /// orchestrator (this file) plus per-rule helpers under
+    /// <c>BlankLineRules/</c> and shared helpers in
+    /// <c>BlankLineHelpers.cs</c> / <c>BlankLinePostProcess.cs</c>.
     /// </summary>
-    internal static partial class BlankLineProcessor
+    public sealed partial class BlankLineProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+
+        private BlankLineProcessor()
+        {
+        }
+
         /// <summary>
-        /// Ensures the correct number of blank lines above and below blocks/declarations, including:
-        /// - one blank line above and below code blocks and multi-line statements
-        /// - two blank lines above and below func/nested class declarations (only at the same indentation depth)
-        /// - one blank line after file-level header lines
-        /// - one blank line between different variable groups
-        /// - comments attached to the following declaration
+        /// Ensures the correct number of blank lines above and below
+        /// blocks/declarations, including: one blank line above and
+        /// below code blocks and multi-line statements, two blank
+        /// lines above and below func/nested class declarations (only
+        /// at the same indentation depth), one blank line after
+        /// file-level header lines, one blank line between different
+        /// variable groups, and comments attached to the following
+        /// declaration.
         /// </summary>
-        internal static List<string> ApplyBlankLineRules(List<string> lines,
+        /// <param name="lines">The input lines.</param>
+        /// <param name="isContinuation">Per-line continuation flag; entry i corresponds to line i. May be null when continuation detection is not available.</param>
+        /// <returns>The lines with blank-line rules applied.</returns>
+        public List<string> ApplyBlankLineRules(List<string> lines,
             bool[] isContinuation)
         {
             var nonBlank = new List<NonBlankEntry>(lines.Count);
+            var hadBlankAboveList = new List<bool>(lines.Count);
+            var contList = new List<bool>(lines.Count);
             bool prevWasBlank = false;
             bool isFirst = true;
             int lineIdx = 0;
@@ -38,14 +53,15 @@ namespace GDScriptFormatter
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
-                int indent = IndentationProcessor.LineIndentLevel(line);
+                int idx = lineIdx;
 
                 bool cont = isContinuation != null &&
                     lineIdx < isContinuation.Length &&
                     isContinuation[lineIdx];
 
-                nonBlank.Add(new NonBlankEntry(hadBlankAbove, line, indent,
-                    cont));
+                nonBlank.Add(new NonBlankEntry(line, idx, false));
+                hadBlankAboveList.Add(hadBlankAbove);
+                contList.Add(cont);
 
                 prevWasBlank = false;
                 isFirst = false;
@@ -60,7 +76,7 @@ namespace GDScriptFormatter
             {
                 string line = nonBlank[i].Line;
                 string trimmed = line.Trim();
-                int lineIndent = nonBlank[i].Indent;
+                int lineIndent = IndentationProcessor.Instance.LineIndentLevel(line);
                 int wantBlankAbove = 0;
 
                 if (result.Count > 0)
@@ -69,8 +85,8 @@ namespace GDScriptFormatter
                     int prevIndent = resultIndents[resultIndents.Count - 1];
 
                     wantBlankAbove = ComputeDesiredBlanksAbove(
-                        prevTrimmed, trimmed, nonBlank, i,
-                        prevIndent, lineIndent);
+                        prevTrimmed, trimmed, nonBlank, hadBlankAboveList,
+                        contList, i, prevIndent, lineIndent);
                 }
 
                 while (currentBlanksAbove < wantBlankAbove)
@@ -92,23 +108,30 @@ namespace GDScriptFormatter
                 currentBlanksAbove = 0;
             }
 
-            // Post-processing: remove blank lines immediately before closing braces
             result = RemoveBlanksBeforeClosingBraces(result);
-            // Post-processing: add blank lines after closing braces when followed by a statement at same indent
             result = AddBlankAfterClosingBraces(result);
 
             return result;
         }
 
         /// <summary>
-        /// Computes how many blank lines should appear above the current line.
+        /// Computes how many blank lines should appear above the
+        /// current line.
         /// </summary>
+        /// <param name="prevTrimmed">The previous emitted line, trimmed.</param>
+        /// <param name="curTrimmed">The current line, trimmed.</param>
+        /// <param name="nonBlank">The list of non-blank entries.</param>
+        /// <param name="hadBlankAbove">Per-entry flag indicating whether a blank line existed above the entry in the original input.</param>
+        /// <param name="contList">Per-entry flag indicating whether the entry is a continuation of the previous line.</param>
+        /// <param name="curIdx">The current index in the non-blank list.</param>
+        /// <param name="prevIndent">The previous line's indent level.</param>
+        /// <param name="curIndent">The current line's indent level.</param>
+        /// <returns>The desired number of blank lines above the current line.</returns>
         private static int ComputeDesiredBlanksAbove(string prevTrimmed,
-            string curTrimmed, List<NonBlankEntry> nonBlank, int curIdx,
+            string curTrimmed, List<NonBlankEntry> nonBlank,
+            List<bool> hadBlankAbove, List<bool> contList, int curIdx,
             int prevIndent, int curIndent)
         {
-            // Guard clauses
-
             if (curTrimmed.Length == 0)
             {
                 return 0;
@@ -119,22 +142,16 @@ namespace GDScriptFormatter
                 return 0;
             }
 
-            // If the current line is a continuation of the previous line
-            // (unclosed bracket or backslash), only allow blank lines
-            // between two continuation lines (handled by the multi-line
-            // statement rules below).  When transitioning from a
-            // non-continuation to a continuation line, never insert
-            // blank lines — the opening bracket line stays attached.
-
-            if (nonBlank[curIdx].IsContinuation)
+            if (contList[curIdx])
             {
-                if (curIdx == 0 || !nonBlank[curIdx - 1].IsContinuation)
+                if (curIdx == 0 || !contList[curIdx - 1])
                 {
                     return 0;
                 }
             }
 
-            if (IsAttachedComment(prevTrimmed, curTrimmed, nonBlank, curIdx))
+            if (IsAttachedComment(prevTrimmed, curTrimmed, nonBlank,
+                hadBlankAbove, curIdx))
             {
                 return 0;
             }
@@ -143,11 +160,8 @@ namespace GDScriptFormatter
             bool deeperThanPrev = curIndent > prevIndent;
 
             int want = 0;
-            // Continuation lines (anonymous func() lambdas inside argument
-            // lists, etc.) should not trigger most of the formatting rules.
-            // Only the preserve-author and multi-line statement rules apply.
 
-            if (!nonBlank[curIdx].IsContinuation)
+            if (!contList[curIdx])
             {
                 want = ApplyFuncClassBlankRule(prevTrimmed, curTrimmed,
                     sameIndent);
@@ -161,7 +175,7 @@ namespace GDScriptFormatter
                 if (want == 0)
                 {
                     want = ApplyTopLevelMemberBlankRule(prevTrimmed, curTrimmed,
-                        sameIndent, nonBlank, curIdx);
+                        sameIndent, nonBlank, contList, curIdx);
                 }
 
                 if (want == 0)
@@ -179,7 +193,7 @@ namespace GDScriptFormatter
                 if (want == 0)
                 {
                     want = ApplyDocCommentBlankRule(prevTrimmed, curTrimmed,
-                        nonBlank, curIdx);
+                        nonBlank, hadBlankAbove, curIdx);
                 }
 
                 if (want == 0)
@@ -188,18 +202,10 @@ namespace GDScriptFormatter
                 }
             }
 
-            // Even for continuation lines (e.g., inside a lambda body within
-            // unclosed outer brackets), block-start lines (if, for, while,
-            // match, etc.) should get a blank line above them when the
-            // preceding line is at the same or shallower indent.  This
-            // ensures visual separation of block constructs inside lambdas.
-            // Elif/else blocks are excluded — they should stay attached to
-            // the preceding if/elif.
-
-            if (want == 0 && nonBlank[curIdx].IsContinuation &&
-                TextUtils.IsBlockStartLine(curTrimmed) &&
+            if (want == 0 && contList[curIdx] &&
+                GDScriptTextUtils.Instance.IsBlockStartLine(curTrimmed) &&
                 !IsElifOrElseBlock(curTrimmed) &&
-                !TextUtils.IsBlockStartLine(prevTrimmed) &&
+                !GDScriptTextUtils.Instance.IsBlockStartLine(prevTrimmed) &&
                 !prevTrimmed.EndsWith("(") &&
                 prevIndent <= curIndent &&
                 !nonBlank[curIdx - 1].Line.TrimEnd().EndsWith("\\"))
@@ -207,12 +213,7 @@ namespace GDScriptFormatter
                 want = 1;
             }
 
-            // For continuation lines, apply dedent blank rule when the current
-            // line is at a shallower indent than the previous line (exiting a
-            // block like if/for/while inside a lambda or other continuation
-            // context). Exclude closing brackets, comments, and elif/else lines.
-
-            if (want == 0 && nonBlank[curIdx].IsContinuation &&
+            if (want == 0 && contList[curIdx] &&
                 curIndent < prevIndent &&
                 !curTrimmed.StartsWith("#") &&
                 !curTrimmed.StartsWith(")") &&
@@ -223,32 +224,22 @@ namespace GDScriptFormatter
                 want = 1;
             }
 
-            // Preserve author-inserted blank lines (applies to all lines,
-            // including continuations).
-
             if (want == 0)
             {
-                want = ApplyPreserveAuthorBlankRule(nonBlank[curIdx],
+                want = ApplyPreserveAuthorBlankRule(hadBlankAbove, curIdx,
                     prevTrimmed, curTrimmed);
             }
 
             if (want == 0)
             {
-                want = ApplyMultiLineStatementBlankRule(nonBlank, curIdx,
-                    curIndent, prevIndent);
+                want = ApplyMultiLineStatementBlankRule(nonBlank, contList,
+                    curIdx, curIndent, prevIndent);
             }
-
-            // Annotation suppression override (checked last so it can
-            // override previous rules)
 
             if (ApplyAnnotationSuppressRule(prevTrimmed, curTrimmed) != 0)
             {
                 return 0;
             }
-
-            // elif/else suppression: never insert blank lines before elif
-            // or else — they are continuations of the preceding if/elif
-            // block and should remain adjacent.
 
             if (IsElifOrElseBlock(curTrimmed))
             {

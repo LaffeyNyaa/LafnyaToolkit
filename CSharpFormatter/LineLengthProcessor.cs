@@ -1,28 +1,36 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
 {
     /// <summary>
-    /// Splits lines exceeding the maximum length at safe token boundaries.
+    /// Splits lines exceeding the maximum length at safe token
+    /// boundaries.
     /// </summary>
-    internal static class LineLengthProcessor
+    internal sealed class LineLengthProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly LineLengthProcessor Instance = new LineLengthProcessor();
+
+        private LineLengthProcessor()
+        {
+        }
+
         /// <summary>
-        /// Splits lines exceeding 80 characters at safe token boundaries;
-        /// continuation lines are indented one extra level.
-        /// <paramref name="lineContinuesNext"/> flags whether each line ends
-        /// with a continuation indicator; when a line is itself a continuation
-        /// of the previous line, its split segments reuse the line's current
-        /// indent (no extra level) so that splitting a continuation line does
-        /// not cascade into deeper indents on a second pass.
+        /// Splits lines exceeding 80 characters at safe token
+        /// boundaries; continuation lines are indented one extra
+        /// level. <paramref name="lineContinuesNext"/> flags whether
+        /// each line ends with a continuation indicator; when a line
+        /// is itself a continuation of the previous line, its split
+        /// segments reuse the line's current indent (no extra level)
+        /// so that splitting a continuation line does not cascade
+        /// into deeper indents on a second pass.
         /// </summary>
         /// <param name="lines">The line list.</param>
-        /// <param name="lineContinuesNext">Per-line flags indicating whether
-        /// the line ends with a continuation indicator; entry i corresponds
-        /// to line i. May be null when continuation detection is not
-        /// available.</param>
+        /// <param name="lineContinuesNext">Per-line flags indicating whether the line ends with a continuation indicator; entry i corresponds to line i. May be null when continuation detection is not available.</param>
         /// <returns>The processed line list.</returns>
-        public static List<string> ApplyLineLengthLimit(
+        public List<string> ApplyLineLengthLimit(
             List<string> lines, bool[] lineContinuesNext)
         {
             var result = new List<string>(lines.Count);
@@ -37,12 +45,6 @@ namespace CSharpFormatter
                     continue;
                 }
 
-                // If this line is itself a continuation of the previous line
-                // (previous line ends with a continuation indicator), the
-                // continuation indent equals this line's current indent — do
-                // NOT add another indent level. Otherwise, continuation
-                // segments are indented one level deeper than the statement
-                // base indent (handled by passing null to SplitLongLine).
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
@@ -74,13 +76,17 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Recursively splits a single line so that each segment does not
-        /// exceed 80 characters; splits only at Code token boundaries.
-        /// <paramref name="fixedContIndent"/> is the fixed continuation
-        /// indent reused across all continuation segments so that 3+
-        /// segment splits do not cascade; pass null on the first call to
-        /// trigger computation from the original line's indent.
+        /// Recursively splits a single line so that each segment does
+        /// not exceed 80 characters; splits only at Code token
+        /// boundaries. <paramref name="fixedContIndent"/> is the
+        /// fixed continuation indent reused across all continuation
+        /// segments so that 3+ segment splits do not cascade; pass
+        /// null on the first call to trigger computation from the
+        /// original line's indent.
         /// </summary>
+        /// <param name="line">The line to split.</param>
+        /// <param name="fixedContIndent">The fixed continuation indent (or null on the first call).</param>
+        /// <returns>The list of split segments.</returns>
         private static List<string> SplitLongLine(string line,
             string fixedContIndent)
         {
@@ -102,11 +108,6 @@ namespace CSharpFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-            // On the first call (fixedContIndent == null), compute the fixed
-            // continuation indent from the original line's indent. This indent
-            // is reused for ALL continuation segments so that 3+ segment splits
-            // do not cascade (parent+4 for every continuation line, matching
-            // IndentationProcessor's behaviour).
 
             if (fixedContIndent == null)
             {
@@ -114,8 +115,8 @@ namespace CSharpFormatter
                     new string(' ', TextUtils.IndentSize);
             }
 
-            var tokens = Tokenizer.Tokenize(line);
-            bool[] isCode = Tokenizer.BuildCodeMask(line, tokens);
+            var tokens = CSharpTokenizer.Instance.Tokenize(line);
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line, tokens);
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
 
             if (breakAt < 0 || breakAt >= line.Length)
@@ -123,12 +124,6 @@ namespace CSharpFormatter
                 return new List<string> { line };
             }
 
-            // If the remaining content after the break point is only a
-            // comment (starts with //, /*, or * after trimming), use the
-            // base indent instead of the continuation indent. This prevents
-            // a non-idempotent reindent on the next pass where
-            // IndentationProcessor.Reindent would reset the comment line
-            // indent back to base depth, causing an extra formatting pass.
             string afterTrimmed = line.Substring(breakAt).TrimStart();
 
             if (afterTrimmed.StartsWith("//") ||
@@ -152,10 +147,15 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Finds a safe break point within a Code token: prefers the largest
-        /// break point not exceeding 80 characters; if no such point exists,
-        /// returns the first break point beyond 80 characters.
+        /// Finds a safe break point within a Code token: prefers the
+        /// largest break point not exceeding 80 characters; if no
+        /// such point exists, returns the first break point beyond
+        /// 80 characters.
         /// </summary>
+        /// <param name="line">The line to scan.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <param name="startIdx">The position to start scanning from.</param>
+        /// <returns>The break position, or -1 if none exists.</returns>
         private static int FindSafeBreakPoint(string line, bool[] isCode,
             int startIdx)
         {
@@ -172,8 +172,6 @@ namespace CSharpFormatter
                 }
 
                 char c = line[i];
-                // Skip ++ and -- operator pairs (unary, never a valid break
-                // point).
 
                 if ((c == '+' || c == '-') && i + 1 < line.Length &&
                     line[i + 1] == c)
@@ -225,8 +223,13 @@ namespace CSharpFormatter
 
         /// <summary>
         /// Attempts to match a two-character operator at position
-        /// <paramref name="i"/> and returns the break position after it.
+        /// <paramref name="i"/> and returns the break position after
+        /// it.
         /// </summary>
+        /// <param name="line">The line to scan.</param>
+        /// <param name="i">The position of the first character of the operator.</param>
+        /// <param name="c">The first character of the operator.</param>
+        /// <returns>The break position after the operator, or -1 if not matched.</returns>
         private static int TryMatchTwoCharOperator(string line, int i,
             char c)
         {
@@ -281,9 +284,14 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Attempts to match a single-character binary operator at position
-        /// <paramref name="i"/>.
+        /// Attempts to match a single-character binary operator at
+        /// position <paramref name="i"/>.
         /// </summary>
+        /// <param name="line">The line to scan.</param>
+        /// <param name="i">The position of the operator.</param>
+        /// <param name="c">The operator character.</param>
+        /// <param name="startIdx">The position to start scanning from.</param>
+        /// <returns>The break position after the operator, or -1 if not matched.</returns>
         private static int TryMatchSingleCharOp(string line, int i, char c,
             int startIdx)
         {
@@ -306,10 +314,14 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether position <paramref name="i"/> in the line is
-        /// in a binary operator context (preceded by ), ], identifier, _,
-        /// or ").
+        /// Determines whether position <paramref name="i"/> in the
+        /// line is in a binary operator context (preceded by
+        /// <c>)</c>, <c>]</c>, identifier, <c>_</c>, or <c>"</c>).
         /// </summary>
+        /// <param name="line">The line to inspect.</param>
+        /// <param name="i">The position of the candidate operator.</param>
+        /// <param name="startIdx">The position to start scanning from.</param>
+        /// <returns>True if the operator is in a binary context.</returns>
         private static bool IsBinaryOpContext(string line, int i,
             int startIdx)
         {

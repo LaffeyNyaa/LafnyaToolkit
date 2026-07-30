@@ -1,31 +1,37 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
 {
     /// <summary>
-    /// Recomputes indentation for each line based on brace nesting depth,
-    /// continuation indicators, enum-block membership, and switch case
-    /// scope.
+    /// Recomputes indentation for each line based on brace nesting
+    /// depth, continuation indicators, enum-block membership, and
+    /// switch case scope.
     /// </summary>
-    internal static class IndentationProcessor
+    internal sealed class IndentationProcessor
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+
+        private IndentationProcessor()
+        {
+        }
+
         /// <summary>
-        /// Recomputes leading whitespace for each line according to nesting
-        /// depth. Lines that fall entirely inside a VerbatimString or
-        /// MultiLineComment token retain their original leading whitespace.
+        /// Recomputes leading whitespace for each line according to
+        /// nesting depth. Lines that fall entirely inside a
+        /// VerbatimString, MultiLineComment, InterpolatedString, or
+        /// InterpolatedVerbatimString token retain their original
+        /// leading whitespace.
         /// </summary>
         /// <param name="lines">The line list.</param>
-        /// <param name="text">The full source text corresponding to
-        /// <paramref name="lines"/>.</param>
-        /// <param name="tokens">Pre-computed tokens of
-        /// <paramref name="text"/> (avoid re-tokenization).</param>
-        /// <param name="isCode">Pre-computed code mask of
-        /// <paramref name="text"/>.</param>
-        /// <param name="isCodeLine">Per-line flag indicating whether the
-        /// line's first non-whitespace character is in a code region.
-        /// </param>
+        /// <param name="text">The full source text corresponding to <paramref name="lines"/>.</param>
+        /// <param name="tokens">Pre-computed tokens of <paramref name="text"/> (avoid re-tokenization).</param>
+        /// <param name="isCode">Pre-computed code mask of <paramref name="text"/>.</param>
+        /// <param name="isCodeLine">Per-line flag indicating whether the line's first non-whitespace character is in a code region.</param>
         /// <returns>The re-indented line list.</returns>
-        public static List<string> Reindent(List<string> lines,
+        public List<string> Reindent(List<string> lines,
             string text, List<Token> tokens, bool[] isCode,
             bool[] isCodeLine)
         {
@@ -76,7 +82,7 @@ namespace CSharpFormatter
             }
 
             var result = new List<string>(lines.Count);
-            int[] lineStarts = TextUtils.ComputeLineStarts(lines);
+            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -100,15 +106,6 @@ namespace CSharpFormatter
                     IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
                     text, isCode))
                 {
-                    // When the previous line contains both a block-start brace
-                    // ({) and a continuation-ending character (e.g.
-                    // "tokens.Add(new Token { Kind ="), the { already
-                    // increases brace depth for this line.  Adding the
-                    // continuation indent on top of that increased depth would
-                    // double-count the nesting level, producing one indent too
-                    // many.  Skip the continuation indent when brace depth
-                    // has already increased from the previous line.
-
                     if (depths[i] <= depths[i - 1])
                     {
                         baseDepth++;
@@ -128,15 +125,19 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Computes whether each line should preserve its original leading
-        /// whitespace: returns true iff the line's starting position lies
-        /// inside a VerbatimString or MultiLineComment token.
+        /// Computes whether each line should preserve its original
+        /// leading whitespace: returns true iff the line's starting
+        /// position lies inside a VerbatimString, MultiLineComment,
+        /// InterpolatedString, or InterpolatedVerbatimString token.
         /// </summary>
+        /// <param name="lines">The line list.</param>
+        /// <param name="tokens">The token list for the full text.</param>
+        /// <returns>A boolean array; true means preserve the line's original indent.</returns>
         private static bool[] ComputePreserveIndent(List<string> lines,
             List<Token> tokens)
         {
             var preserveIndent = new bool[lines.Count];
-            int[] lineStarts = TextUtils.ComputeLineStarts(lines);
+            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
             int tokenPos = 0;
 
             foreach (var token in tokens)
@@ -168,11 +169,15 @@ namespace CSharpFormatter
         /// <summary>
         /// Computes whether each line is inside an enum block.
         /// </summary>
+        /// <param name="lines">The line list.</param>
+        /// <param name="text">The full source text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <returns>A boolean array; true means the line is inside an enum block.</returns>
         private static bool[] ComputeInEnumBlock(List<string> lines,
             string text, bool[] isCode)
         {
             var inEnumBlock = new bool[lines.Count];
-            int[] lineStarts = TextUtils.ComputeLineStarts(lines);
+            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
             var enumRanges = new List<KeyValuePair<int, int>>();
             int depth = 0;
             int enumDepth = -1;
@@ -246,16 +251,21 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Computes which lines inside a switch block belong to a case body
-        /// (i.e., need one extra indentation level). Uses
+        /// Computes which lines inside a switch block belong to a
+        /// case body (i.e., need one extra indentation level). Uses
         /// <paramref name="isCodeLine"/> to ensure only code-region
-        /// case/default labels are recognised.
+        /// <c>case</c>/<c>default</c> labels are recognised.
         /// </summary>
+        /// <param name="lines">The line list.</param>
+        /// <param name="text">The full source text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <param name="isCodeLine">Per-line code-region flag.</param>
+        /// <returns>A boolean array; true means the line belongs to a case body.</returns>
         private static bool[] ComputeCaseScope(List<string> lines,
             string text, bool[] isCode, bool[] isCodeLine)
         {
             var caseBody = new bool[lines.Count];
-            int[] lineStarts = TextUtils.ComputeLineStarts(lines);
+            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
             var switchRanges = new List<KeyValuePair<int, int>>();
             var braceStack = new Stack<KeyValuePair<bool, int>>();
             bool pendingSwitch = false;
@@ -351,7 +361,7 @@ namespace CSharpFormatter
                     string trimmed = lines[li].Trim();
 
                     if (!inInner && isCodeLine[li] &&
-                        LineClassifier.IsCaseLabelLine(trimmed))
+                        LineClassifier.Instance.IsCaseLabelLine(trimmed))
                     {
                         inCaseBody = true;
                     }
@@ -366,15 +376,20 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether the specified line ends with a continuation
-        /// indicator. Delegates to
+        /// Determines whether the specified line ends with a
+        /// continuation indicator. Delegates to
         /// <see cref="LineClassifier.IsContinuationIndicator"/>.
         /// </summary>
+        /// <param name="line">The line text.</param>
+        /// <param name="lineStart">The line's start offset in the full text.</param>
+        /// <param name="text">The full source text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <returns>True if the line ends with a continuation indicator.</returns>
         private static bool IsContinuationIndicator(string line,
             int lineStart, string text, bool[] isCode)
         {
-            return LineClassifier.IsContinuationIndicator(line, lineStart,
-                text, isCode);
+            return LineClassifier.Instance.IsContinuationIndicator(line,
+                lineStart, text, isCode);
         }
     }
 }

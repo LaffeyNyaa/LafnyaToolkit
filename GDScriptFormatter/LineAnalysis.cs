@@ -1,9 +1,12 @@
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Per-line analysis information: whether the line ends with colon/brace, whether it is a continuation, and its original indentation depth.
+    /// Per-line analysis information: whether the line ends with
+    /// colon/brace, whether it is a continuation, and its original
+    /// indentation depth. Shared by <see cref="IndentationProcessor"/>
+    /// and <see cref="LineContinuationAnalyzer"/>.
     /// </summary>
-    internal struct LineAnalysis
+    public struct LineAnalysis
     {
         /// <summary>Whether the line ends with a colon (not inside brackets).</summary>
         public bool ColonTerminated;

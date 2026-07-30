@@ -1,18 +1,29 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Encapsulates line-continuation detection logic. A line is considered a continuation
-    /// when the bracket depth (parentheses, square brackets, braces) from the previous line
-    /// is greater than zero, or when the previous line ends with a backslash that is located
-    /// in a Code region (i.e., not inside a string literal or comment).
+    /// Encapsulates line-continuation detection logic. A line is
+    /// considered a continuation when the bracket depth (parentheses,
+    /// square brackets, braces) from the previous line is greater than
+    /// zero, or when the previous line ends with a backslash that is
+    /// located in a Code region (i.e., not inside a string literal or
+    /// comment).
     /// </summary>
-    internal static class LineContinuationAnalyzer
+    public sealed class LineContinuationAnalyzer
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly LineContinuationAnalyzer Instance = new LineContinuationAnalyzer();
+
+        private LineContinuationAnalyzer()
+        {
+        }
+
         /// <summary>
-        /// Determines whether the line at <paramref name="lineIndex"/> is a continuation
-        /// of the previous line, based on bracket depth and/or a trailing backslash.
+        /// Determines whether the line at <paramref name="lineIndex"/>
+        /// is a continuation of the previous line, based on bracket
+        /// depth and/or a trailing backslash.
         /// </summary>
         /// <param name="lineIndex">The index of the line to check.</param>
         /// <param name="parenBracketDepth">The current bracket depth before processing this line.</param>
@@ -22,8 +33,7 @@ namespace GDScriptFormatter
         /// <param name="lineStarts">The starting offsets of each line in text.</param>
         /// <param name="lines">The list of lines.</param>
         /// <returns>True if the line is a continuation of the previous line.</returns>
-        internal static bool IsContinuation(int lineIndex,
-            int parenBracketDepth,
+        public bool IsContinuation(int lineIndex, int parenBracketDepth,
             bool[] lineContinuesNext, string text, bool[] isCode,
             int[] lineStarts, List<string> lines)
         {
@@ -42,18 +52,20 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Determines whether the line occupying [lineStart, lineStart+lineLength) in text ends with
-        /// a continuation backslash that is located in a Code region. Backslashes inside comments or
-        /// string literals do not trigger continuation. A doubled backslash (\\) in Code is treated
-        /// as a non-continuation to preserve prior behavior.
+        /// Determines whether the line occupying [lineStart,
+        /// lineStart+lineLength) in text ends with a continuation
+        /// backslash that is located in a Code region. Backslashes
+        /// inside comments or string literals do not trigger
+        /// continuation. A doubled backslash (\\) in Code is treated as
+        /// a non-continuation to preserve prior behavior.
         /// </summary>
         /// <param name="text">The full text.</param>
         /// <param name="isCode">The code mask of text.</param>
         /// <param name="lineStart">The starting offset of the line in text.</param>
         /// <param name="lineLength">The length of the line (excluding the line terminator).</param>
         /// <returns>True if the line ends with a Code-region continuation backslash.</returns>
-        internal static bool EndsWithBackslash(string text, bool[] isCode,
-            int lineStart, int lineLength)
+        public bool EndsWithBackslash(string text, bool[] isCode, int lineStart,
+            int lineLength)
         {
             int lastIdx = -1;
 

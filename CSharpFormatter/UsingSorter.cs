@@ -7,22 +7,29 @@ using System.Xml.Linq;
 namespace CSharpFormatter
 {
     /// <summary>
-    /// Collects top-level using directives and sorts them into four groups:
-    /// System* / Third-party / Other project modules / Current module.
+    /// Collects top-level <c>using</c> directives and sorts them into
+    /// four groups: <c>System</c>* / Third-party / Other project
+    /// modules / Current module.
     /// </summary>
-    internal static class UsingSorter
+    internal sealed class UsingSorter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly UsingSorter Instance = new UsingSorter();
+
+        private UsingSorter()
+        {
+        }
+
         /// <summary>
-        /// Walks upward from the file path to find a .csproj file, then
-        /// resolves its &lt;RootNamespace&gt; element. Falls back to the
-        /// directory name of <paramref name="targetRoot"/> if no .csproj
-        /// is found or the element is absent.
+        /// Walks upward from the file path to find a <c>.csproj</c>
+        /// file, then resolves its <c>&lt;RootNamespace&gt;</c> element.
+        /// Falls back to the directory name of <paramref name="targetRoot"/>
+        /// if no <c>.csproj</c> is found or the element is absent.
         /// </summary>
         /// <param name="filePath">The source file path.</param>
-        /// <param name="targetRoot">The target root directory path
-        /// (used as fallback).</param>
+        /// <param name="targetRoot">The target root directory path (used as fallback).</param>
         /// <returns>The resolved root namespace.</returns>
-        public static string ResolveRootNamespace(string filePath,
+        public string ResolveRootNamespace(string filePath,
             string targetRoot)
         {
             string dir = Path.GetDirectoryName(filePath);
@@ -74,16 +81,15 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Identifies the top-level using block in the source string,
-        /// re-groups, sorts, and replaces it according to the rules.
-        /// Returns the source unchanged if there are no top-level using
-        /// directives.
+        /// Identifies the top-level <c>using</c> block in the source
+        /// string, re-groups, sorts, and replaces it according to the
+        /// rules. Returns the source unchanged if there are no
+        /// top-level <c>using</c> directives.
         /// </summary>
         /// <param name="source">The source code string.</param>
-        /// <param name="rootNamespace">The root namespace of the current
-        /// module.</param>
-        /// <returns>The source string with using directives sorted.</returns>
-        public static string Sort(string source, string rootNamespace)
+        /// <param name="rootNamespace">The root namespace of the current module.</param>
+        /// <returns>The source string with <c>using</c> directives sorted.</returns>
+        public string Sort(string source, string rootNamespace)
         {
             string unified = source.Replace("\r\n", "\n").Replace("\r", "\n");
             string[] lines = unified.Split('\n');
@@ -212,6 +218,12 @@ namespace CSharpFormatter
             return result.ToString();
         }
 
+        /// <summary>
+        /// Appends a non-empty group to the result block, inserting a
+        /// blank separator before the group if needed.
+        /// </summary>
+        /// <param name="block">The accumulating output block.</param>
+        /// <param name="group">The group to append.</param>
         private static void AppendGroup(List<string> block, List<string> group)
         {
             if (group.Count == 0)
@@ -227,6 +239,13 @@ namespace CSharpFormatter
             block.AddRange(group);
         }
 
+        /// <summary>
+        /// Compares two <c>using</c> lines by their namespace first,
+        /// then by the full directive text (ordinal).
+        /// </summary>
+        /// <param name="a">The first using line.</param>
+        /// <param name="b">The second using line.</param>
+        /// <returns>The ordinal comparison result.</returns>
         private static int CompareByNamespace(string a, string b)
         {
             int c = StringComparer.Ordinal.Compare(ExtractNamespace(a),
@@ -240,6 +259,12 @@ namespace CSharpFormatter
             return StringComparer.Ordinal.Compare(a, b);
         }
 
+        /// <summary>
+        /// Determines whether a trimmed line is a <c>using</c>
+        /// directive.
+        /// </summary>
+        /// <param name="line">The trimmed line.</param>
+        /// <returns>True if the line is a using directive.</returns>
         private static bool IsUsingDirective(string line)
         {
             if (line.StartsWith("using "))
@@ -255,12 +280,26 @@ namespace CSharpFormatter
             return line == "using";
         }
 
+        /// <summary>
+        /// Determines whether a trimmed line is a comment line
+        /// (<c>//</c>, <c>/*</c>, or block-comment continuation
+        /// <c>*</c>).
+        /// </summary>
+        /// <param name="line">The trimmed line.</param>
+        /// <returns>True if the line is a comment line.</returns>
         private static bool IsCommentLine(string line)
         {
             return line.StartsWith("//") || line.StartsWith("/*") ||
                 line.StartsWith("*");
         }
 
+        /// <summary>
+        /// Extracts the namespace portion from a <c>using</c>
+        /// directive, stripping the leading <c>using</c>/<c>static</c>
+        /// keyword and any trailing alias or semicolon.
+        /// </summary>
+        /// <param name="usingLine">The using directive line.</param>
+        /// <returns>The namespace identifier.</returns>
         private static string ExtractNamespace(string usingLine)
         {
             string s = usingLine.Trim();

@@ -1,37 +1,45 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
 {
     /// <summary>
     /// Computes the brace-nesting depth for each line of source text.
-    /// Adjusts depth based on namespace declarations (no extra indent for
-    /// namespace bodies) and handles closing braces that reduce depth below
-    /// the line-start depth.
-    ///
-    /// Include-guard #ifndef blocks (#ifndef NAME immediately followed by
-    /// #define NAME) are detected and do NOT add an indentation level; code
-    /// inside an include guard stays at the enclosing scope depth.
+    /// Adjusts depth based on namespace declarations (no extra indent
+    /// for namespace bodies) and handles closing braces that reduce
+    /// depth below the line-start depth.
+    /// Include-guard #ifndef blocks (#ifndef NAME immediately followed
+    /// by #define NAME) are detected and do NOT add an indentation
+    /// level; code inside an include guard stays at the enclosing
+    /// scope depth. Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class IndentationDepthComputer
+    internal sealed class IndentationDepthComputer
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly IndentationDepthComputer Instance = new IndentationDepthComputer();
+
+        private IndentationDepthComputer()
+        {
+        }
+
         /// <summary>
-        /// Computes the base brace-nesting depth for each line. The first pass
-        /// walks every character in <paramref name="text"/>, incrementing depth
-        /// on <c>{</c> and decrementing on <c>}</c> (only in code regions),
-        /// and recording the depth at the start of each line.
-        ///
-        /// Namespace bodies do not increase depth (they match the enclosing
-        /// scope's indentation level).
-        ///
+        /// Computes the base brace-nesting depth for each line. The
+        /// first pass walks every character in <paramref name="text"/>,
+        /// incrementing depth on <c>{</c> and decrementing on
+        /// <c>}</c> (only in code regions), and recording the depth
+        /// at the start of each line.
+        /// Namespace bodies do not increase depth (they match the
+        /// enclosing scope's indentation level).
         /// A second pass scans preprocessor conditional directives
-        /// (#if/#ifdef/#ifndef/#elif/#else/#endif) and adjusts depths so that
-        /// code inside a conditional block receives an extra indentation level.
-        /// Directive lines themselves retain the enclosing scope depth.
-        /// Include-guard #ifndef blocks are detected and skipped (they do not
-        /// contribute an indentation level).
+        /// (#if/#ifdef/#ifndef/#elif/#else/#endif) and adjusts depths
+        /// so that code inside a conditional block receives an extra
+        /// indentation level. Directive lines themselves retain the
+        /// enclosing scope depth. Include-guard #ifndef blocks are
+        /// detected and skipped (they do not contribute an indentation
+        /// level).
         /// </summary>
-        internal static int[] ComputeDepths(List<string> lines, string text,
-            bool[] isCode)
+        public int[] ComputeDepths(List<string> lines, string text, bool[] isCode)
         {
             int[] depths = new int[lines.Count];
             int depth = 0;
@@ -74,13 +82,6 @@ namespace CppFormatter
                         depth = 0;
                     }
 
-                    // Only update depths[lineIdx] when the closing brace
-                    // reduces depth below what was recorded at the start of
-                    // this line.  This prevents a `}` that merely closes a
-                    // `{` _on the same line_ (e.g. inside {{"x", y}}) from
-                    // overwriting the line-start depth that was correctly
-                    // set by the preceding `\n` handler.
-
                     if (lineIdx < depths.Length)
                     {
                         int startDepth = depths[lineIdx];
@@ -92,16 +93,10 @@ namespace CppFormatter
                     }
                 }
 
-                if (isCode[i] && c == 'n' &&
-                    (i == 0 || !TextUtils.IsWordChar(text[i - 1])) &&
-                    TextUtils.MatchesWord(text, i, "namespace"))
+                if (isCode[i] && c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) && TextUtils.MatchesWord(text, i, "namespace"))
                 {
                     pendingNamespace = true;
                 }
-
-                // Reset pendingNamespace if we encounter characters that
-                // terminate a namespace declaration (; for alias, = for
-                // assignment, or non-identifier chars that are not { or :).
 
                 if (pendingNamespace && c == ';')
                 {
@@ -119,17 +114,7 @@ namespace CppFormatter
                 }
             }
 
-            // Second pass: adjust depths for preprocessor conditional
-            // directives (#if/#ifdef/#ifndef/#elif/#else/#endif).
-            // Directive lines keep the enclosing scope depth; code lines
-            // inside the conditional get an extra indent per nesting level.
-            // Include-guard #ifndef blocks are detected and skipped so they
-            // do not contribute an indentation level (the #define guard-name
-            // that follows immediately is not "code" that needs indenting).
             int preprocDepth = 0;
-            // Stack tracks whether each nested preprocessor conditional level
-            // is an include-guard. true = this level is a header guard and
-            // should not contribute to preprocDepth.
             var isHeaderGuardLevel = new List<bool>();
 
             for (int i = 0; i < lines.Count; i++)
@@ -142,8 +127,7 @@ namespace CppFormatter
                     depths[i] += preprocDepth;
                     isHeaderGuardLevel.Add(true);
                 }
-                else if (keyword == "if" || keyword == "ifdef" ||
-                    keyword == "ifndef")
+                else if (keyword == "if" || keyword == "ifdef" || keyword == "ifndef")
                 {
                     depths[i] += preprocDepth;
                     isHeaderGuardLevel.Add(false);
@@ -151,13 +135,7 @@ namespace CppFormatter
                 }
                 else if (keyword == "elif" || keyword == "else")
                 {
-                    // Use the enclosing level's depth. If the enclosing
-                    // #if/#ifdef/#ifndef is a header guard, preprocDepth was
-                    // not incremented, so use preprocDepth directly.
-                    // Otherwise use (preprocDepth - 1).
-                    bool enclosingIsHeaderGuard =
-                        isHeaderGuardLevel.Count > 0 &&
-                        isHeaderGuardLevel[isHeaderGuardLevel.Count - 1];
+                    bool enclosingIsHeaderGuard = isHeaderGuardLevel.Count > 0 && isHeaderGuardLevel[isHeaderGuardLevel.Count - 1];
 
                     if (enclosingIsHeaderGuard)
                     {
@@ -199,30 +177,24 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Determines whether the #ifndef at the given index is an include
-        /// guard. An include guard has the pattern:
-        ///
-        ///     #ifndef NAME
-        ///     #define NAME
-        ///
-        /// where NAME is the same identifier on both directives, and the
-        /// #ifndef is at file scope (brace depth 0 before adjustment).
+        /// Determines whether the #ifndef at the given index is an
+        /// include guard. An include guard has the pattern:
+        /// <code>
+        ///   #ifndef NAME
+        ///   #define NAME
+        /// </code>
+        /// where NAME is the same identifier on both directives, and
+        /// the #ifndef is at file scope (brace depth 0 before adjustment).
         /// </summary>
         private static bool IsHeaderGuard(List<string> lines, int ifndefIndex)
         {
-            // Only detect header guards at file scope (brace depth 0).
-            // depths[ifndefIndex] is the brace depth from pass 1, which
-            // has not yet been adjusted by the preprocessor pass.
-
             if (ifndefIndex >= lines.Count)
             {
                 return false;
             }
 
             string trimmed = lines[ifndefIndex].TrimStart();
-
-            string afterIfndef =
-                trimmed.Substring("#ifndef".Length).TrimStart();
+            string afterIfndef = trimmed.Substring("#ifndef".Length).TrimStart();
 
             if (afterIfndef.Length == 0)
             {
@@ -236,8 +208,6 @@ namespace CppFormatter
                 return false;
             }
 
-            // Scan forward for the next non-blank, non-comment line.
-
             for (int j = ifndefIndex + 1; j < lines.Count; j++)
             {
                 string nextTrimmed = lines[j].TrimStart();
@@ -247,14 +217,10 @@ namespace CppFormatter
                     continue;
                 }
 
-                // Skip single-line comments.
-
                 if (nextTrimmed.StartsWith("//"))
                 {
                     continue;
                 }
-
-                // Skip block-comment start lines.
 
                 if (nextTrimmed.StartsWith("/*"))
                 {
@@ -265,17 +231,11 @@ namespace CppFormatter
 
                 if (nextKeyword == "define")
                 {
-                    string afterDefine = nextTrimmed.Substring(
-                        "#define".Length).TrimStart();
-
-                    string defineName = ExtractPreprocessorIdentifier(
-                        afterDefine);
-
+                    string afterDefine = nextTrimmed.Substring("#define".Length).TrimStart();
+                    string defineName = ExtractPreprocessorIdentifier(afterDefine);
                     return defineName == guardName;
                 }
 
-                // Any other non-blank, non-comment line means this is not
-                // an include guard.
                 break;
             }
 
@@ -290,8 +250,7 @@ namespace CppFormatter
         {
             int end = 0;
 
-            while (end < s.Length &&
-                (char.IsLetterOrDigit(s[end]) || s[end] == '_'))
+            while (end < s.Length && (char.IsLetterOrDigit(s[end]) || s[end] == '_'))
             {
                 end++;
             }
@@ -300,8 +259,8 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Extracts the preprocessor directive keyword from a trimmed line.
-        /// Returns <c>null</c> if the line does not start with <c>#</c>
+        /// Extracts the preprocessor directive keyword from a trimmed
+        /// line. Returns null if the line does not start with '#'
         /// followed by a letter-based keyword.
         /// </summary>
         private static string GetPreprocessorKeyword(string trimmedLine)
@@ -320,8 +279,7 @@ namespace CppFormatter
 
             int kwEnd = 0;
 
-            while (kwEnd < afterHash.Length &&
-                char.IsLetter(afterHash[kwEnd]))
+            while (kwEnd < afterHash.Length && char.IsLetter(afterHash[kwEnd]))
             {
                 kwEnd++;
             }

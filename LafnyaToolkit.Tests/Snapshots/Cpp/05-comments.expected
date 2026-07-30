@@ -1,0 +1,20 @@
+// Multi-line comment test
+
+#include <iostream>
+/* Block
+   comment
+   spanning lines */
+
+class Foo {
+public:
+    void method() {
+        if (x) {
+            doSomething();
+        } else {
+            doOther();
+        }
+    }
+
+private:
+    int x = 0;
+};

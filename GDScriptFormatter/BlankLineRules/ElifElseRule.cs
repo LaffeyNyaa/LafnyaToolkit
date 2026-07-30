@@ -1,16 +1,16 @@
 namespace GDScriptFormatter
 {
-    internal static partial class BlankLineProcessor
+    /// <summary>
+    /// Elif/else rule: identifies elif/else block starts so that the
+    /// main rule loop can suppress blank lines before them (they are
+    /// continuations of the preceding if/elif block).
+    /// </summary>
+    public sealed partial class BlankLineProcessor
     {
-        /// <summary>
-        /// Determines whether a trimmed line is an elif or else block start.
-        /// These are continuations of the preceding if/elif block and should
-        /// not have blank lines inserted before them.
-        /// </summary>
         private static bool IsElifOrElseBlock(string trimmed)
         {
-            return TextUtils.StartsWithKeyword(trimmed, "elif") ||
-                TextUtils.StartsWithKeyword(trimmed, "else");
+            return LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, "elif") ||
+                LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, "else");
         }
     }
 }

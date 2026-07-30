@@ -1,13 +1,21 @@
-using System;
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter
 {
     /// <summary>
     /// Core implementation that applies all GDScript formatting rules.
     /// </summary>
-    public static class Formatter
+    public sealed class Formatter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly Formatter Instance = new Formatter();
+
+        private Formatter()
+        {
+        }
+
         /// <summary>
         /// Applies all formatting rules to a source string and returns the result. Line endings are
         /// normalized first, then tabs are normalized only in Code regions, then enums are expanded,
@@ -15,7 +23,7 @@ namespace GDScriptFormatter
         /// </summary>
         /// <param name="source">The original source string.</param>
         /// <returns>The formatted source string.</returns>
-        public static string Format(string source)
+        public string Format(string source)
         {
             if (source == null || source.Length == 0)
             {
@@ -23,33 +31,29 @@ namespace GDScriptFormatter
             }
 
             string text = source.Replace("\r\n", "\n").Replace("\r", "\n");
-            text = DocCommentMover.MoveFileDocComments(text);
-            text = TextUtils.NormalizeCommentSpaces(text);
+            text = DocCommentMover.Instance.MoveFileDocComments(text);
+            text = GDScriptTextUtils.Instance.NormalizeCommentSpaces(text);
 
             bool[] tabMask = ComputeTokensAndMask(text, out var tabTokens);
-            text = TextUtils.NormalizeTabs(text, tabMask);
-            text = MemberReorderer.ReorderMembers(text);
+            text = GDScriptTextUtils.Instance.NormalizeTabs(text, tabMask);
+            text = MemberReorderer.Instance.ReorderMembers(text);
 
-            text = EnumFormatter.ExpandEnums(text);
+            text = EnumFormatter.Instance.ExpandEnums(text);
 
             bool[] isCode = ComputeTokensAndMask(text, out var tokens);
 
             var lines = TextUtils.SplitLines(text);
-            lines = IndentationProcessor.Reindent(lines, text, tokens, isCode);
-            // Compute continuation flags from the post-Reindent (pre-split)
-            // line structure so that LineLengthProcessor can detect
-            // continuation lines and avoid cascading indents when splitting
-            // them (a continuation line split at parent+4 must keep its
-            // segments at parent+4, not parent+8).
+            lines = IndentationProcessor.Instance.Reindent(lines, text, tokens, isCode);
+
             string textForLimit = string.Join("\n", lines);
 
             bool[] isCodeForLimit = ComputeTokensAndMask(textForLimit,
                 out var tokensForLimit);
 
             int[] lineStartsForLimit =
-                IndentationProcessor.ComputeLineStarts(lines);
+                IndentationProcessor.Instance.ComputeLineStarts(lines);
 
-            var lineInfoForLimit = IndentationProcessor.ComputeLineInfo(lines,
+            var lineInfoForLimit = IndentationProcessor.Instance.ComputeLineInfo(lines,
                 textForLimit,
                 isCodeForLimit, lineStartsForLimit);
 
@@ -57,22 +61,12 @@ namespace GDScriptFormatter
 
             for (int i = 0; i < lines.Count; i++)
             {
-                // Line i "continues to next" when line i+1 is detected as a
-                // continuation (unclosed bracket from line i, or line i ends
-                // with a continuation backslash).
                 preSplitContinues[i] = i + 1 < lines.Count &&
                     lineInfoForLimit[i + 1].IsContinuation;
             }
 
-            // Collapse unnecessary wrapping parentheses that were introduced
-            // by an earlier formatter pass (e.g. wrapping a method call chain
-            // in (...) and splitting each segment onto its own line). This
-            // restores the expression to a single long line that the
-            // line-length splitter below can then format properly.
             CollapseWrappedExpressions(lines);
-            // Recompute continuation flags after CollapseWrappedExpressions,
-            // which may have changed the line count/structure so that the
-            // pre-existing flags are no longer aligned.
+
             {
                 var postCollapseText = string.Join("\n", lines);
 
@@ -81,10 +75,10 @@ namespace GDScriptFormatter
                     out var postCollapseTokens);
 
                 int[] postCollapseLineStarts =
-                    IndentationProcessor.ComputeLineStarts(lines);
+                    IndentationProcessor.Instance.ComputeLineStarts(lines);
 
                 var postCollapseLineInfo =
-                    IndentationProcessor.ComputeLineInfo(lines,
+                    IndentationProcessor.Instance.ComputeLineInfo(lines,
                     postCollapseText, postCollapseIsCode,
                     postCollapseLineStarts);
 
@@ -99,20 +93,9 @@ namespace GDScriptFormatter
                 preSplitContinues = newPreSplitContinues;
             }
 
-            // Split long lines BEFORE applying blank-line rules so that the
-            // preSplitContinues flags (computed above) stay aligned with the
-            // line list. Running BlankLineProcessor first would insert blank
-            // lines and shift indices, causing LineLengthProcessor to read
-            // the wrong continuation flag for each line.
-            lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
+            lines = LineLengthProcessor.Instance.ApplyLineLengthLimit(lines,
                 preSplitContinues);
 
-            // Re-indent after line-length splitting so that the indentation
-            // of newly introduced continuation lines and synthetic
-            // parentheses matches the Reindent algorithm. Without this,
-            // the first formatting pass produces different indentation than
-            // the second pass (where Reindent processes the post-split
-            // output), causing the formatter to be non-idempotent.
             {
                 var postSplitTextForReindent = string.Join("\n", lines);
 
@@ -120,24 +103,21 @@ namespace GDScriptFormatter
                     ComputeTokensAndMask(postSplitTextForReindent,
                     out var reindentTokens);
 
-                lines = IndentationProcessor.Reindent(
+                lines = IndentationProcessor.Instance.Reindent(
                     lines, postSplitTextForReindent, reindentTokens,
                     reindentIsCode);
             }
 
-            // Recompute continuation flags after line-length splitting so
-            // that BlankLineProcessor can suppress blank lines between
-            // continuation lines.
             var postSplitText = string.Join("\n", lines);
 
             bool[] postSplitIsCode = ComputeTokensAndMask(postSplitText,
                 out var postSplitTokens);
 
             int[] postSplitLineStarts =
-                IndentationProcessor.ComputeLineStarts(lines);
+                IndentationProcessor.Instance.ComputeLineStarts(lines);
 
             var postSplitLineInfo =
-                IndentationProcessor.ComputeLineInfo(lines, postSplitText,
+                IndentationProcessor.Instance.ComputeLineInfo(lines, postSplitText,
                 postSplitIsCode, postSplitLineStarts);
 
             var postSplitContinues = new bool[lines.Count];
@@ -148,11 +128,11 @@ namespace GDScriptFormatter
                     postSplitLineInfo[i].IsContinuation;
             }
 
-            lines = BlankLineProcessor.ApplyBlankLineRules(lines,
+            lines = BlankLineProcessor.Instance.ApplyBlankLineRules(lines,
                 postSplitContinues);
 
-            lines = BlankLineProcessor.CollapseBlankLines(lines);
-            lines = BlankLineProcessor.TrimTrailingWhitespace(lines);
+            lines = BlankLineProcessor.Instance.CollapseBlankLines(lines);
+            lines = BlankLineProcessor.Instance.TrimTrailingWhitespace(lines);
             string result = string.Join("\n", lines);
             result = TextUtils.EnsureSingleTrailingNewline(result);
             return result;
@@ -219,7 +199,6 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                // Collect non-blank content lines inside the wrapping parens.
                 var contentParts = new List<string>();
 
                 for (int j = i + 1; j < closeIdx; j++)
@@ -239,12 +218,7 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                // Join the content into a single expression line.
                 string joined = string.Join(" ", contentParts);
-                // Clean up spacing artifacts introduced by the multi-line
-                // wrapping.  Naive replacements are safe here because the
-                // content is a single expression — no string literals in
-                // this codebase contain these exact character sequences.
                 joined = joined.Replace(" .", ".");
                 joined = joined.Replace(". ", ".");
                 joined = joined.Replace("( ", "(");
@@ -254,10 +228,8 @@ namespace GDScriptFormatter
 
                 string indent = lines[i].Substring(0, indentOpen);
                 string newLine = indent + joined;
-                // Replace the multi-line block with the collapsed single line.
                 lines.RemoveRange(i, closeIdx - i + 1);
                 lines.Insert(i, newLine);
-                // Re-check the new line for further collapsing.
                 i--;
             }
         }
@@ -319,8 +291,8 @@ namespace GDScriptFormatter
         private static bool[] ComputeTokensAndMask(string text, out List<Token>
             tokens)
         {
-            tokens = Tokenizer.Tokenize(text);
-            return Tokenizer.BuildCodeMask(text, tokens);
+            tokens = GDScriptTokenizer.Instance.Tokenize(text);
+            return GDScriptTokenizer.Instance.BuildCodeMask(text, tokens);
         }
     }
 }

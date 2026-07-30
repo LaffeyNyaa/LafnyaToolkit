@@ -1,41 +1,24 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
 {
     /// <summary>
-    /// Applies blank-line rules: ensures exactly one blank line around
-    /// blocks and declarations, collapses excess blank lines, and trims
-    /// trailing whitespace.
+    /// Applies blank-line rules: ensures exactly one blank line
+    /// around blocks and declarations, collapses excess blank lines,
+    /// and trims trailing whitespace. Split into this primary
+    /// orchestrator plus per-rule files under
+    /// <c>BlankLineRules/</c> and shared helpers in
+    /// <c>BlankLineRules/BlankLineHelpers.cs</c>.
     /// </summary>
-    internal static class BlankLineProcessor
+    internal sealed partial class BlankLineProcessor
     {
-        /// <summary>
-        /// Records a non-blank line together with its original index in
-        /// the input list and whether a blank line preceded it. Used by
-        /// <see cref="ApplyBlankLineRules"/> to correctly index into the
-        /// <paramref name="isCodeLine"/> array after blank lines have been
-        /// collapsed.
-        /// </summary>
-        private struct NonBlankEntry
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+
+        private BlankLineProcessor()
         {
-            /// <summary>The original index of this line in the input
-            /// list.</summary>
-            public int OriginalIndex;
-
-            /// <summary>Whether a blank line immediately preceded this
-            /// line in the input.</summary>
-            public bool HadBlankAbove;
-
-            /// <summary>The line text.</summary>
-            public string Line;
-
-            public NonBlankEntry(int originalIndex, bool hadBlankAbove,
-                string line)
-            {
-                OriginalIndex = originalIndex;
-                HadBlankAbove = hadBlankAbove;
-                Line = line;
-            }
         }
 
         /// <summary>
@@ -44,25 +27,19 @@ namespace CSharpFormatter
         /// blank lines around multi-line statements (statements split
         /// across several lines due to line-length wrapping), and
         /// suppresses blank lines between a try/catch/finally block's
-        /// closing brace and the following catch/finally clause. Uses
-        /// <paramref name="isCodeLine"/> to ensure only code-region
-        /// keywords trigger blank-line insertion, and consults
-        /// <paramref name="lineContinuesNext"/> and
+        /// closing brace and the following catch/finally clause.
+        /// Uses <paramref name="isCodeLine"/> to ensure only
+        /// code-region keywords trigger blank-line insertion, and
+        /// consults <paramref name="lineContinuesNext"/> and
         /// <paramref name="lineEndsStatement"/> to detect multi-line
         /// statement boundaries.
         /// </summary>
         /// <param name="lines">The line list.</param>
-        /// <param name="isCodeLine">Per-line flag indicating whether the
-        /// line's first non-whitespace character is in a code region.
-        /// </param>
-        /// <param name="lineContinuesNext">Per-line flag indicating
-        /// whether the line ends with a continuation operator and thus
-        /// continues on the next line.</param>
-        /// <param name="lineEndsStatement">Per-line flag indicating
-        /// whether the line ends a statement (last code character is
-        /// <c>;</c> or <c>}</c>).</param>
+        /// <param name="isCodeLine">Per-line flag indicating whether the line's first non-whitespace character is in a code region.</param>
+        /// <param name="lineContinuesNext">Per-line flag indicating whether the line ends with a continuation operator and thus continues on the next line.</param>
+        /// <param name="lineEndsStatement">Per-line flag indicating whether the line ends a statement (last code character is <c>;</c> or <c>}</c>).</param>
         /// <returns>The processed line list.</returns>
-        public static List<string> ApplyBlankLineRules(List<string> lines,
+        internal List<string> ApplyBlankLineRules(List<string> lines,
             bool[] isCodeLine, bool[] lineContinuesNext,
             bool[] lineEndsStatement)
         {
@@ -95,193 +72,11 @@ namespace CSharpFormatter
                 string trimmed = line.Trim();
                 int origIdx = entry.OriginalIndex;
 
-                bool lineIsCode = origIdx < isCodeLine.Length &&
-                    isCodeLine[origIdx];
+                BlankLinePredicates p = ComputePredicates(entry, i,
+                    nonBlank, trimmed, isCodeLine, lineContinuesNext,
+                    lineEndsStatement);
 
-                bool isBlockStart = lineIsCode &&
-                    LineClassifier.IsBlockStartLine(trimmed);
-
-                bool wantBlankAbove = false;
-
-                if (result.Count > 0)
-                {
-                    NonBlankEntry prevEntry = nonBlank[i - 1];
-                    int prevOrigIdx = prevEntry.OriginalIndex;
-                    string prevLine = prevEntry.Line;
-                    string prevTrimmed = prevLine.Trim();
-
-                    bool prevIsCode = prevOrigIdx < isCodeLine.Length &&
-                        isCodeLine[prevOrigIdx];
-
-                    bool prevIsBlockEnd =
-                        LineClassifier.IsBlockEndLine(prevTrimmed);
-
-                    bool prevIsBlockStartBrace = prevTrimmed == "{" ||
-                        TextUtils.EndsWithOpenBrace(prevTrimmed);
-
-                    bool prevIsComment = IsCommentLine(prevTrimmed);
-                    // Existing rule: block-start gets a blank above unless the
-                    // previous line opens a block.
-
-                    if (isBlockStart && prevTrimmed.Length > 0 &&
-                        !prevIsBlockStartBrace)
-                    {
-                        wantBlankAbove = true;
-                    }
-
-                    // Existing rule: after a block-end, add a blank above unless
-                    // the current line is itself a block-end.
-
-                    if (!wantBlankAbove && prevIsBlockEnd &&
-                        trimmed.Length > 0 && trimmed != "}" &&
-                        !trimmed.StartsWith("}"))
-                    {
-                        wantBlankAbove = true;
-                    }
-
-                    // Existing rule: preserve blank lines between using directives
-                    // when the input already had one.
-
-                    if (!wantBlankAbove &&
-                        LineClassifier.IsUsingDirective(trimmed) &&
-                        LineClassifier.IsUsingDirective(prevTrimmed) &&
-                        entry.HadBlankAbove)
-                    {
-                        wantBlankAbove = true;
-                    }
-
-                    // NEW rule: multi-line statement end -> add a blank below (i.e.,
-                    // add a blank above the current line). A multi-line-statement
-                    // end is a line that ends a statement (; or }) AND whose
-                    // previous non-blank line was a continuation (ended with a
-                    // continuation operator). Block-tail exception: do not add a
-                    // blank if the current line is itself a block-end (} or };).
-                    // NOTE: We check lineContinuesNext[prevOrigIdx - 1] (whether the
-                    // line BEFORE prev continued into prev), not
-                    // lineContinuesNext[prevOrigIdx] (whether prev continues to its
-                    // next line). The latter is always false for a statement-end
-                    // line, which would silently disable this rule.
-                    bool prevIsMultiLineEnd = prevIsCode &&
-                        prevOrigIdx > 0 &&
-                        prevOrigIdx < lineEndsStatement.Length &&
-                        lineEndsStatement[prevOrigIdx] &&
-                        (prevOrigIdx - 1) < lineContinuesNext.Length &&
-                        lineContinuesNext[prevOrigIdx - 1];
-
-                    bool currentIsBlockEnd =
-                        LineClassifier.IsBlockEndLine(trimmed);
-
-                    if (!wantBlankAbove && prevIsMultiLineEnd &&
-                        !currentIsBlockEnd)
-                    {
-                        wantBlankAbove = true;
-                    }
-
-                    // NEW rule: multi-line statement start -> add a blank above. A
-                    // multi-line-statement start is a line that ends with a
-                    // continuation operator AND whose previous non-blank line was
-                    // NOT a continuation. Block-head exception: previous line is
-                    // "{" or ends with "{". Comment-attachment exception: previous
-                    // line is a comment (the comment is attached to the
-                    // declaration).
-                    bool currentContinues = lineIsCode &&
-                        origIdx < lineContinuesNext.Length &&
-                        lineContinuesNext[origIdx];
-
-                    bool prevLineContinuedIntoCurrent = origIdx > 0 &&
-                        (origIdx - 1) < lineContinuesNext.Length &&
-                        lineContinuesNext[origIdx - 1];
-
-                    bool currentIsMultiLineStart = currentContinues &&
-                        !prevLineContinuedIntoCurrent;
-
-                    if (!wantBlankAbove && currentIsMultiLineStart &&
-                        !prevIsBlockStartBrace && !prevIsComment)
-                    {
-                        wantBlankAbove = true;
-                    }
-
-                    // NEW rule: try/catch/finally suppression. If the current line
-                    // starts with "catch" or "finally" (in a code region) and the
-                    // previous non-blank line is a block-end (} or };), suppress
-                    // any blank above. This overrides the block-end rule and the
-                    // multi-line rules above so that try/catch/finally clauses sit
-                    // directly adjacent to the preceding block's closing brace.
-                    bool currentIsCatchOrFinally = lineIsCode &&
-                        (TextUtils.StartsWithKeyword(trimmed, "catch") ||
-                        TextUtils.StartsWithKeyword(trimmed, "finally"));
-
-                    if (currentIsCatchOrFinally && prevIsBlockEnd)
-                    {
-                        wantBlankAbove = false;
-                    }
-
-                    // NEW rule: if/else suppression. If the current line
-                    // starts with "else" (in a code region) and the
-                    // previous non-blank line is a block-end (} or };), suppress
-                    // any blank above. This overrides the block-end rule and
-                    // block-start rule so that else sits directly adjacent to
-                    // the preceding if-block's closing brace.
-                    bool currentIsElse = lineIsCode &&
-                        TextUtils.StartsWithKeyword(trimmed, "else");
-
-                    if (currentIsElse && prevIsBlockEnd)
-                    {
-                        wantBlankAbove = false;
-                    }
-
-                    // NEW rule: doc-comment blank-line rule. A ///
-                    // documentation-comment line should have a blank line
-                    // above it when the previous non-blank line is a code
-                    // statement. Exceptions (no blank added): the previous
-                    // line is itself a /// doc comment (multi-line doc
-                    // continuation), a regular comment (//, /*, *), or a
-                    // block-opening brace ({ or ends with {). Note that
-                    // IsCommentLine also matches ///, so prevIsDocComment
-                    // must be checked first and excluded from the regular
-                    // comment case.
-                    bool currentIsDocComment = trimmed.StartsWith("///");
-
-                    if (!wantBlankAbove && currentIsDocComment)
-                    {
-                        bool prevIsDocComment =
-                            prevTrimmed.StartsWith("///");
-
-                        bool prevIsRegularComment = !prevIsDocComment &&
-                            prevIsComment;
-
-                        if (prevTrimmed.Length > 0 && !prevIsDocComment &&
-                            !prevIsRegularComment && !prevIsBlockStartBrace)
-                        {
-                            wantBlankAbove = true;
-                        }
-                    }
-
-                    // Preserve author-inserted blank lines between adjacent
-                    // single-line statements. This only PRESERVES an existing blank
-                    // (entry.HadBlankAbove); it never adds one. Both the current and
-                    // the previous non-blank line must be plain single-line
-                    // statements. Idempotent: on a second pass the preserved blank
-                    // is still present, so HadBlankAbove remains true and the blank
-                    // is kept.
-
-                    if (!wantBlankAbove && entry.HadBlankAbove)
-                    {
-                        bool currentIsPlainStmt = IsPlainSingleLineStatement(
-                            trimmed, origIdx, isCodeLine, lineEndsStatement);
-
-                        bool prevIsPlainStmt = IsPlainSingleLineStatement(
-                            prevTrimmed, prevOrigIdx, isCodeLine,
-                            lineEndsStatement);
-
-                        if (currentIsPlainStmt && prevIsPlainStmt)
-                        {
-                            wantBlankAbove = true;
-                        }
-                    }
-                }
-
-                if (wantBlankAbove)
+                if (BlankLineMainRules.Dispatch(p, result))
                 {
                     result.Add(string.Empty);
                 }
@@ -293,71 +88,11 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether a trimmed line is a comment line (single-line
-        /// comment, XML doc comment, or block-comment continuation/end).
-        /// </summary>
-        /// <param name="trimmed">The trimmed line.</param>
-        /// <returns>true if the line is a comment line.</returns>
-        private static bool IsCommentLine(string trimmed)
-        {
-            return trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
-                trimmed.StartsWith("*");
-        }
-
-        /// <summary>
-        /// Determines whether a trimmed line is a plain single-line
-        /// statement: a code line that ends a statement (<c>;</c> or
-        /// <c>}</c>) and is neither a block-end, a block-start, nor a
-        /// comment line. Used by the author-blank-preservation rule.
-        /// </summary>
-        /// <param name="trimmed">The trimmed line.</param>
-        /// <param name="origIdx">The line's original index in the input
-        /// list.</param>
-        /// <param name="isCodeLine">Per-line code-region flag
-        /// array.</param>
-        /// <param name="lineEndsStatement">Per-line statement-end flag
-        /// array.</param>
-        /// <returns>true if the line is a plain single-line
-        /// statement.</returns>
-        private static bool IsPlainSingleLineStatement(string trimmed,
-            int origIdx, bool[] isCodeLine, bool[] lineEndsStatement)
-        {
-            if (origIdx < 0 || origIdx >= isCodeLine.Length ||
-                !isCodeLine[origIdx])
-            {
-                return false;
-            }
-
-            if (origIdx >= lineEndsStatement.Length ||
-                !lineEndsStatement[origIdx])
-            {
-                return false;
-            }
-
-            if (LineClassifier.IsBlockEndLine(trimmed))
-            {
-                return false;
-            }
-
-            if (LineClassifier.IsBlockStartLine(trimmed))
-            {
-                return false;
-            }
-
-            if (IsCommentLine(trimmed))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
         /// Collapses 2 or more consecutive blank lines into 1.
         /// </summary>
         /// <param name="lines">The line list.</param>
         /// <returns>The processed line list.</returns>
-        public static List<string> CollapseBlankLines(List<string> lines)
+        internal List<string> CollapseBlankLines(List<string> lines)
         {
             var result = new List<string>(lines.Count);
             int blankRun = 0;
@@ -388,7 +123,7 @@ namespace CSharpFormatter
         /// </summary>
         /// <param name="lines">The line list.</param>
         /// <returns>The processed line list.</returns>
-        public static List<string> TrimTrailingWhitespace(
+        internal List<string> TrimTrailingWhitespace(
             List<string> lines)
         {
             var result = new List<string>(lines.Count);
@@ -399,6 +134,98 @@ namespace CSharpFormatter
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Computes the predicates for the current non-blank entry.
+        /// Centralises all pre-condition checks used by the per-rule
+        /// methods.
+        /// </summary>
+        /// <param name="entry">The current entry.</param>
+        /// <param name="index">The index in <paramref name="nonBlank"/>.</param>
+        /// <param name="nonBlank">The full non-blank list.</param>
+        /// <param name="trimmed">The current line, trimmed.</param>
+        /// <param name="isCodeLine">Per-line code-region flag array.</param>
+        /// <param name="lineContinuesNext">Per-line continuation-flag array.</param>
+        /// <param name="lineEndsStatement">Per-line statement-end flag array.</param>
+        /// <returns>The populated predicates struct.</returns>
+        private static BlankLinePredicates ComputePredicates(
+            NonBlankEntry entry, int index,
+            List<NonBlankEntry> nonBlank, string trimmed,
+            bool[] isCodeLine, bool[] lineContinuesNext,
+            bool[] lineEndsStatement)
+        {
+            int origIdx = entry.OriginalIndex;
+            int prevOrigIdx = index > 0 ? nonBlank[index - 1].OriginalIndex : -1;
+            string prevTrimmed = index > 0
+                ? nonBlank[index - 1].Line.Trim() : string.Empty;
+
+            var p = new BlankLinePredicates
+            {
+                Trimmed = trimmed,
+                PrevTrimmed = prevTrimmed,
+                EntryHadBlankAbove = entry.HadBlankAbove
+            };
+
+            p.LineIsCode = origIdx < isCodeLine.Length &&
+                isCodeLine[origIdx];
+
+            p.IsBlockStart = p.LineIsCode &&
+                LineClassifier.Instance.IsBlockStartLine(trimmed);
+
+            p.PrevIsCode = prevOrigIdx >= 0 &&
+                prevOrigIdx < isCodeLine.Length &&
+                isCodeLine[prevOrigIdx];
+
+            p.PrevIsBlockEnd =
+                LineClassifier.Instance.IsBlockEndLine(prevTrimmed);
+
+            p.CurrentIsBlockEnd =
+                LineClassifier.Instance.IsBlockEndLine(trimmed);
+
+            p.PrevIsBlockStartBrace = prevTrimmed == "{" ||
+                TextUtils.EndsWithOpenBrace(prevTrimmed);
+
+            p.PrevIsComment = BlankLineHelpers.IsCommentLine(prevTrimmed);
+
+            p.PrevIsDocComment = prevTrimmed.StartsWith("///");
+
+            p.PrevIsRegularComment = !p.PrevIsDocComment && p.PrevIsComment;
+
+            p.CurrentIsDocComment = trimmed.StartsWith("///");
+
+            p.CurrentIsCatchOrFinally = p.LineIsCode &&
+                (TextUtils.StartsWithKeyword(trimmed, "catch") ||
+                TextUtils.StartsWithKeyword(trimmed, "finally"));
+
+            p.CurrentIsElse = p.LineIsCode &&
+                TextUtils.StartsWithKeyword(trimmed, "else");
+
+            p.CurrentContinues = p.LineIsCode &&
+                origIdx < lineContinuesNext.Length &&
+                lineContinuesNext[origIdx];
+
+            p.PrevLineContinuedIntoCurrent = origIdx > 0 &&
+                (origIdx - 1) < lineContinuesNext.Length &&
+                lineContinuesNext[origIdx - 1];
+
+            p.CurrentIsMultiLineStart = p.CurrentContinues &&
+                !p.PrevLineContinuedIntoCurrent;
+
+            p.PrevIsMultiLineEnd = p.PrevIsCode &&
+                prevOrigIdx > 0 &&
+                prevOrigIdx < lineEndsStatement.Length &&
+                lineEndsStatement[prevOrigIdx] &&
+                (prevOrigIdx - 1) < lineContinuesNext.Length &&
+                lineContinuesNext[prevOrigIdx - 1];
+
+            p.CurrentIsPlainStmt = BlankLineHelpers.IsPlainSingleLineStatement(
+                trimmed, origIdx, isCodeLine, lineEndsStatement);
+
+            p.PrevIsPlainStmt = BlankLineHelpers.IsPlainSingleLineStatement(
+                prevTrimmed, prevOrigIdx, isCodeLine, lineEndsStatement);
+
+            return p;
         }
     }
 }

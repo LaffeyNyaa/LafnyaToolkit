@@ -1,30 +1,55 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CppFormatter
 {
     /// <summary>
     /// Enforces mandatory curly braces for all control-flow statement
     /// bodies by wrapping single-statement bodies in a brace block.
+    /// Dispatches per-keyword work to a dictionary of
+    /// <see cref="IBraceEnforcerRule"/> strategies instead of a long
+    /// if/else chain; adding a new keyword is a matter of registering
+    /// a new rule.
     /// </summary>
-    internal static class BraceEnforcer
+    internal sealed class BraceEnforcer
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly BraceEnforcer Instance = new BraceEnforcer();
+
+        private readonly Dictionary<string, IBraceEnforcerRule> rules;
+
+        private BraceEnforcer()
+        {
+            rules = new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
+            {
+                { "if", new IfRule() },
+                { "for", new ForRule() },
+                { "while", new WhileRule() },
+                { "do", new DoRule() },
+                { "switch", new SwitchRule() },
+                { "else", new ElseRule() }
+            };
+        }
+
         /// <summary>
-        /// Wraps single-statement bodies of if/else/for/while/do-while/switch with
-        /// mandatory braces on the token stream.
+        /// Wraps single-statement bodies of if/else/for/while/do-while/
+        /// switch with mandatory braces on the token stream.
         /// </summary>
         /// <param name="tokens">The token list.</param>
         /// <returns>The processed token list.</returns>
-        internal static List<Token> ApplyMandatoryBraces(List<Token> tokens)
+        public List<Token> ApplyMandatoryBraces(List<Token> tokens)
         {
             if (tokens == null || tokens.Count == 0)
             {
                 return tokens;
             }
 
-            string text = Tokenizer.Reconstruct(tokens);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
-            var insertions = new List<TextUtils.Insertion>();
+            string text = CppTokenizer.Instance.Reconstruct(tokens);
+            bool[] isCode = CppTokenizer.Instance.BuildCodeMask(text, tokens);
+            var insertions = new List<Insertion>();
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -38,67 +63,13 @@ namespace CppFormatter
                     continue;
                 }
 
-                if (TextUtils.MatchesWord(text, i, "if"))
+                foreach (var pair in rules)
                 {
-                    int afterParen = SkipParen(text, isCode, i + 2);
-
-                    if (afterParen >= 0)
+                    if (TextUtils.MatchesWord(text, i, pair.Key))
                     {
-                        CollectBodyInsertions(text, isCode, afterParen,
-                            insertions);
+                        pair.Value.Apply(text, isCode, i, insertions);
+                        break;
                     }
-                }
-                else if (TextUtils.MatchesWord(text, i, "for"))
-                {
-                    int afterParen = SkipParen(text, isCode, i + 3);
-
-                    if (afterParen >= 0)
-                    {
-                        CollectBodyInsertions(text, isCode, afterParen,
-                            insertions);
-                    }
-                }
-                else if (TextUtils.MatchesWord(text, i, "while"))
-                {
-                    int afterParen = SkipParen(text, isCode, i + 5);
-
-                    if (afterParen >= 0)
-                    {
-                        int nextNonWs = TextUtils.SkipWhitespace(text,
-                            afterParen);
-
-                        if (nextNonWs < text.Length && isCode[nextNonWs] &&
-                            text[nextNonWs] == ';')
-                        {
-                            continue;
-                        }
-
-                        CollectBodyInsertions(text, isCode, afterParen,
-                            insertions);
-                    }
-                }
-                else if (TextUtils.MatchesWord(text, i, "do"))
-                {
-                    CollectDoWhileBodyInsertions(text, isCode, i,
-                        insertions);
-                }
-                else if (TextUtils.MatchesWord(text, i, "switch"))
-                {
-                    CollectSwitchBodyInsertions(text, isCode, i,
-                        insertions);
-                }
-                else if (TextUtils.MatchesWord(text, i, "else"))
-                {
-                    int afterElse = i + 4;
-                    int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
-
-                    if (TextUtils.MatchesWord(text, nextNonWs, "if"))
-                    {
-                        continue;
-                    }
-
-                    CollectBodyInsertions(text, isCode, afterElse,
-                        insertions);
                 }
             }
 
@@ -119,14 +90,16 @@ namespace CppFormatter
             }
 
             sb.Append(text, pos, text.Length - pos);
-            return Tokenizer.Tokenize(sb.ToString());
+            return CppTokenizer.Instance.Tokenize(sb.ToString());
         }
 
         /// <summary>
-        /// Replaces a single-statement body with a braced block, appending insertion points.
+        /// Replaces a single-statement body with a braced block by
+        /// appending insertion points. The opening <c>{</c> is inserted
+        /// at the statement start and the closing <c>}</c> just after
+        /// the statement's terminating semicolon.
         /// </summary>
-        private static void CollectBodyInsertions(string text, bool[] isCode,
-            int startPos, List<TextUtils.Insertion> insertions)
+        private static void CollectBodyInsertions(string text, bool[] isCode, int startPos, List<Insertion> insertions)
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
 
@@ -148,84 +121,17 @@ namespace CppFormatter
                 return;
             }
 
-            insertions.Add(new TextUtils.Insertion(stmtStart, "{\n"));
-            insertions.Add(new TextUtils.Insertion(stmtEnd, "\n}"));
+            insertions.Add(new Insertion(stmtStart, "{\n"));
+            insertions.Add(new Insertion(stmtEnd, "\n}"));
         }
 
         /// <summary>
-        /// Wraps a do-while single-statement body with braces; the closing } is placed on the same line as while.
+        /// Scans a statement starting from <paramref name="startPos"/>,
+        /// tracking bracket depth, and returns the position immediately
+        /// after the first semicolon encountered at depth 0, or -1 if
+        /// no such semicolon is found.
         /// </summary>
-        private static void CollectDoWhileBodyInsertions(string text,
-            bool[] isCode, int doPos, List<TextUtils.Insertion> insertions)
-        {
-            int i = TextUtils.SkipWhitespace(text, doPos + 2);
-
-            if (i >= text.Length)
-            {
-                return;
-            }
-
-            if (isCode[i] && text[i] == '{')
-            {
-                return;
-            }
-
-            int stmtStart = i;
-            int stmtEnd = ScanStatementEnd(text, isCode, i);
-
-            if (stmtEnd < 0)
-            {
-                return;
-            }
-
-            int w = TextUtils.SkipWhitespace(text, stmtEnd);
-
-            if (w >= text.Length || !TextUtils.MatchesWord(text, w, "while"))
-            {
-                return;
-            }
-
-            insertions.Add(new TextUtils.Insertion(stmtStart, "{\n"));
-            insertions.Add(new TextUtils.Insertion(w, "\n} "));
-        }
-
-        /// <summary>
-        /// Wraps a switch single-statement body with braces.
-        /// </summary>
-        private static void CollectSwitchBodyInsertions(string text,
-            bool[] isCode, int switchPos,
-            List<TextUtils.Insertion> insertions)
-        {
-            int afterParen = SkipParen(text, isCode, switchPos + 6);
-
-            if (afterParen < 0)
-            {
-                return;
-            }
-
-            int i = TextUtils.SkipWhitespace(text, afterParen);
-
-            if (i >= text.Length)
-            {
-                return;
-            }
-
-            if (isCode[i] && text[i] == '{')
-            {
-                return;
-            }
-
-            CollectBodyInsertions(text, isCode, afterParen, insertions);
-        }
-
-        /// <summary>
-        /// Scans a statement starting from startPos, tracking bracket depth,
-        /// and stops at the first semicolon encountered at depth 0. Returns
-        /// the position immediately after that semicolon, or -1 if no such
-        /// semicolon is found.
-        /// </summary>
-        private static int ScanStatementEnd(string text, bool[] isCode,
-            int startPos)
+        private static int ScanStatementEnd(string text, bool[] isCode, int startPos)
         {
             int j = startPos;
             int depth = 0;
@@ -260,7 +166,9 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Skips a balanced pair of parentheses from the given position; returns the position after the closing ) or -1 if not well-formed.
+        /// Skips a balanced pair of parentheses from the given position;
+        /// returns the position after the closing <c>)</c> or -1 if not
+        /// well-formed.
         /// </summary>
         private static int SkipParen(string text, bool[] isCode, int start)
         {
@@ -300,6 +208,133 @@ namespace CppFormatter
             }
 
             return i + 1;
+        }
+
+        private sealed class IfRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 2);
+
+                if (afterParen >= 0)
+                {
+                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                }
+            }
+        }
+
+        private sealed class ForRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 3);
+
+                if (afterParen >= 0)
+                {
+                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                }
+            }
+        }
+
+        private sealed class WhileRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 5);
+
+                if (afterParen < 0)
+                {
+                    return;
+                }
+
+                int nextNonWs = TextUtils.SkipWhitespace(text, afterParen);
+
+                if (nextNonWs < text.Length && isCode[nextNonWs] && text[nextNonWs] == ';')
+                {
+                    return;
+                }
+
+                CollectBodyInsertions(text, isCode, afterParen, insertions);
+            }
+        }
+
+        private sealed class DoRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int i = TextUtils.SkipWhitespace(text, keywordPos + 2);
+
+                if (i >= text.Length)
+                {
+                    return;
+                }
+
+                if (isCode[i] && text[i] == '{')
+                {
+                    return;
+                }
+
+                int stmtStart = i;
+                int stmtEnd = ScanStatementEnd(text, isCode, i);
+
+                if (stmtEnd < 0)
+                {
+                    return;
+                }
+
+                int w = TextUtils.SkipWhitespace(text, stmtEnd);
+
+                if (w >= text.Length || !TextUtils.MatchesWord(text, w, "while"))
+                {
+                    return;
+                }
+
+                insertions.Add(new Insertion(stmtStart, "{\n"));
+                insertions.Add(new Insertion(w, "\n} "));
+            }
+        }
+
+        private sealed class SwitchRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 6);
+
+                if (afterParen < 0)
+                {
+                    return;
+                }
+
+                int i = TextUtils.SkipWhitespace(text, afterParen);
+
+                if (i >= text.Length)
+                {
+                    return;
+                }
+
+                if (isCode[i] && text[i] == '{')
+                {
+                    return;
+                }
+
+                CollectBodyInsertions(text, isCode, afterParen, insertions);
+            }
+        }
+
+        private sealed class ElseRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterElse = keywordPos + 4;
+                int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
+
+                if (TextUtils.MatchesWord(text, nextNonWs, "if"))
+                {
+                    return;
+                }
+
+                CollectBodyInsertions(text, isCode, afterElse, insertions);
+            }
         }
     }
 }

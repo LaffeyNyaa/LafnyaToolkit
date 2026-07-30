@@ -1,0 +1,13 @@
+import java.util.List;
+import java.util.ArrayList;
+public class Service {
+    private final List<String> items = new ArrayList<>();
+    public void add(String item) {
+        if (item != null && !item.isEmpty()) {
+            items.add(item);
+        }
+    }
+    public int getCount() {
+        return items.size();
+    }
+}

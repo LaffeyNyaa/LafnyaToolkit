@@ -48,32 +48,48 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlankLineProcessor.cs" />
+    <ProjectReference Include="..\LafnyaToolkit.Core\LafnyaToolkit.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="CppLineClassifier.cs" />
+    <Compile Include="CppTokenizer.cs" />
+    <Compile Include="CppTextUtils.cs" />
+    <Compile Include="CppNonBlankEntry.cs" />
+    <Compile Include="IncludeUnit.cs" />
+    <Compile Include="IncludeSorter.cs" />
+    <Compile Include="EnumFormatter.cs" />
     <Compile Include="BraceEnforcer.cs" />
+    <Compile Include="IBraceEnforcerRule.cs" />
     <Compile Include="BraceMerger.cs" />
+    <Compile Include="DoWhileMerger.cs" />
+    <Compile Include="EndifCommentProcessor.cs" />
     <Compile Include="ConstructorInitializerProcessor.cs" />
     <Compile Include="ContinuationScanner.cs" />
     <Compile Include="DeclarationClassifier.cs" />
-    <Compile Include="DoWhileMerger.cs" />
-    <Compile Include="CaseScopeDetector.cs" />
-    <Compile Include="EndifCommentProcessor.cs" />
     <Compile Include="EnumBlockDetector.cs" />
-    <Compile Include="EnumFormatter.cs" />
-    <Compile Include="Formatter.cs" />
-    <Compile Include="IncludeSorter.cs" />
-    <Compile Include="IndentationDepthComputer.cs" />
-    <Compile Include="IndentationProcessor.cs" />
-    <Compile Include="LineLengthProcessor.cs" />
+    <Compile Include="CaseScopeDetector.cs" />
     <Compile Include="NamespaceBodyTrimmer.cs" />
     <Compile Include="PreserveIndentComputer.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="IndentationDepthComputer.cs" />
+    <Compile Include="IndentationProcessor.cs" />
+    <Compile Include="OperatorBreakPolicy.cs" />
+    <Compile Include="LineLengthProcessor.cs" />
+    <Compile Include="BlankLineProcessor.cs" />
+    <Compile Include="BlankLineRules\BlankLineMainRules.cs" />
+    <Compile Include="BlankLineRules\ConsecutiveNamespacesRule.cs" />
+    <Compile Include="BlankLineRules\BlockStartRule.cs" />
+    <Compile Include="BlankLineRules\BlockEndRule.cs" />
+    <Compile Include="BlankLineRules\FunctionDefinitionRule.cs" />
+    <Compile Include="BlankLineRules\IncludeGuardRule.cs" />
+    <Compile Include="BlankLineRules\DocCommentBlankRule.cs" />
+    <Compile Include="BlankLineRules\MultiLineStatementRule.cs" />
+    <Compile Include="BlankLineRules\ReturnAtBlockEndRule.cs" />
+    <Compile Include="BlankLineRules\AccessSpecifierBlankRule.cs" />
+    <Compile Include="BlankLineRules\PreserveAuthorBlankRule.cs" />
+    <Compile Include="BlankLineRules\BlankLineHelpers.cs" />
+    <Compile Include="Formatter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TextUtils.cs" />
-    <Compile Include="Token.cs" />
-    <Compile Include="TokenKind.cs" />
-    <Compile Include="Tokenizer.cs" />
-    <Compile Include="NonBlankEntry.cs" />
-    <Compile Include="IncludeUnit.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

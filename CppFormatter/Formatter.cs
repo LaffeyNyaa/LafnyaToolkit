@@ -1,97 +1,82 @@
+using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
+
 namespace CppFormatter
 {
     /// <summary>
     /// Core orchestration that applies all C++ formatting rules in
     /// sequence. Each transformation pass delegates to a specialised
-    /// module; the pipeline is designed to be idempotent.
+    /// instance class; the pipeline is designed to be idempotent.
     /// </summary>
-    internal static class Formatter
+    internal sealed class Formatter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly Formatter Instance = new Formatter();
+
+        private Formatter()
+        {
+        }
+
         /// <summary>
-        /// Applies all formatting rules to the source string and returns the result.
+        /// Applies all formatting rules to the source string and
+        /// returns the result. The pipeline is split into two
+        /// tokenization passes: the first runs brace enforcement
+        /// and the preprocessor-aware transformations; the second
+        /// runs indentation/blank-line/line-length passes on the
+        /// resulting structured text.
         /// </summary>
         /// <param name="source">The original source string.</param>
         /// <returns>The formatted source string.</returns>
-        public static string Format(string source)
+        public string Format(string source)
         {
-            var tokens = Tokenizer.Tokenize(source);
-            tokens = BraceEnforcer.ApplyMandatoryBraces(tokens);
-            string text = Tokenizer.Reconstruct(tokens);
-            text = EnumFormatter.FormatEnums(text);
-            text = IncludeSorter.Sort(text);
+            var tokens = CppTokenizer.Instance.Tokenize(source);
+            tokens = BraceEnforcer.Instance.ApplyMandatoryBraces(tokens);
+            string text = CppTokenizer.Instance.Reconstruct(tokens);
+            text = EnumFormatter.Instance.FormatEnums(text);
+            text = IncludeSorter.Instance.Sort(text);
             text = text.Replace("\t", "    ");
             text = text.Replace("\r\n", "\n").Replace("\r", "\n");
-            text = BraceMerger.MoveOpenBraceToPreviousLine(text);
-            text = DoWhileMerger.MergeDoWhileCloseBrace(text);
-            text = EndifCommentProcessor.AppendEndifComments(text);
-            tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            text = BraceMerger.Instance.MoveOpenBraceToPreviousLine(text);
+            text = DoWhileMerger.Instance.MergeDoWhileCloseBrace(text);
+            text = EndifCommentProcessor.Instance.AppendEndifComments(text);
+
+            tokens = CppTokenizer.Instance.Tokenize(text);
+            bool[] isCode = CppTokenizer.Instance.BuildCodeMask(text, tokens);
             var lines = TextUtils.SplitLines(text);
             string currentText = text;
 
-            lines = IndentationProcessor.Reindent(lines, currentText, tokens,
-                isCode);
+            lines = IndentationProcessor.Instance.Reindent(lines, currentText, tokens, isCode);
+            lines = ConstructorInitializerProcessor.Instance.Format(lines);
+            lines = NamespaceBodyTrimmer.Instance.TrimNamespaceBodyBlankLines(lines, currentText, tokens, isCode);
 
-            lines = ConstructorInitializerProcessor.Format(lines);
-
-            lines = NamespaceBodyTrimmer.TrimNamespaceBodyBlankLines(lines,
-                currentText, tokens, isCode);
-
-            // Compute continuation flags from the post-Reindent (pre-split)
-            // line structure so that LineLengthProcessor can detect
-            // continuation lines and avoid cascading indents when splitting
-            // them (a continuation line split at parent+4 must keep its
-            // segments at parent+4, not parent+8).
             currentText = string.Join("\n", lines);
-            var tokensForLimit = Tokenizer.Tokenize(currentText);
-
-            bool[] isCodeForLimit = Tokenizer.BuildCodeMask(currentText,
-                tokensForLimit);
-
-            int[] lineStartsForLimit = Tokenizer.ComputeLineStarts(lines);
+            var tokensForLimit = CppTokenizer.Instance.Tokenize(currentText);
+            bool[] isCodeForLimit = CppTokenizer.Instance.BuildCodeMask(currentText, tokensForLimit);
+            int[] lineStartsForLimit = CppTokenizer.Instance.ComputeLineStarts(lines);
             var preSplitContinues = new bool[lines.Count];
 
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = ContinuationScanner
-
-                .IsContinuationIndicator(lines[i],
-                    lineStartsForLimit[i], currentText, isCodeForLimit);
+                preSplitContinues[i] = ContinuationScanner.Instance.IsContinuationIndicator(
+                    lines[i], lineStartsForLimit[i], currentText, isCodeForLimit);
             }
 
-            // Split long lines BEFORE applying blank-line rules so that the
-            // preSplitContinues flags (computed above) stay aligned with the
-            // line list. Running BlankLineProcessor first would insert blank
-            // lines and shift indices, causing LineLengthProcessor to read
-            // the wrong continuation flag for each line.
-            lines = LineLengthProcessor.ApplyLineLengthLimit(lines,
-                currentText, preSplitContinues, tokensForLimit,
-                isCodeForLimit);
-
-            // Only join lines when they have been modified by a processor
-            currentText = string.Join("\n", lines);
-            // Re-indent lines created by LineLengthProcessor to ensure
-            // idempotent indentation across passes (Root Cause 3).
-            tokens = Tokenizer.Tokenize(currentText);
-            isCode = Tokenizer.BuildCodeMask(currentText, tokens);
-
-            lines = IndentationProcessor.Reindent(lines, currentText, tokens,
-                isCode);
+            lines = LineLengthProcessor.Instance.ApplyLineLengthLimit(
+                lines, currentText, preSplitContinues, tokensForLimit, isCodeForLimit);
 
             currentText = string.Join("\n", lines);
+            tokens = CppTokenizer.Instance.Tokenize(currentText);
+            isCode = CppTokenizer.Instance.BuildCodeMask(currentText, tokens);
 
-            lines = BlankLineProcessor.ApplyBlankLineRules(lines,
-                currentText);
-
-            currentText = string.Join("\n", lines);
-
-            lines = BlankLineProcessor.CollapseBlankLines(lines,
-                currentText);
+            lines = IndentationProcessor.Instance.Reindent(lines, currentText, tokens, isCode);
 
             currentText = string.Join("\n", lines);
-
-            lines = BlankLineProcessor.TrimTrailingWhitespace(lines,
-                currentText);
+            lines = BlankLineProcessor.Instance.ApplyBlankLineRules(lines, currentText);
+            currentText = string.Join("\n", lines);
+            lines = BlankLineProcessor.Instance.CollapseBlankLines(lines, currentText);
+            currentText = string.Join("\n", lines);
+            lines = BlankLineProcessor.Instance.TrimTrailingWhitespace(lines, currentText);
 
             string result = string.Join("\n", lines);
             result = TextUtils.EnsureSingleTrailingNewline(result);

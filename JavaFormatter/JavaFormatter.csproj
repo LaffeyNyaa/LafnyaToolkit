@@ -48,16 +48,31 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LafnyaToolkit.Core\LafnyaToolkit.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="Tokenizer.cs" />
+    <Compile Include="JavaTokenizer.cs" />
+    <Compile Include="JavaTextUtils.cs" />
     <Compile Include="Formatter.cs" />
     <Compile Include="ImportSorter.cs" />
-    <Compile Include="TextUtils.cs" />
     <Compile Include="LineClassifier.cs" />
     <Compile Include="BraceEnforcer.cs" />
+    <Compile Include="IBraceEnforcerRule.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="IndentationProcessor.cs" />
     <Compile Include="BlankLineProcessor.cs" />
+    <Compile Include="BlankLineRules\BlankLineHelpers.cs" />
+    <Compile Include="BlankLineRules\BlankLineMainRules.cs" />
+    <Compile Include="BlankLineRules\BlankLineRuleResult.cs" />
+    <Compile Include="BlankLineRules\JavaNonBlankEntry.cs" />
+    <Compile Include="BlankLineRules\BlockStartRule.cs" />
+    <Compile Include="BlankLineRules\BlockEndRule.cs" />
+    <Compile Include="BlankLineRules\ConsecutiveImportsRule.cs" />
+    <Compile Include="BlankLineRules\ImportAfterPackageRule.cs" />
+    <Compile Include="BlankLineRules\DocCommentRule.cs" />
+    <Compile Include="BlankLineRules\PlainStatementBlankRule.cs" />
+    <Compile Include="BlankLineRules\SuppressBlankAboveRule.cs" />
     <Compile Include="LineLengthProcessor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

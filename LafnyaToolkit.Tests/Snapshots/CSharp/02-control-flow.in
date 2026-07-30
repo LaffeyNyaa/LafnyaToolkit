@@ -1,0 +1,18 @@
+"C# snapshot test - control flow"
+using System;
+namespace Example
+{
+    public class Calc
+    {
+        public int Factorial(int n) {
+            if (n <= 1) return 1;
+            else return n * Factorial(n - 1);
+        }
+        public void Loop() {
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) Console.WriteLine(i);
+                else Console.WriteLine("odd");
+            }
+        }
+    }
+}

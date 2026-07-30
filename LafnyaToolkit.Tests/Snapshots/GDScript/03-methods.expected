@@ -1,0 +1,13 @@
+class_name Service
+extends Node
+
+var items:Array=[]
+
+
+func add(item:String)->void:
+    if item!="":
+        items.append(item)
+
+
+func count()->int:
+    return items.size()

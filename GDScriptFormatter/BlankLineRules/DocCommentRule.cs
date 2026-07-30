@@ -1,18 +1,23 @@
 using System.Collections.Generic;
-
-using static GDScriptFormatter.DeclarationClassifier;
+using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
 {
-    internal static partial class BlankLineProcessor
+    /// <summary>
+    /// Doc-comment rule: returns 1 (or 2 if the doc comment is
+    /// attached to a func/class) blank line before a doc comment
+    /// block. No blank line is added when the previous line is
+    /// already a comment, an opening brace, or a file header. If the
+    /// previous line is also a ## doc comment but the current ##
+    /// line had a blank line above it in the original, they belong to
+    /// separate doc comment blocks and the appropriate spacing is
+    /// inserted.
+    /// </summary>
+    public sealed partial class BlankLineProcessor
     {
-        /// <summary>
-        /// Returns 1 (or 2 if the doc comment is attached to a func/class) blank line
-        /// before a doc comment block. No blank line is added when the previous line
-        /// is already a comment, an opening brace, or a file header.
-        /// </summary>
         private static int ApplyDocCommentBlankRule(string prevTrimmed,
-            string curTrimmed, List<NonBlankEntry> nonBlank, int curIdx)
+            string curTrimmed, List<NonBlankEntry> nonBlank,
+            List<bool> hadBlankAbove, int curIdx)
         {
             if (!curTrimmed.StartsWith("##"))
             {
@@ -27,7 +32,7 @@ namespace GDScriptFormatter
             bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
                 prevTrimmed.EndsWith("{");
 
-            bool prevIsFileHeader = IsFileHeaderLine(prevTrimmed);
+            bool prevIsFileHeader = DeclarationClassifier.Instance.IsFileHeaderLine(prevTrimmed);
 
             if (prevTrimmed.Length > 0 && !prevIsDocComment &&
                 !prevIsRegularComment && !prevIsBlockOpenBrace &&
@@ -37,11 +42,7 @@ namespace GDScriptFormatter
                     nonBlank, curIdx) ? 2 : 1;
             }
 
-            // If the previous line is a ## doc comment but the current ##
-            // line had a blank line above it in the original, they belong to
-            // separate doc comment blocks. Insert the appropriate spacing.
-
-            if (prevIsDocComment && nonBlank[curIdx].HadBlankAbove)
+            if (prevIsDocComment && hadBlankAbove[curIdx])
             {
                 return IsDocCommentAttachedToFuncOrClass(
                     nonBlank, curIdx) ? 2 : 1;
@@ -50,10 +51,6 @@ namespace GDScriptFormatter
             return 0;
         }
 
-        /// <summary>
-        /// Determines whether the doc-comment block starting at startIdx is attached
-        /// to a func or class declaration (looking ahead past consecutive ## lines).
-        /// </summary>
         private static bool IsDocCommentAttachedToFuncOrClass(
             List<NonBlankEntry> nonBlank, int startIdx)
         {
@@ -63,16 +60,12 @@ namespace GDScriptFormatter
 
                 if (!trimmed.StartsWith("##"))
                 {
-                    // Standalone annotations (e.g. @rpc, @warning_ignore on
-                    // their own line before func/class) are part of the
-                    // declaration. Skip them to look for the func/class keyword.
-
                     if (IsStandaloneAnnotation(trimmed))
                     {
                         continue;
                     }
 
-                    return IsFuncOrClassDecl(trimmed);
+                    return DeclarationClassifier.Instance.IsFuncOrClassDecl(trimmed);
                 }
             }
 

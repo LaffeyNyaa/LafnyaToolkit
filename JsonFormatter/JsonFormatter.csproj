@@ -48,6 +48,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LafnyaToolkit.Core\LafnyaToolkit.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="JsonValue.cs" />
     <Compile Include="JsonParser.cs" />
     <Compile Include="JsonFormatter.cs" />

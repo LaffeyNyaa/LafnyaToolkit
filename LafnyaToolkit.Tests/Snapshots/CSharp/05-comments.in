@@ -1,0 +1,23 @@
+// Multi-line comment test
+using System;
+/* Block
+   comment
+   spanning lines */
+namespace Example
+{
+    public class Foo
+    {
+        public void Method()
+        {
+            if (x)
+            {
+                DoSomething();
+            }
+            else
+            {
+                DoOther();
+            }
+        }
+        private int x = 0;
+    }
+}

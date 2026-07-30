@@ -1,0 +1,13 @@
+{
+  "name": "example",
+  "version": 1,
+  "items": [
+    1,
+    2,
+    3
+  ],
+  "nested": {
+    "flag": true,
+    "value": null
+  }
+}

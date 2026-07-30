@@ -1,14 +1,27 @@
+using LafnyaToolkit.Core.Text;
+
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Classifies GDScript lines by their declaration type.
+    /// Classifies GDScript lines by their declaration type (func, class,
+    /// signal, enum, const, var, annotation, file header).
     /// </summary>
-    internal static class DeclarationClassifier
+    public sealed class DeclarationClassifier
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly DeclarationClassifier Instance = new DeclarationClassifier();
+
+        private DeclarationClassifier()
+        {
+        }
+
         /// <summary>
-        /// Determines whether a line is a declaration line (func/class/signal/enum/const/var/annotation).
+        /// Determines whether a line is a declaration line
+        /// (func/class/signal/enum/const/var/annotation).
         /// </summary>
-        internal static bool IsDeclarationLine(string trimmed)
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>True if the line starts with a declaration keyword or annotation.</returns>
+        public bool IsDeclarationLine(string trimmed)
         {
             if (trimmed.Length == 0)
             {
@@ -60,16 +73,17 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Determines whether a line is a func or nested class declaration.
+        /// Determines whether a line is a func or nested class
+        /// declaration.
         /// </summary>
-        internal static bool IsFuncOrClassDecl(string trimmed)
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>True if the line declares a function or nested class.</returns>
+        public bool IsFuncOrClassDecl(string trimmed)
         {
             if (TextUtils.StartsWithKeyword(trimmed, "func"))
             {
                 return true;
             }
-
-            // Handle "static func" prefix
 
             if (trimmed.StartsWith("static ") &&
                 TextUtils.StartsWithKeyword(trimmed.Substring("static ".Length).TrimStart(),
@@ -88,9 +102,12 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Determines whether a line is a file-level header line (@tool/@icon/@static_unload/class_name/extends/## doc).
+        /// Determines whether a line is a file-level header line
+        /// (@tool/@icon/@static_unload/class_name/extends/## doc).
         /// </summary>
-        internal static bool IsFileHeaderLine(string trimmed)
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>True if the line is a file-level header line.</returns>
+        public bool IsFileHeaderLine(string trimmed)
         {
             if (trimmed.Length == 0)
             {

@@ -1,15 +1,28 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
 {
     /// <summary>
-    /// Collects top-level #include directives and sorts them into four groups:
-    /// System Libraries / Third-party Libraries / Other Project Modules / Current Module.
+    /// Collects top-level #include directives and sorts them into
+    /// four groups: System Libraries / Third-party Libraries / Other
+    /// Project Modules / Current Module. Preprocessor conditional
+    /// blocks (#if/#ifdef/#ifndef ... #endif) that contain at least
+    /// one #include directive are treated as a single include unit.
+    /// Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class IncludeSorter
+    internal sealed class IncludeSorter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly IncludeSorter Instance = new IncludeSorter();
+
+        private IncludeSorter()
+        {
+        }
+
         /// <summary>
         /// Scans the entire source for all top-level #include directives,
         /// collects each include together with any preceding non-include
@@ -17,7 +30,6 @@ namespace CppFormatter
         /// unit, sorts units by category (System / Third-party / Other
         /// Project / Current Module), then rebuilds the source with the
         /// sorted include region.
-        ///
         /// Preprocessor conditional blocks (#if/#ifdef/#ifndef ... #endif)
         /// that contain at least one #include directive are treated as a
         /// single include unit. The block is classified and sorted by
@@ -25,17 +37,16 @@ namespace CppFormatter
         /// </summary>
         /// <param name="source">The source string.</param>
         /// <returns>The source string with sorted #include directives.</returns>
-        public static string Sort(string source)
+        public string Sort(string source)
         {
             string unified = source.Replace("\r\n", "\n").Replace("\r", "\n");
             string[] lines = unified.Split('\n');
-            // Phase 1: Find ALL include lines across the entire file.
             int firstInclude = -1;
             int lastInclude = -1;
 
             for (int i = 0; i < lines.Length; i++)
             {
-                if (TextUtils.IsIncludeDirective(lines[i].Trim()))
+                if (CppTextUtils.Instance.IsIncludeDirective(lines[i].Trim()))
                 {
                     if (firstInclude == -1)
                     {
@@ -51,8 +62,6 @@ namespace CppFormatter
                 return source;
             }
 
-            // Expand lastInclude to cover complete #if/#ifdef/#ifndef blocks
-            // whose closing #endif lies beyond the last #include line.
             int openBlocks = 0;
 
             for (int i = firstInclude; i < lines.Length; i++)
@@ -82,20 +91,10 @@ namespace CppFormatter
                 }
             }
 
-            // Phase 2: Build include units and collect non-include preprocessor
-            // directives that appear between include lines. Preprocessor
-            // directives (#ifndef, #define, #endif, etc.) are extracted and
-            // placed at the very top of the file, before any #include.
-            // Preprocessor conditional blocks that contain #include directives
-            // are treated as single include units.
-            BuildIncludeUnits(lines, firstInclude, lastInclude,
-                out var units, out var preprocessorLines);
+            BuildIncludeUnits(lines, firstInclude, lastInclude, out var units, out var preprocessorLines);
 
-            // Phase 3: Sort units by category, then by include path.
-            var sortedBlock = BuildSortedIncludeBlock(units,
-                preprocessorLines);
+            var sortedBlock = BuildSortedIncludeBlock(units, preprocessorLines);
 
-            // Phase 5: Rebuild the source with the sorted block in place.
             var result = new StringBuilder();
 
             for (int i = 0; i < firstInclude; i++)
@@ -108,17 +107,11 @@ namespace CppFormatter
                 result.Append(lines[i]);
             }
 
-            // Ensure a blank line between a non-include preprocessor directive
-            // (e.g., #pragma once) or a comment block and the first #include
-            // directive. Scan backward past any blank lines to find the
-            // actual content line.
-
             if (firstInclude > 0 && sortedBlock.Count > 0)
             {
                 int scanIdx = firstInclude - 1;
 
-                while (scanIdx >= 0 &&
-                    lines[scanIdx].Trim().Length == 0)
+                while (scanIdx >= 0 && lines[scanIdx].Trim().Length == 0)
                 {
                     scanIdx--;
                 }
@@ -126,25 +119,14 @@ namespace CppFormatter
                 if (scanIdx >= 0)
                 {
                     string lastBeforeInclude = lines[scanIdx].Trim();
+                    bool firstIsInclude = CppTextUtils.Instance.IsIncludeDirective(sortedBlock[0]);
 
-                    bool firstIsInclude =
-                        TextUtils.IsIncludeDirective(sortedBlock[0]);
-
-                    // Blank between non-include preprocessor directive and
-                    // first include.
-
-                    if (firstIsInclude &&
-                        !TextUtils.IsIncludeDirective(lastBeforeInclude) &&
-                        lastBeforeInclude.Length > 0 &&
-                        lastBeforeInclude[0] == '#')
+                    if (firstIsInclude && !CppTextUtils.Instance.IsIncludeDirective(lastBeforeInclude) && lastBeforeInclude.Length > 0 && lastBeforeInclude[0] == '#')
                     {
                         result.Append('\n');
                     }
 
-                    // Blank between comment and first include.
-
-                    if (firstIsInclude &&
-                        TextUtils.IsCommentLine(lastBeforeInclude))
+                    if (firstIsInclude && TextUtils.IsCommentLine(lastBeforeInclude))
                     {
                         result.Append('\n');
                     }
@@ -182,14 +164,10 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Appends a group of include units to the block, with a blank line
-        /// separator if the block is non-empty. For a simple include unit,
-        /// the preceding lines are emitted before the include line. For a
-        /// preprocessor conditional block unit (IsBlock == true), the
-        /// entire block content is emitted as-is.
+        /// Appends a group of include units to the block, with a blank
+        /// line separator if the block is non-empty.
         /// </summary>
-        private static void AppendUnitGroup(List<string> block,
-            List<IncludeUnit> group)
+        private static void AppendUnitGroup(List<string> block, List<IncludeUnit> group)
         {
             if (group.Count == 0)
             {
@@ -217,13 +195,14 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Builds a sorted include block from the collected units and preprocessor lines.
+        /// Builds a sorted include block from the collected units and
+        /// preprocessor lines. Units are sorted by category, then by
+        /// include path. Preprocessor directives (#ifndef, #define,
+        /// #endif, etc.) are placed at the very top of the file,
+        /// before any #include.
         /// </summary>
-        private static List<string> BuildSortedIncludeBlock(
-            List<IncludeUnit> units,
-            List<string> preprocessorLines)
+        private static List<string> BuildSortedIncludeBlock(List<IncludeUnit> units, List<string> preprocessorLines)
         {
-            // Phase 3: Sort units by category, then by include path.
             var systemGroup = new List<IncludeUnit>();
             var thirdPartyGroup = new List<IncludeUnit>();
             var projectModuleGroup = new List<IncludeUnit>();
@@ -255,17 +234,12 @@ namespace CppFormatter
             thirdPartyGroup.Sort(CompareUnitByPath);
             projectModuleGroup.Sort(CompareUnitByPath);
             currentModuleGroup.Sort(CompareUnitByPath);
-            // Phase 4: Build the sorted include block.
+
             var newBlock = new List<string>();
-            // 4a: Preprocessor directives go first (before any #include).
 
             if (preprocessorLines.Count > 0)
             {
-                // Trim trailing blank lines from preprocessor block.
-
-                while (preprocessorLines.Count > 0 &&
-                    preprocessorLines[preprocessorLines.Count -
-                    1].Trim().Length == 0)
+                while (preprocessorLines.Count > 0 && preprocessorLines[preprocessorLines.Count - 1].Trim().Length == 0)
                 {
                     preprocessorLines.RemoveAt(preprocessorLines.Count - 1);
                 }
@@ -274,7 +248,6 @@ namespace CppFormatter
                 newBlock.Add(string.Empty);
             }
 
-            // 4b: Sorted include groups.
             AppendUnitGroup(newBlock, systemGroup);
             AppendUnitGroup(newBlock, thirdPartyGroup);
             AppendUnitGroup(newBlock, projectModuleGroup);
@@ -286,16 +259,8 @@ namespace CppFormatter
         /// <summary>
         /// Builds include units and collects preprocessor directives
         /// within the include range.
-        ///
-        /// Preprocessor conditional blocks (#if/#ifdef/#ifndef ... #endif)
-        /// that contain at least one #include directive are collected as
-        /// a single include unit (BlockLines). Blocks without any #include
-        /// are treated as regular preprocessor lines.
         /// </summary>
-        private static void BuildIncludeUnits(string[] lines,
-            int firstInclude, int lastInclude,
-            out List<IncludeUnit> units,
-            out List<string> preprocessorLines)
+        private static void BuildIncludeUnits(string[] lines, int firstInclude, int lastInclude, out List<IncludeUnit> units, out List<string> preprocessorLines)
         {
             units = new List<IncludeUnit>();
             preprocessorLines = new List<string>();
@@ -307,7 +272,6 @@ namespace CppFormatter
 
                 if (IsPreprocessorConditionalStart(trimmed))
                 {
-                    // Collect the entire #if/#ifdef/#ifndef ... #endif block
                     var blockLines = new List<string>();
                     int depth = 1;
                     bool hasInclude = false;
@@ -330,9 +294,7 @@ namespace CppFormatter
                             depth--;
                         }
 
-                        if (depth > 0 &&
-                            TextUtils.IsIncludeDirective(jTrimmed) &&
-                            firstIncludeInBlock == null)
+                        if (depth > 0 && CppTextUtils.Instance.IsIncludeDirective(jTrimmed) && firstIncludeInBlock == null)
                         {
                             firstIncludeInBlock = lines[j];
                             hasInclude = true;
@@ -341,23 +303,15 @@ namespace CppFormatter
                         j++;
                     }
 
-                    i = j - 1; // advance past the block
+                    i = j - 1;
 
                     if (hasInclude)
                     {
-                        // Treat the entire #if block as an include unit,
-                        // classified by its first #include.
-                        units.Add(new IncludeUnit(
-                            new List<string>(),
-                            firstIncludeInBlock,
-                            blockLines));
-
+                        units.Add(new IncludeUnit(new List<string>(), firstIncludeInBlock, blockLines));
                         inPreprocessorBlock = false;
                     }
                     else
                     {
-                        // Block has no #include — treat as preprocessor lines
-
                         foreach (var bl in blockLines)
                         {
                             preprocessorLines.Add(bl);
@@ -366,11 +320,9 @@ namespace CppFormatter
                         inPreprocessorBlock = true;
                     }
                 }
-                else if (TextUtils.IsIncludeDirective(trimmed))
+                else if (CppTextUtils.Instance.IsIncludeDirective(trimmed))
                 {
-                    units.Add(new IncludeUnit(
-                        new List<string>(), lines[i]));
-
+                    units.Add(new IncludeUnit(new List<string>(), lines[i]));
                     inPreprocessorBlock = false;
                 }
                 else if (trimmed.Length > 0 && trimmed[0] == '#')
@@ -394,15 +346,13 @@ namespace CppFormatter
 
         /// <summary>
         /// Determines whether a trimmed line starts a preprocessor
-        /// conditional block: #if, #ifdef, or #ifndef.
-        /// Note: #if checks must come after #ifdef and #ifndef since
-        /// those also start with "#if".
+        /// conditional block: #if, #ifdef, or #ifndef. Note: #if checks
+        /// must come after #ifdef and #ifndef since those also start
+        /// with "#if".
         /// </summary>
         private static bool IsPreprocessorConditionalStart(string trimmed)
         {
-            return trimmed.StartsWith("#ifdef") ||
-                trimmed.StartsWith("#ifndef") ||
-                trimmed.StartsWith("#if");
+            return trimmed.StartsWith("#ifdef") || trimmed.StartsWith("#ifndef") || trimmed.StartsWith("#if");
         }
 
         /// <summary>
@@ -410,14 +360,13 @@ namespace CppFormatter
         /// </summary>
         private static int CompareUnitByPath(IncludeUnit a, IncludeUnit b)
         {
-            return StringComparer.Ordinal.Compare(
-                ExtractIncludePath(a.IncludeLine),
-                ExtractIncludePath(b.IncludeLine));
+            return StringComparer.Ordinal.Compare(ExtractIncludePath(a.IncludeLine), ExtractIncludePath(b.IncludeLine));
         }
 
-        /// <summary>Determines the bucket for an include line: 0=System, 1=Third-party, 2=Other Project Module, 3=Current Module.</summary>
-        /// <param name="includeLine">The include directive line.</param>
-        /// <returns>The bucket number (0-3).</returns>
+        /// <summary>
+        /// Determines the bucket for an include line: 0=System,
+        /// 1=Third-party, 2=Other Project Module, 3=Current Module.
+        /// </summary>
         private static int ClassifyInclude(string includeLine)
         {
             char form = GetIncludeForm(includeLine);
@@ -425,8 +374,7 @@ namespace CppFormatter
 
             if (form == '<')
             {
-                if (!path.Contains(".") && !path.Contains("/") &&
-                    !path.Contains("\\"))
+                if (!path.Contains(".") && !path.Contains("/") && !path.Contains("\\"))
                 {
                     return 0;
                 }
@@ -434,8 +382,7 @@ namespace CppFormatter
                 return 1;
             }
 
-            if (path.Contains("..") || path.StartsWith("/") ||
-                IsWindowsAbsolutePath(path))
+            if (path.Contains("..") || path.StartsWith("/") || IsWindowsAbsolutePath(path))
             {
                 return 2;
             }
@@ -443,9 +390,9 @@ namespace CppFormatter
             return 3;
         }
 
-        /// <summary>Extracts the delimited form of an include directive.</summary>
-        /// <param name="includeLine">The include directive line.</param>
-        /// <returns>'&lt;' for angle brackets, '"' for quotes.</returns>
+        /// <summary>
+        /// Extracts the delimited form of an include directive.
+        /// </summary>
         private static char GetIncludeForm(string includeLine)
         {
             string s = includeLine.Trim();
@@ -465,9 +412,11 @@ namespace CppFormatter
             return '"';
         }
 
-        /// <summary>Extracts the bare path string from an #include line, stripping the leading #include, trailing semicolons, comments, and enclosing delimiters.</summary>
-        /// <param name="includeLine">The include directive line.</param>
-        /// <returns>The bare path string.</returns>
+        /// <summary>
+        /// Extracts the bare path string from an #include line, stripping
+        /// the leading #include, trailing semicolons, comments, and
+        /// enclosing delimiters.
+        /// </summary>
         private static string ExtractIncludePath(string includeLine)
         {
             string s = includeLine.Trim();
@@ -501,8 +450,7 @@ namespace CppFormatter
 
                 if (blockEnd >= 0)
                 {
-                    s = s.Substring(0, blockComment) + s.Substring(blockEnd +
-                        2);
+                    s = s.Substring(0, blockComment) + s.Substring(blockEnd + 2);
                 }
                 else
                 {
@@ -525,9 +473,10 @@ namespace CppFormatter
             return s;
         }
 
-        /// <summary>Determines whether a path matches the Windows drive-letter absolute path pattern ^[A-Za-z]:[\\/].</summary>
-        /// <param name="path">The include path.</param>
-        /// <returns>true if matched; otherwise false.</returns>
+        /// <summary>
+        /// Determines whether a path matches the Windows drive-letter
+        /// absolute path pattern: letter followed by colon and a slash.
+        /// </summary>
         private static bool IsWindowsAbsolutePath(string path)
         {
             if (path.Length < 3)
@@ -553,9 +502,9 @@ namespace CppFormatter
             return true;
         }
 
-        /// <summary>Determines whether a character is an ASCII letter (A-Z or a-z).</summary>
-        /// <param name="c">The character to test.</param>
-        /// <returns>true if the character is an ASCII letter; otherwise false.</returns>
+        /// <summary>
+        /// Determines whether a character is an ASCII letter (A-Z or a-z).
+        /// </summary>
         private static bool IsAsciiLetter(char c)
         {
             return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');

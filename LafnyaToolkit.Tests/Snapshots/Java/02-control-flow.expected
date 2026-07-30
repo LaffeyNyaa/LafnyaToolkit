@@ -1,0 +1,22 @@
+"Java snapshot test - control flow"
+package com.example;
+public class Calc {
+    public int factorial(int n) {
+        if (n <= 1) {
+            return 1;
+        }
+        else {
+            return n * factorial(n - 1);
+        }
+    }
+
+    public void loop() {
+        for (int i = 0; i < 10; i++) {
+            if (i % 2 == 0) {
+                System.out.println(i);
+            } else {
+                System.out.println("odd");
+            }
+        }
+    }
+}

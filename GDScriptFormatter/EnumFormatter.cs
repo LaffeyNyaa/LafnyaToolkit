@@ -1,42 +1,33 @@
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Expands single-line enum declarations into multi-line form with
-    /// each member on its own line.
+    /// Expands single-line enum declarations into multi-line form
+    /// with each member on its own line and a trailing comma after
+    /// the last member. Multi-line enum bodies are left unchanged.
     /// </summary>
-    internal static class EnumFormatter
+    public sealed class EnumFormatter
     {
-        /// <summary>
-        /// Replacement entry: replaces [Start, End) with NewText.
-        /// </summary>
-        internal struct Replacement
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly EnumFormatter Instance = new EnumFormatter();
+
+        private EnumFormatter()
         {
-            /// <summary>The start position (inclusive).</summary>
-            public int Start;
-
-            /// <summary>The end position (exclusive).</summary>
-            public int End;
-
-            /// <summary>The replacement text.</summary>
-            public string NewText;
-            public Replacement(int start, int end, string newText)
-            {
-                Start = start;
-                End = end;
-                NewText = newText;
-            }
         }
 
         /// <summary>
-        /// Expands a single-line enum so each member occupies its own line, with a trailing comma after the last member.
+        /// Expands a single-line enum so each member occupies its own
+        /// line, with a trailing comma after the last member.
         /// </summary>
-        internal static string ExpandEnums(string text)
+        /// <param name="text">The source text.</param>
+        /// <returns>The text with single-line enum bodies expanded.</returns>
+        public string ExpandEnums(string text)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = GDScriptTokenizer.Instance.Tokenize(text);
+            bool[] isCode = GDScriptTokenizer.Instance.BuildCodeMask(text, tokens);
             var replacements = new List<Replacement>();
 
             for (int i = 0; i < text.Length; i++)
@@ -46,12 +37,12 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                if (i > 0 && TextUtils.IsWordChar(text[i - 1]))
+                if (i > 0 && LafnyaToolkit.Core.Text.TextUtils.IsWordChar(text[i - 1]))
                 {
                     continue;
                 }
 
-                if (!TextUtils.MatchesWord(text, i, "enum"))
+                if (!LafnyaToolkit.Core.Text.TextUtils.MatchesWord(text, i, "enum"))
                 {
                     continue;
                 }
@@ -59,7 +50,7 @@ namespace GDScriptFormatter
                 int afterEnum = i + 4;
 
                 if (afterEnum < text.Length &&
-                    TextUtils.IsWordChar(text[afterEnum]))
+                    LafnyaToolkit.Core.Text.TextUtils.IsWordChar(text[afterEnum]))
                 {
                     continue;
                 }
@@ -93,7 +84,7 @@ namespace GDScriptFormatter
 
                 for (int k = 0; k < members.Count; k++)
                 {
-                    sb.Append(new string(' ', TextUtils.IndentSize));
+                    sb.Append(new string(' ', GDScriptTextUtils.IndentSize));
                     sb.Append(members[k].Trim());
                     sb.Append(',');
                     sb.Append('\n');
@@ -103,12 +94,15 @@ namespace GDScriptFormatter
                     sb.ToString()));
             }
 
-            return ApplyReplacements(text, replacements);
+            return LafnyaToolkit.Core.Text.TextUtils.ApplyReplacements(text, replacements);
         }
 
         /// <summary>
-        /// Splits enum members by top-level commas (tracking bracket depth).
+        /// Splits enum members by top-level commas (tracking bracket
+        /// depth).
         /// </summary>
+        /// <param name="content">The text between the enum braces.</param>
+        /// <returns>The list of trimmed member strings.</returns>
         private static List<string> SplitEnumMembers(string content)
         {
             var members = new List<string>();
@@ -164,39 +158,13 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Applies a list of replacements to text (sorted by position, deduplicates overlaps).
+        /// Finds the first { in code regions starting from the given
+        /// position.
         /// </summary>
-        private static string ApplyReplacements(string text,
-            List<Replacement> replacements)
-        {
-            if (replacements.Count == 0)
-            {
-                return text;
-            }
-
-            replacements.Sort((a, b) => a.Start.CompareTo(b.Start));
-            var sb = new StringBuilder(text.Length);
-            int pos = 0;
-
-            foreach (var r in replacements)
-            {
-                if (r.Start < pos)
-                {
-                    continue;
-                }
-
-                sb.Append(text, pos, r.Start - pos);
-                sb.Append(r.NewText);
-                pos = r.End;
-            }
-
-            sb.Append(text, pos, text.Length - pos);
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Finds the first { in code regions starting from the given position.
-        /// </summary>
+        /// <param name="text">The source text.</param>
+        /// <param name="isCode">The code mask of the text.</param>
+        /// <param name="start">The starting position.</param>
+        /// <returns>The index of the open brace, or -1 if not found.</returns>
         private static int FindOpenBrace(string text, bool[] isCode, int start)
         {
             int i = start;
@@ -217,6 +185,10 @@ namespace GDScriptFormatter
         /// <summary>
         /// Finds the } that matches the { at openPos.
         /// </summary>
+        /// <param name="text">The source text.</param>
+        /// <param name="isCode">The code mask of the text.</param>
+        /// <param name="openPos">The position of the open brace.</param>
+        /// <returns>The index of the matching close brace, or -1 if unbalanced.</returns>
         private static int FindMatchingClose(string text, bool[] isCode,
             int openPos)
         {

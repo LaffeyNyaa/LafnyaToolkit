@@ -1,22 +1,31 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
 {
     /// <summary>
-    /// Computes which lines within a switch block belong to a case body
-    /// (indented one extra level beyond the case label).
+    /// Computes which lines within a switch block belong to a case
+    /// body (indented one extra level beyond the case label).
+    /// Stateless; the shared instance is exposed via
+    /// <see cref="Instance"/>.
     /// </summary>
-    internal static class CaseScopeDetector
+    internal sealed class CaseScopeDetector
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly CaseScopeDetector Instance = new CaseScopeDetector();
+
+        private CaseScopeDetector()
+        {
+        }
+
         /// <summary>
-        /// Computes which lines within a switch block belong to a case body
-        /// (indented one extra level beyond the case label).
+        /// Computes which lines within a switch block belong to a case
+        /// body (indented one extra level beyond the case label).
         /// </summary>
-        internal static bool[] ComputeCaseScope(List<string> lines,
-            string text, bool[] isCode)
+        public bool[] ComputeCaseScope(List<string> lines, string text, bool[] isCode)
         {
             var caseBody = new bool[lines.Count];
-            int[] lineStarts = Tokenizer.ComputeLineStarts(lines);
+            int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
 
             var switchRanges = new List<KeyValuePair<int, int>>();
             var braceStack = new Stack<KeyValuePair<bool, int>>();
@@ -31,18 +40,14 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 's' && (i == 0 || !TextUtils.IsWordChar(text[i -
-                    1])) &&
-                    TextUtils.MatchesWord(text, i, "switch"))
+                if (c == 's' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) && TextUtils.MatchesWord(text, i, "switch"))
                 {
                     pendingSwitch = true;
                 }
 
                 if (c == '{')
                 {
-                    braceStack.Push(new KeyValuePair<bool, int>(pendingSwitch,
-                        i));
-
+                    braceStack.Push(new KeyValuePair<bool, int>(pendingSwitch, i));
                     pendingSwitch = false;
                 }
                 else if (c == '}')
@@ -53,8 +58,7 @@ namespace CppFormatter
 
                         if (top.Key)
                         {
-                            switchRanges.Add(new KeyValuePair<int, int>(
-                                top.Value, i));
+                            switchRanges.Add(new KeyValuePair<int, int>(top.Value, i));
                         }
                     }
                 }
@@ -132,17 +136,17 @@ namespace CppFormatter
         }
 
         /// <summary>
-        /// Determines whether a line is a case/default label line for a switch.
+        /// Determines whether a line is a case/default label line for
+        /// a switch.
         /// </summary>
-        internal static bool IsCaseLabelLine(string trimmed)
+        public bool IsCaseLabelLine(string trimmed)
         {
             if (trimmed.Length == 0 || !trimmed.EndsWith(":"))
             {
                 return false;
             }
 
-            return TextUtils.StartsWithKeyword(trimmed, "case") ||
-                TextUtils.StartsWithKeyword(trimmed, "default");
+            return TextUtils.StartsWithKeyword(trimmed, "case") || TextUtils.StartsWithKeyword(trimmed, "default");
         }
     }
 }

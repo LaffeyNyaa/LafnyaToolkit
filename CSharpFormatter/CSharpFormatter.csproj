@@ -49,18 +49,33 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LafnyaToolkit.Core\LafnyaToolkit.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="Tokenizer.cs" />
+    <Compile Include="CSharpTokenizer.cs" />
+    <Compile Include="CSharpTextUtils.cs" />
+    <Compile Include="IBraceEnforcerRule.cs" />
     <Compile Include="UsingSorter.cs" />
     <Compile Include="Formatter.cs" />
-    <Compile Include="TextUtils.cs" />
     <Compile Include="LineClassifier.cs" />
     <Compile Include="BraceEnforcer.cs" />
     <Compile Include="EnumFormatter.cs" />
     <Compile Include="PropertyFormatter.cs" />
     <Compile Include="IndentationProcessor.cs" />
-    <Compile Include="BlankLineProcessor.cs" />
     <Compile Include="LineLengthProcessor.cs" />
+    <Compile Include="BlankLineProcessor.cs" />
+    <Compile Include="BlankLineRules\BlankLineMainRules.cs" />
+    <Compile Include="BlankLineRules\BlockStartRule.cs" />
+    <Compile Include="BlankLineRules\BlockEndRule.cs" />
+    <Compile Include="BlankLineRules\MultiLineStatementStartRule.cs" />
+    <Compile Include="BlankLineRules\MultiLineStatementEndRule.cs" />
+    <Compile Include="BlankLineRules\DocCommentBlankRule.cs" />
+    <Compile Include="BlankLineRules\CatchFinallyRule.cs" />
+    <Compile Include="BlankLineRules\IfElseRule.cs" />
+    <Compile Include="BlankLineRules\UsingDirectiveRule.cs" />
+    <Compile Include="BlankLineRules\PreserveAuthorBlankRule.cs" />
+    <Compile Include="BlankLineRules\BlankLineHelpers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

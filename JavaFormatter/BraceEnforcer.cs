@@ -1,23 +1,55 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace JavaFormatter
 {
     /// <summary>
-    /// Wraps single-statement bodies of control flow keywords with mandatory braces.
+    /// Enforces mandatory curly braces for all control-flow statement
+    /// bodies by wrapping single-statement bodies in a brace block.
+    /// Dispatches per-keyword work to a dictionary of
+    /// <see cref="IBraceEnforcerRule"/> strategies instead of a long
+    /// if/else chain; adding a new keyword is a matter of registering
+    /// a new rule.
     /// </summary>
-    internal static class BraceEnforcer
+    internal sealed class BraceEnforcer
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly BraceEnforcer Instance = new BraceEnforcer();
+
+        private readonly Dictionary<string, IBraceEnforcerRule> rules;
+
+        private BraceEnforcer()
+        {
+            rules = new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
+            {
+                { "if", new IfRule() },
+                { "for", new ForRule() },
+                { "while", new WhileRule() },
+                { "do", new DoRule() },
+                { "synchronized", new SynchronizedRule() },
+                { "try", new TryRule() },
+                { "else", new ElseRule() }
+            };
+        }
+
         /// <summary>
-        /// Wraps single-statement bodies of control flow keywords with braces
-        /// on the token stream.
+        /// Wraps single-statement bodies of if/else/for/while/do-while/
+        /// synchronized/try with mandatory braces on the token stream.
         /// </summary>
         /// <param name="tokens">The token list.</param>
         /// <returns>The processed token list.</returns>
-        public static List<Token> ApplyMandatoryBraces(List<Token> tokens)
+        public List<Token> ApplyMandatoryBraces(List<Token> tokens)
         {
-            string text = Tokenizer.Reconstruct(tokens);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            if (tokens == null || tokens.Count == 0)
+            {
+                return tokens;
+            }
+
+            string text = JavaTokenizer.Instance.Reconstruct(tokens);
+            bool[] isCode = JavaTokenizer.Instance.BuildCodeMask(text, tokens);
             var insertions = new List<Insertion>();
 
             for (int i = 0; i < text.Length; i++)
@@ -32,7 +64,14 @@ namespace JavaFormatter
                     continue;
                 }
 
-                CollectInsertionsForKeyword(text, isCode, i, insertions);
+                foreach (var pair in rules)
+                {
+                    if (TextUtils.MatchesWord(text, i, pair.Key))
+                    {
+                        pair.Value.Apply(text, isCode, i, insertions);
+                        break;
+                    }
+                }
             }
 
             if (insertions.Count == 0)
@@ -52,114 +91,16 @@ namespace JavaFormatter
             }
 
             sb.Append(text, pos, text.Length - pos);
-            return Tokenizer.Tokenize(sb.ToString());
+            return JavaTokenizer.Instance.Tokenize(sb.ToString());
         }
 
         /// <summary>
-        /// Dispatches brace insertion for a single control flow keyword position
-        /// using guard clauses instead of a deeply nested if/else chain.
+        /// Replaces a single-statement body with a braced block,
+        /// appending insertion points. The opening <c>{</c> is inserted
+        /// at the statement start and the closing <c>}</c> just after
+        /// the statement's terminating semicolon.
         /// </summary>
-        /// <param name="text">The source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <param name="i">The keyword start position.</param>
-        /// <param name="insertions">The insertion list to populate.</param>
-        private static void CollectInsertionsForKeyword(string text,
-            bool[] isCode, int i, List<Insertion> insertions)
-        {
-            if (TextUtils.MatchesWord(text, i, "if"))
-            {
-                CollectAfterParen(text, isCode, i + 2, insertions);
-                return;
-            }
-
-            if (TextUtils.MatchesWord(text, i, "for"))
-            {
-                CollectAfterParen(text, isCode, i + 3, insertions);
-                return;
-            }
-
-            if (TextUtils.MatchesWord(text, i, "while"))
-            {
-                int afterParen = SkipParen(text, isCode, i + 5);
-
-                if (afterParen < 0)
-                {
-                    return;
-                }
-
-                int nextNonWs = TextUtils.SkipWhitespace(text, afterParen);
-
-                if (nextNonWs < text.Length && isCode[nextNonWs] &&
-                    text[nextNonWs] == ';')
-                {
-                    return;
-                }
-
-                CollectBodyInsertions(text, isCode, afterParen, insertions);
-                return;
-            }
-
-            if (TextUtils.MatchesWord(text, i, "do"))
-            {
-                CollectBodyInsertions(text, isCode, i + 2, insertions);
-                return;
-            }
-
-            if (TextUtils.MatchesWord(text, i, "synchronized"))
-            {
-                CollectAfterParen(text, isCode, i + 12, insertions);
-                return;
-            }
-
-            if (TextUtils.MatchesWord(text, i, "try"))
-            {
-                CollectBodyInsertions(text, isCode, i + 3, insertions);
-                return;
-            }
-
-            if (TextUtils.MatchesWord(text, i, "else"))
-            {
-                int afterElse = i + 4;
-                int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
-
-                if (TextUtils.MatchesWord(text, nextNonWs, "if"))
-                {
-                    return;
-                }
-
-                CollectBodyInsertions(text, isCode, afterElse, insertions);
-            }
-        }
-
-        /// <summary>
-        /// Skips a parenthesised clause and collects body insertions for it.
-        /// </summary>
-        /// <param name="text">The source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <param name="start">The position after the keyword.</param>
-        /// <param name="insertions">The insertion list to populate.</param>
-        private static void CollectAfterParen(string text, bool[] isCode,
-            int start, List<Insertion> insertions)
-        {
-            int afterParen = SkipParen(text, isCode, start);
-
-            if (afterParen < 0)
-            {
-                return;
-            }
-
-            CollectBodyInsertions(text, isCode, afterParen, insertions);
-        }
-
-        /// <summary>
-        /// Replaces a single-statement body with a braced block, appending insertion points.
-        /// </summary>
-        /// <param name="text">The source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <param name="startPos">The position after the controlling clause.</param>
-        /// <param name="insertions">The insertion list to populate.</param>
-        private static void CollectBodyInsertions(string text, bool[] isCode,
-            int startPos, List<Insertion> insertions)
+        private static void CollectBodyInsertions(string text, bool[] isCode, int startPos, List<Insertion> insertions)
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
 
@@ -217,13 +158,10 @@ namespace JavaFormatter
         }
 
         /// <summary>
-        /// Skips a balanced pair of parentheses starting at the given position,
-        /// returning the position after the closing parenthesis; or -1 if not found.
+        /// Skips a balanced pair of parentheses from the given position;
+        /// returns the position after the closing <c>)</c> or -1 if not
+        /// well-formed.
         /// </summary>
-        /// <param name="text">The source text.</param>
-        /// <param name="isCode">The code mask.</param>
-        /// <param name="start">The position to start scanning.</param>
-        /// <returns>The position after the closing paren, or -1.</returns>
         private static int SkipParen(string text, bool[] isCode, int start)
         {
             int i = TextUtils.SkipWhitespace(text, start);
@@ -262,6 +200,99 @@ namespace JavaFormatter
             }
 
             return i + 1;
+        }
+
+        private sealed class IfRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 2);
+
+                if (afterParen >= 0)
+                {
+                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                }
+            }
+        }
+
+        private sealed class ForRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 3);
+
+                if (afterParen >= 0)
+                {
+                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                }
+            }
+        }
+
+        private sealed class WhileRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 5);
+
+                if (afterParen < 0)
+                {
+                    return;
+                }
+
+                int nextNonWs = TextUtils.SkipWhitespace(text, afterParen);
+
+                if (nextNonWs < text.Length && isCode[nextNonWs] && text[nextNonWs] == ';')
+                {
+                    return;
+                }
+
+                CollectBodyInsertions(text, isCode, afterParen, insertions);
+            }
+        }
+
+        private sealed class DoRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                CollectBodyInsertions(text, isCode, keywordPos + 2, insertions);
+            }
+        }
+
+        private sealed class SynchronizedRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterParen = SkipParen(text, isCode, keywordPos + 12);
+
+                if (afterParen >= 0)
+                {
+                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                }
+            }
+        }
+
+        private sealed class TryRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                CollectBodyInsertions(text, isCode, keywordPos + 3, insertions);
+            }
+        }
+
+        private sealed class ElseRule : IBraceEnforcerRule
+        {
+            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            {
+                int afterElse = keywordPos + 4;
+                int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
+
+                if (TextUtils.MatchesWord(text, nextNonWs, "if"))
+                {
+                    return;
+                }
+
+                CollectBodyInsertions(text, isCode, afterElse, insertions);
+            }
         }
     }
 }

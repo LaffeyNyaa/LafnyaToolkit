@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
 {
@@ -9,14 +11,22 @@ namespace CSharpFormatter
     /// inspect code-region characters to detect statement terminators
     /// and continuation indicators.
     /// </summary>
-    internal static class LineClassifier
+    internal sealed class LineClassifier
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly LineClassifier Instance = new LineClassifier();
+
+        private LineClassifier()
+        {
+        }
+
         /// <summary>
-        /// Determines whether a trimmed line is a using directive.
+        /// Determines whether a trimmed line is a <c>using</c>
+        /// directive.
         /// </summary>
         /// <param name="trimmed">The trimmed line.</param>
-        /// <returns>true if the line is a using directive.</returns>
-        internal static bool IsUsingDirective(string trimmed)
+        /// <returns>True if the line is a using directive.</returns>
+        internal bool IsUsingDirective(string trimmed)
         {
             if (trimmed.StartsWith("using "))
             {
@@ -32,13 +42,14 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether a trimmed line is a block-start line (starts
-        /// with a declaration or control-flow keyword). This is a text-only
-        /// check; callers should also verify the line is in a code region.
+        /// Determines whether a trimmed line is a block-start line
+        /// (starts with a declaration or control-flow keyword). This
+        /// is a text-only check; callers should also verify the line
+        /// is in a code region.
         /// </summary>
         /// <param name="trimmed">The trimmed line.</param>
-        /// <returns>true if the line starts a block.</returns>
-        internal static bool IsBlockStartLine(string trimmed)
+        /// <returns>True if the line starts a block.</returns>
+        internal bool IsBlockStartLine(string trimmed)
         {
             if (trimmed.Length == 0 || trimmed == "{")
             {
@@ -76,12 +87,12 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether a trimmed line is a block-end line: exactly
-        /// <c>}</c> or <c>};</c>.
+        /// Determines whether a trimmed line is a block-end line:
+        /// exactly <c>}</c> or <c>};</c>.
         /// </summary>
         /// <param name="trimmed">The trimmed line.</param>
-        /// <returns>true if the line is a block end.</returns>
-        internal static bool IsBlockEndLine(string trimmed)
+        /// <returns>True if the line is a block end.</returns>
+        internal bool IsBlockEndLine(string trimmed)
         {
             if (trimmed.Length == 0)
             {
@@ -92,13 +103,14 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether a trimmed line is a switch case/default label
-        /// line. This is a text-only check; callers should also verify the
-        /// line is in a code region.
+        /// Determines whether a trimmed line is a switch
+        /// <c>case</c>/<c>default</c> label line. This is a text-only
+        /// check; callers should also verify the line is in a code
+        /// region.
         /// </summary>
         /// <param name="trimmed">The trimmed line.</param>
-        /// <returns>true if the line is a case label.</returns>
-        internal static bool IsCaseLabelLine(string trimmed)
+        /// <returns>True if the line is a case label.</returns>
+        internal bool IsCaseLabelLine(string trimmed)
         {
             if (trimmed.Length == 0 || !trimmed.EndsWith(":"))
             {
@@ -112,17 +124,17 @@ namespace CSharpFormatter
         /// <summary>
         /// Computes a per-line flag indicating whether the first
         /// non-whitespace character of each line falls within a code
-        /// region. Used by token-aware blank-line and case-scope rules.
+        /// region. Used by token-aware blank-line and case-scope
+        /// rules.
         /// </summary>
         /// <param name="lines">The line list.</param>
         /// <param name="isCode">The code mask of the full text.</param>
-        /// <returns>A boolean array; true means the line's first
-        /// non-whitespace character is in a code region.</returns>
-        internal static bool[] ComputeIsCodeLine(List<string> lines,
+        /// <returns>A boolean array; true means the line's first non-whitespace character is in a code region.</returns>
+        internal bool[] ComputeIsCodeLine(List<string> lines,
             bool[] isCode)
         {
             var isCodeLine = new bool[lines.Count];
-            int[] lineStarts = TextUtils.ComputeLineStarts(lines);
+            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -148,20 +160,19 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Finds the index of the last non-whitespace code-region character in
-        /// the line. Scans backward from the end of <paramref name="line"/>,
-        /// skipping positions whose corresponding <paramref name="isCode"/>
-        /// entry is false and skipping space/tab characters. Correctly handles
-        /// trailing comments (e.g., <c>code, // comment</c>).
+        /// Finds the index of the last non-whitespace code-region
+        /// character in the line. Scans backward from the end of
+        /// <paramref name="line"/>, skipping positions whose
+        /// corresponding <paramref name="isCode"/> entry is false and
+        /// skipping space/tab characters. Correctly handles trailing
+        /// comments (e.g., <c>code, // comment</c>).
         /// </summary>
         /// <param name="line">The line text.</param>
-        /// <param name="lineStart">The starting offset of this line in
-        /// <paramref name="text"/>.</param>
+        /// <param name="lineStart">The starting offset of this line in <paramref name="text"/>.</param>
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask of <paramref name="text"/>.</param>
-        /// <returns>The index in <paramref name="line"/> of the last code-region
-        /// non-whitespace character, or -1 if none exists.</returns>
-        internal static int LastCodeCharIndex(string line, int lineStart,
+        /// <returns>The index in <paramref name="line"/> of the last code-region non-whitespace character, or -1 if none exists.</returns>
+        internal int LastCodeCharIndex(string line, int lineStart,
             string text, bool[] isCode)
         {
             for (int i = line.Length - 1; i >= 0; i--)
@@ -188,17 +199,15 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether the line ends with a statement terminator
-        /// (<c>;</c> or <c>}</c>) within a code region.
+        /// Determines whether the line ends with a statement
+        /// terminator (<c>;</c> or <c>}</c>) within a code region.
         /// </summary>
         /// <param name="line">The line text.</param>
-        /// <param name="lineStart">The starting offset of this line in
-        /// <paramref name="text"/>.</param>
+        /// <param name="lineStart">The starting offset of this line in <paramref name="text"/>.</param>
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
-        /// <returns>true if the last code-region character is <c>;</c> or
-        /// <c>}</c>; otherwise false.</returns>
-        internal static bool EndsStatement(string line, int lineStart,
+        /// <returns>True if the last code-region character is <c>;</c> or <c>}</c>; otherwise false.</returns>
+        internal bool EndsStatement(string line, int lineStart,
             string text, bool[] isCode)
         {
             int idx = LastCodeCharIndex(line, lineStart, text, isCode);
@@ -213,22 +222,21 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether the specified line ends with a continuation
-        /// indicator within a code region. Recognized operators: <c>,</c>,
-        /// <c>+</c>, <c>-</c>, <c>*</c>, <c>/</c>, <c>%</c>, <c>(</c>,
-        /// <c>=</c>, <c>?</c>, <c>&lt;</c>, <c>&gt;</c> (covers <c>=&gt;</c>),
-        /// <c>&amp;&amp;</c>, <c>||</c>. Compound assignment operators
-        /// (<c>==</c>, <c>!=</c>, <c>&lt;=</c>, <c>&gt;=</c>, <c>+=</c>,
-        /// <c>-=</c>) end with <c>=</c> and are thus covered.
+        /// Determines whether the specified line ends with a
+        /// continuation indicator within a code region. Recognized
+        /// operators: <c>,</c>, <c>+</c>, <c>-</c>, <c>*</c>, <c>/</c>,
+        /// <c>%</c>, <c>(</c>, <c>=</c>, <c>?</c>, <c>&lt;</c>,
+        /// <c>&gt;</c> (covers <c>=&gt;</c>), <c>&amp;&amp;</c>,
+        /// <c>||</c>. Compound assignment operators (<c>==</c>,
+        /// <c>!=</c>, <c>&lt;=</c>, <c>&gt;=</c>, <c>+=</c>, <c>-=</c>)
+        /// end with <c>=</c> and are thus covered.
         /// </summary>
         /// <param name="line">The line text.</param>
-        /// <param name="lineStart">The starting offset of this line in
-        /// <paramref name="text"/>.</param>
+        /// <param name="lineStart">The starting offset of this line in <paramref name="text"/>.</param>
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
-        /// <returns>true if the line ends with a continuation indicator;
-        /// otherwise false.</returns>
-        internal static bool IsContinuationIndicator(string line,
+        /// <returns>True if the line ends with a continuation indicator; otherwise false.</returns>
+        internal bool IsContinuationIndicator(string line,
             int lineStart, string text, bool[] isCode)
         {
             int lastCodeIdx = LastCodeCharIndex(line, lineStart, text,

@@ -1,10 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
+using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
 {
     /// <summary>
-    /// Represents a single top-level member block for reordering.
+    /// A single top-level member block captured by
+    /// <see cref="MemberReorderer"/>: the leading comments, the
+    /// declaration line, and the body lines (setter/getter body or
+    /// method body).
     /// </summary>
     internal struct MemberBlock
     {
@@ -14,34 +18,188 @@ namespace GDScriptFormatter
         /// <summary>The member declaration line (e.g. var x = 1).</summary>
         public string DeclarationLine;
 
-        /// <summary>Body lines at indent > 0 (setter/getter body, continuation brackets, method body).</summary>
+        /// <summary>Body lines at indent &gt; 0 (setter/getter body, continuation brackets, method body).</summary>
         public List<string> BodyLines;
 
-        /// <summary>Classification group from ClassifyMember.</summary>
+        /// <summary>Classification group from <see cref="MemberClassifier.ClassifyMember"/>.</summary>
         public MemberGroup Group;
     }
 
     /// <summary>
-    /// Physically reorders top-level class members to match the spec order.
+    /// Physically reorders top-level class members to match the spec
+    /// order (signal, enum, const, static var, @export, var, @onready,
+    /// private, method). The reordering is stable within the same
+    /// group.
     /// </summary>
-    internal static class MemberReorderer
+    public sealed class MemberReorderer
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly MemberReorderer Instance = new MemberReorderer();
+
+        private MemberReorderer()
+        {
+        }
+
         /// <summary>
-        /// Collects one member block (leading lines, declaration line, body lines)
-        /// starting at <paramref name="startIdx"/>, without using ref parameters.
+        /// Reorders top-level class members in the given text to match
+        /// the spec declaration order. File header lines (e.g. class_name,
+        /// extends) are preserved at the top. Returns the original text
+        /// when the members are already in spec order or when no members
+        /// are found.
         /// </summary>
-        /// <returns>
-        /// A tuple of (leading lines, declaration line, body lines, next index).
-        /// When no member is found (trailing comments or an indented top-level
-        /// line), <c>declLine</c> is <c>null</c> and <c>body</c> is <c>null</c>.
-        /// </returns>
-        private static (List<string> leading, string declLine, List<string>
-            body,
+        /// <param name="text">The full source text.</param>
+        /// <returns>The text with members reordered.</returns>
+        public string ReorderMembers(string text)
+        {
+            var lines = TextUtils.SplitLines(text);
+            int memberStart = 0;
+
+            while (memberStart < lines.Count)
+            {
+                string trimmed = lines[memberStart].Trim();
+
+                if (trimmed.Length == 0)
+                {
+                    memberStart++;
+                    continue;
+                }
+
+                if (DeclarationClassifier.Instance.IsFileHeaderLine(trimmed))
+                {
+                    memberStart++;
+                    continue;
+                }
+
+                break;
+            }
+
+            if (memberStart >= lines.Count)
+            {
+                return text;
+            }
+
+            var fileHeaderLines = new List<string>(memberStart);
+
+            for (int i = 0; i < memberStart; i++)
+            {
+                fileHeaderLines.Add(lines[i]);
+            }
+
+            var blocks = new List<MemberBlock>();
+            int idx = memberStart;
+
+            while (idx < lines.Count)
+            {
+                var (leading, declLine, body, nextIdx) =
+                    CollectMemberInfo(lines, idx);
+
+                if (declLine == null)
+                {
+                    if (nextIdx >= lines.Count)
+                    {
+                        if (blocks.Count > 0)
+                        {
+                            blocks[blocks.Count - 1].BodyLines.AddRange(leading);
+                        }
+
+                        break;
+                    }
+
+                    idx = nextIdx + 1;
+                    continue;
+                }
+
+                idx = nextIdx;
+
+                string trimmedDecl = declLine.Trim();
+
+                MemberGroup group =
+                    MemberClassifier.Instance.ClassifyMember(trimmedDecl);
+
+                blocks.Add(new MemberBlock
+                {
+                    PrecedingLines = leading,
+                    DeclarationLine = declLine,
+                    BodyLines = body,
+                    Group = group
+                });
+            }
+
+            for (int i = 0; i < blocks.Count - 1; i++)
+            {
+                string bTrimmed = blocks[i].DeclarationLine.Trim();
+
+                if (bTrimmed.StartsWith("@") &&
+                    !bTrimmed.StartsWith("@onready") &&
+                    !bTrimmed.StartsWith("@export"))
+                {
+                    string nextTrimmed = blocks[i + 1].DeclarationLine.Trim();
+
+                    if (nextTrimmed.StartsWith("var ") ||
+                        nextTrimmed.StartsWith("func ") ||
+                        nextTrimmed.StartsWith("signal ") ||
+                        nextTrimmed.StartsWith("const ") ||
+                        nextTrimmed.StartsWith("enum ") ||
+                        nextTrimmed.StartsWith("static "))
+                    {
+                        MemberGroup nextGroup = MemberClassifier.Instance.ClassifyMember(
+                            nextTrimmed);
+
+                        blocks[i] = new MemberBlock
+                        {
+                            PrecedingLines = blocks[i].PrecedingLines,
+                            DeclarationLine = blocks[i].DeclarationLine,
+                            BodyLines = blocks[i].BodyLines,
+                            Group = nextGroup
+                        };
+                    }
+                }
+            }
+
+            bool alreadyOrdered = true;
+
+            for (int i = 1; i < blocks.Count; i++)
+            {
+                if (blocks[i].Group < blocks[i - 1].Group)
+                {
+                    alreadyOrdered = false;
+                    break;
+                }
+            }
+
+            if (alreadyOrdered)
+            {
+                return text;
+            }
+
+            blocks = blocks.OrderBy(b => b.Group).ToList();
+            var result = new List<string>(lines.Count);
+            result.AddRange(fileHeaderLines);
+
+            foreach (var block in blocks)
+            {
+                result.AddRange(block.PrecedingLines);
+                result.Add(block.DeclarationLine);
+                result.AddRange(block.BodyLines);
+            }
+
+            return string.Join("\n", result);
+        }
+
+        /// <summary>
+        /// Collects one member block (leading lines, declaration line,
+        /// body lines) starting at <paramref name="startIdx"/>.
+        /// </summary>
+        /// <param name="lines">The full line list.</param>
+        /// <param name="startIdx">The starting line index.</param>
+        /// <returns>A tuple of (leading lines, declaration line, body lines, next index).
+        /// When no member is found (trailing comments or an indented top-level line),
+        /// <c>declLine</c> is <c>null</c> and <c>body</c> is <c>null</c>.</returns>
+        private (List<string> leading, string declLine, List<string> body,
             int nextIdx) CollectMemberInfo(List<string> lines, int startIdx)
         {
             int idx = startIdx;
             var leading = new List<string>();
-            // 1. Collect leading blank / comment lines.
 
             while (idx < lines.Count)
             {
@@ -60,20 +218,16 @@ namespace GDScriptFormatter
 
             if (idx >= lines.Count)
             {
-                // Trailing blanks/comments — no member follows.
                 return (leading, null, null, idx);
             }
 
-            if (IndentationProcessor.LineIndentLevel(lines[idx]) > 0)
+            if (IndentationProcessor.Instance.LineIndentLevel(lines[idx]) > 0)
             {
-                // Unexpected indented line — not a top-level member.
                 return (leading, null, null, idx);
             }
 
-            // 2. Collect the declaration line.
             string declLine = lines[idx];
             idx++;
-            // Merge bare annotation on its own line (e.g. @onready\nvar x).
             string bareTrimmed = declLine.Trim();
 
             if ((bareTrimmed == "@onready" || bareTrimmed == "@export") &&
@@ -89,14 +243,12 @@ namespace GDScriptFormatter
                 }
             }
 
-            // 3. Collect body lines (indented content, closing brackets
-            //    at indent 0, and blank lines before such lines).
             var body = new List<string>();
 
             while (idx < lines.Count)
             {
                 int bodyIndent =
-                    IndentationProcessor.LineIndentLevel(lines[idx]);
+                    IndentationProcessor.Instance.LineIndentLevel(lines[idx]);
 
                 string bodyTrimmed = lines[idx].Trim();
 
@@ -129,8 +281,8 @@ namespace GDScriptFormatter
                     if (nextNonBlank >= 0)
                     {
                         string peekTrim = lines[nextNonBlank].Trim();
-                        int peekIndent = IndentationProcessor
-                        .LineIndentLevel(lines[nextNonBlank]);
+                        int peekIndent = IndentationProcessor.Instance
+                            .LineIndentLevel(lines[nextNonBlank]);
 
                         if (peekTrim.Length > 0 &&
                             (peekTrim[0] == ')' || peekTrim[0] == ']' ||
@@ -158,166 +310,6 @@ namespace GDScriptFormatter
             }
 
             return (leading, declLine, body, idx);
-        }
-
-        internal static string ReorderMembers(string text)
-        {
-            var lines = TextUtils.SplitLines(text);
-            // Find where the member section starts — skip file headers
-            // (@tool, @icon, @static_unload, class_name, extends, ## doc)
-            int memberStart = 0;
-
-            while (memberStart < lines.Count)
-            {
-                string trimmed = lines[memberStart].Trim();
-
-                if (trimmed.Length == 0)
-                {
-                    memberStart++;
-                    continue;
-                }
-
-                if (DeclarationClassifier.IsFileHeaderLine(trimmed))
-                {
-                    memberStart++;
-                    continue;
-                }
-
-                break;
-            }
-
-            if (memberStart >= lines.Count)
-            {
-                return text; // no members found
-            }
-
-            // Preserve file header lines at the top.
-            var fileHeaderLines = new List<string>(memberStart);
-
-            for (int i = 0; i < memberStart; i++)
-            {
-                fileHeaderLines.Add(lines[i]);
-            }
-
-            // Extract member blocks from the member section.
-            var blocks = new List<MemberBlock>();
-            int idx = memberStart;
-
-            while (idx < lines.Count)
-            {
-                var (leading, declLine, body, nextIdx) =
-                    CollectMemberInfo(lines, idx);
-
-                if (declLine == null)
-                {
-                    // No member found — trailing comments or an indented skip.
-
-                    if (nextIdx >= lines.Count)
-                    {
-                        // Trailing comments/blanks with no member.
-                        // Attach them to the last block if any.
-
-                        if (blocks.Count > 0)
-                        {
-                            blocks[blocks.Count - 1].BodyLines.AddRange(
-                                leading);
-                        }
-
-                        break;
-                    }
-
-                    // Indented line at top level — skip to avoid data loss.
-                    idx = nextIdx + 1;
-                    continue;
-                }
-
-                idx = nextIdx;
-
-                string trimmedDecl = declLine.Trim();
-
-                MemberGroup group =
-                    MemberClassifier.ClassifyMember(trimmedDecl);
-
-                blocks.Add(new MemberBlock
-                {
-                    PrecedingLines = leading,
-                        DeclarationLine = declLine,
-                        BodyLines = body,
-                        Group = group
-                });
-            }
-
-            // Post-process: match standalone annotation blocks (lines starting
-            // with @ that are NOT @onready/@export, e.g. @warning_ignore,
-            // @rpc) with the group of their following declaration block.
-            // This ensures that when members are reordered, annotations
-            // stay attached to their corresponding declarations instead of
-            // being treated as separate "methods" group (group 8) blocks.
-
-            for (int i = 0; i < blocks.Count - 1; i++)
-            {
-                string bTrimmed = blocks[i].DeclarationLine.Trim();
-
-                if (bTrimmed.StartsWith("@") &&
-                    !bTrimmed.StartsWith("@onready") &&
-                    !bTrimmed.StartsWith("@export"))
-                {
-                    string nextTrimmed = blocks[i + 1].DeclarationLine.Trim();
-
-                    if (nextTrimmed.StartsWith("var ") ||
-                        nextTrimmed.StartsWith("func ") ||
-                        nextTrimmed.StartsWith("signal ") ||
-                        nextTrimmed.StartsWith("const ") ||
-                        nextTrimmed.StartsWith("enum ") ||
-                        nextTrimmed.StartsWith("static "))
-                    {
-                        MemberGroup nextGroup = MemberClassifier.ClassifyMember(
-                            nextTrimmed);
-
-                        blocks[i] = new MemberBlock
-                        {
-                            PrecedingLines = blocks[i].PrecedingLines,
-                                DeclarationLine = blocks[i].DeclarationLine,
-                                BodyLines = blocks[i].BodyLines,
-                                Group = nextGroup
-                        };
-                    }
-                }
-            }
-
-            // Check if blocks are already in spec order — if so, no reorder.
-            bool alreadyOrdered = true;
-
-            for (int i = 1; i < blocks.Count; i++)
-            {
-                if (blocks[i].Group < blocks[i - 1].Group)
-                {
-                    alreadyOrdered = false;
-                    break;
-                }
-            }
-
-            if (alreadyOrdered)
-            {
-                return text;
-            }
-
-            // Sort blocks by group. Use a stable sort so that blocks with
-            // the same group retain their original file order (e.g. all
-            // private vars appear in the order they were declared).
-            blocks = blocks.OrderBy(b => b.Group).ToList();
-            // Reassemble: file headers + reordered blocks
-            var result = new List<string>(lines.Count);
-            result.AddRange(fileHeaderLines);
-
-            foreach (var block in blocks)
-            {
-                result.AddRange(block.PrecedingLines);
-                result.Add(block.DeclarationLine);
-                result.AddRange(block.BodyLines);
-            }
-
-            return string.Join("\n", result);
         }
     }
 }

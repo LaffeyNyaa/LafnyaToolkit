@@ -1,28 +1,36 @@
 using System.Collections.Generic;
 using System.Text;
+using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
 {
     /// <summary>
-    /// Expands single-line property accessor blocks into multi-line form,
-    /// supporting recursive expansion of nested accessor blocks.
+    /// Expands single-line property accessor blocks into multi-line
+    /// form, supporting recursive expansion of nested accessor blocks.
     /// </summary>
-    internal static class PropertyFormatter
+    internal sealed class PropertyFormatter
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly PropertyFormatter Instance = new PropertyFormatter();
+
+        private PropertyFormatter()
+        {
+        }
+
         /// <summary>
         /// Expands single-line property accessor blocks into multi-line
         /// form. Supports recursive expansion of nested accessor blocks
-        /// (e.g., get { return x; } set { y = value; }).
+        /// (e.g., <c>get { return x; } set { y = value; }</c>).
         /// </summary>
         /// <param name="text">The source text.</param>
         /// <returns>The text with property accessors expanded.</returns>
-        public static string FormatPropertyAccessors(string text)
+        public string FormatPropertyAccessors(string text)
         {
-            var tokens = Tokenizer.Tokenize(text);
-            bool[] isCode = Tokenizer.BuildCodeMask(text, tokens);
+            var tokens = CSharpTokenizer.Instance.Tokenize(text);
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokens);
 
-            var replacements =
-                new List<TextUtils.Replacement>();
+            var replacements = new List<Replacement>();
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -47,7 +55,7 @@ namespace CSharpFormatter
 
                 string replacement = ExpandAccessors(content, 1);
 
-                replacements.Add(new TextUtils.Replacement(i + 1, braceEnd,
+                replacements.Add(new Replacement(i + 1, braceEnd,
                     replacement));
             }
 
@@ -59,6 +67,10 @@ namespace CSharpFormatter
         /// <paramref name="openPos"/>. Returns -1 if the block spans
         /// multiple lines.
         /// </summary>
+        /// <param name="text">The source text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <param name="openPos">The position of the opening brace.</param>
+        /// <returns>The position of the matching closing brace, or -1 if the block spans multiple lines.</returns>
         private static int FindSingleLineBraceEnd(string text,
             bool[] isCode, int openPos)
         {
@@ -96,10 +108,12 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Recursively expands accessor content into multi-line form. Each
-        /// accessor of the form keyword { block } is expanded into keyword,
-        /// {, the block content (recursively), }; accessors of the form
-        /// keyword; or keyword => expr; remain single-line.
+        /// Recursively expands accessor content into multi-line form.
+        /// Each accessor of the form <c>keyword { block }</c> is
+        /// expanded into <c>keyword</c>, <c>{</c>, the block content
+        /// (recursively), <c>}</c>; accessors of the form
+        /// <c>keyword;</c> or <c>keyword =&gt; expr;</c> remain
+        /// single-line.
         /// </summary>
         /// <param name="content">The accessor block content.</param>
         /// <param name="indentLevel">The current indentation level.</param>
@@ -125,7 +139,7 @@ namespace CSharpFormatter
                 if (keyword != null)
                 {
                     string after = trimmed.Substring(keyword.Length)
-                    .TrimStart();
+                        .TrimStart();
 
                     if (after.StartsWith("{"))
                     {
@@ -164,8 +178,9 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Finds an accessor keyword (get/set/init/add/remove) at the
-        /// beginning of the string.
+        /// Finds an accessor keyword (<c>get</c>, <c>set</c>,
+        /// <c>init</c>, <c>add</c>, <c>remove</c>) at the beginning
+        /// of the string.
         /// </summary>
         /// <param name="s">The string to inspect.</param>
         /// <returns>The matched keyword, or null.</returns>
@@ -185,11 +200,11 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Finds the position of the } that balances the first { in the
-        /// string.
+        /// Finds the position of the <c>}</c> that balances the first
+        /// <c>{</c> in the string.
         /// </summary>
         /// <param name="s">The string to search.</param>
-        /// <returns>The position of the matching }, or -1.</returns>
+        /// <returns>The position of the matching <c>}</c>, or -1.</returns>
         private static int FindMatchingBraceInString(string s)
         {
             int depth = 0;
@@ -215,11 +230,11 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether content is property accessor content: after
-        /// splitting, each part starts with an accessor keyword.
+        /// Determines whether content is property accessor content:
+        /// after splitting, each part starts with an accessor keyword.
         /// </summary>
         /// <param name="content">The content to inspect.</param>
-        /// <returns>true if the content is accessor content.</returns>
+        /// <returns>True if the content is accessor content.</returns>
         private static bool IsAccessorContent(string content)
         {
             string s = content.Trim();
@@ -248,8 +263,9 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Splits content at accessor/statement boundaries: splits at ;
-        /// at depth 0 or at } close (when depth returns to 0).
+        /// Splits content at accessor/statement boundaries: splits at
+        /// <c>;</c> at depth 0 or at <c>}</c> close (when depth
+        /// returns to 0).
         /// </summary>
         /// <param name="content">The content to split.</param>
         /// <returns>A list of split parts (trimmed).</returns>

@@ -1,0 +1,14 @@
+"GDScript snapshot test - control flow"
+class_name Calc
+extends Node
+func factorial(n: int) -> int:
+    if n <= 1:
+        return 1
+    else:
+        return n * factorial(n - 1)
+func loop() -> void:
+    for i in range(10):
+        if i % 2 == 0:
+            print(i)
+        else:
+            print("odd")

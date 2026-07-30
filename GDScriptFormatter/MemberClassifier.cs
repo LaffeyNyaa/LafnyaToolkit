@@ -1,51 +1,70 @@
-using static GDScriptFormatter.TextUtils;
+using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
 {
-    internal enum MemberGroup
+    /// <summary>
+    /// The classification of a top-level GDScript class member. The
+    /// numeric values are part of the spec and must remain stable
+    /// (signal, enum, const, static var, @export, var, @onready,
+    /// private _, method).
+    /// </summary>
+    public enum MemberGroup
     {
-        Signal,      // 0 - signal
-        Enum,        // 1 - enum
-        Const,       // 2 - const
-        StaticVar,   // 3 - static var
-        Export,      // 4 - @export
-        RegularVar,  // 5 - regular var
-        Onready,     // 6 - @onready
-        Private,     // 7 - private (_)
-        Method       // 8 - func/class
+        Signal,
+        Enum,
+        Const,
+        StaticVar,
+        Export,
+        RegularVar,
+        Onready,
+        Private,
+        Method
     }
 
     /// <summary>
-    /// Classifies GDScript top-level class members into groups and extracts member names.
+    /// Classifies GDScript top-level class members into groups and
+    /// extracts member names. The group ordering matches the spec
+    /// declaration order: signal(0), enum(1), const(2), static var(3),
+    /// @export(4), regular var(5), @onready(6), private(7), methods(8).
     /// </summary>
-    internal static class MemberClassifier
+    public sealed class MemberClassifier
     {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly MemberClassifier Instance = new MemberClassifier();
+
+        private MemberClassifier()
+        {
+        }
+
         /// <summary>
-        /// Determines whether a line is a top-level class member (signal/enum/const/var/func/static/@export/@onready).
+        /// Determines whether a line is a top-level class member
+        /// (signal/enum/const/var/func/static/@export/@onready).
         /// </summary>
-        internal static bool IsTopLevelMember(string trimmed)
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>True if the line declares a top-level class member.</returns>
+        public bool IsTopLevelMember(string trimmed)
         {
             if (trimmed.Length == 0)
             {
                 return false;
             }
 
-            if (StartsWithKeyword(trimmed, "signal"))
+            if (TextUtils.StartsWithKeyword(trimmed, "signal"))
             {
                 return true;
             }
 
-            if (StartsWithKeyword(trimmed, "enum"))
+            if (TextUtils.StartsWithKeyword(trimmed, "enum"))
             {
                 return true;
             }
 
-            if (StartsWithKeyword(trimmed, "const"))
+            if (TextUtils.StartsWithKeyword(trimmed, "const"))
             {
                 return true;
             }
 
-            if (StartsWithKeyword(trimmed, "static") &&
+            if (TextUtils.StartsWithKeyword(trimmed, "static") &&
                 (trimmed.Contains("var") || trimmed.Contains("func")))
             {
                 return true;
@@ -61,12 +80,12 @@ namespace GDScriptFormatter
                 return true;
             }
 
-            if (StartsWithKeyword(trimmed, "var"))
+            if (TextUtils.StartsWithKeyword(trimmed, "var"))
             {
                 return true;
             }
 
-            if (StartsWithKeyword(trimmed, "func"))
+            if (TextUtils.StartsWithKeyword(trimmed, "func"))
             {
                 return true;
             }
@@ -75,9 +94,13 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Determines whether two top-level members belong to the same variable group.
+        /// Determines whether two top-level members belong to the same
+        /// variable group.
         /// </summary>
-        internal static bool IsSameGroup(string a, string b)
+        /// <param name="a">The first trimmed line.</param>
+        /// <param name="b">The second trimmed line.</param>
+        /// <returns>True if both lines classify to the same <see cref="MemberGroup"/>.</returns>
+        public bool IsSameGroup(string a, string b)
         {
             MemberGroup groupA = ClassifyMember(a);
             MemberGroup groupB = ClassifyMember(b);
@@ -86,28 +109,30 @@ namespace GDScriptFormatter
 
         /// <summary>
         /// Classifies a top-level member into a group (first-match-wins).
-        /// Groups are ordered to match the spec: signal(0), enum(1), const(2),
-        /// static var(3), @export(4), regular var(5), @onready(6), private(7),
-        /// methods(8).
+        /// Groups are ordered to match the spec: signal(0), enum(1),
+        /// const(2), static var(3), @export(4), regular var(5),
+        /// @onready(6), private(7), methods(8).
         /// </summary>
-        internal static MemberGroup ClassifyMember(string trimmed)
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>The classification group.</returns>
+        public MemberGroup ClassifyMember(string trimmed)
         {
-            if (StartsWithKeyword(trimmed, "signal"))
+            if (TextUtils.StartsWithKeyword(trimmed, "signal"))
             {
                 return MemberGroup.Signal;
             }
 
-            if (StartsWithKeyword(trimmed, "enum"))
+            if (TextUtils.StartsWithKeyword(trimmed, "enum"))
             {
                 return MemberGroup.Enum;
             }
 
-            if (StartsWithKeyword(trimmed, "const"))
+            if (TextUtils.StartsWithKeyword(trimmed, "const"))
             {
                 return MemberGroup.Const;
             }
 
-            if (StartsWithKeyword(trimmed, "static var"))
+            if (TextUtils.StartsWithKeyword(trimmed, "static var"))
             {
                 return MemberGroup.StaticVar;
             }
@@ -122,16 +147,14 @@ namespace GDScriptFormatter
                 return MemberGroup.Onready;
             }
 
-            // func/class declarations (including static func) → methods group
-
-            if (StartsWithKeyword(trimmed, "func") ||
+            if (TextUtils.StartsWithKeyword(trimmed, "func") ||
                 (trimmed.StartsWith("class ") &&
                 !trimmed.StartsWith("class_name")))
             {
                 return MemberGroup.Method;
             }
 
-            if (StartsWithKeyword(trimmed, "static") &&
+            if (TextUtils.StartsWithKeyword(trimmed, "static") &&
                 trimmed.Contains("func"))
             {
                 return MemberGroup.Method;
@@ -153,10 +176,14 @@ namespace GDScriptFormatter
         }
 
         /// <summary>
-        /// Extracts the member name from a member declaration. Handles static-prefixed declarations
-        /// (static var, static func) by stripping the leading "static " before applying the keyword rules.
+        /// Extracts the member name from a member declaration. Handles
+        /// static-prefixed declarations (static var, static func) by
+        /// stripping the leading "static " before applying the keyword
+        /// rules.
         /// </summary>
-        internal static string ExtractMemberName(string trimmed)
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>The extracted member name, or empty string if none.</returns>
+        public string ExtractMemberName(string trimmed)
         {
             if (trimmed.StartsWith("static "))
             {
@@ -219,7 +246,10 @@ namespace GDScriptFormatter
         /// <summary>
         /// Extracts NAME from a string of the form "keyword NAME".
         /// </summary>
-        internal static string ExtractNameAfter(string s, string prefix)
+        /// <param name="s">The source string.</param>
+        /// <param name="prefix">The keyword prefix including trailing space.</param>
+        /// <returns>The identifier after the prefix; empty if none.</returns>
+        public string ExtractNameAfter(string s, string prefix)
         {
             int start = prefix.Length;
 
@@ -230,7 +260,7 @@ namespace GDScriptFormatter
 
             int end = start;
 
-            while (end < s.Length && IsWordChar(s[end]))
+            while (end < s.Length && TextUtils.IsWordChar(s[end]))
             {
                 end++;
             }

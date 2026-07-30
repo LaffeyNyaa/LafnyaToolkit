@@ -1,9 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-// General assembly information is controlled by
-// the following attributes. Change these attribute values
-// to modify the information associated with the assembly.
+[assembly: InternalsVisibleTo("LafnyaToolkit.Tests")]
 [assembly: AssemblyTitle("Lafnya C# Formatter")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]

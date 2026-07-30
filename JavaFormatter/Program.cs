@@ -1,270 +1,47 @@
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
+using LafnyaToolkit.Core.CLI;
+using LafnyaToolkit.Core.Text;
 
 namespace JavaFormatter
 {
     /// <summary>
-    /// Tool entry point: parses command-line arguments, recursively discovers .java files,
-    /// invokes the formatter, and prints progress and summary.
+    /// Tool entry point: derives from <see cref="ProgramBase"/>,
+    /// supplies the <c>.java</c> file extension, and delegates the
+    /// per-file pipeline to <see cref="Formatter.Instance"/>.
     /// </summary>
-    public class Program
+    public sealed class Program : ProgramBase
     {
-        /// <summary>
-        /// UTF-8 encoding without BOM, reused across all file writes.
-        /// </summary>
-        private static readonly UTF8Encoding Utf8NoBom =
-            new UTF8Encoding(false);
+        private static readonly IReadOnlyList<string> JavaExtensions = new[] { ".java" };
 
-        /// <summary>
-        /// Result of processing a single Java file.
-        /// </summary>
-        private enum ProcessFileResult
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly Program Instance = new Program();
+
+        private Program()
         {
-            Formatted,
-            Skipped,
-            Failed
         }
 
         /// <summary>
-        /// Program entry point.
+        /// Program entry point. Delegates to <see cref="ProgramBase.Run"/>
+        /// on the shared instance.
         /// </summary>
-        /// <param name="args">Command-line arguments; args[0] should be the target directory path.</param>
+        /// <param name="args">CLI arguments; args[0] should be the target directory path.</param>
         public static void Main(string[] args)
         {
-            if (args == null || args.Length < 1)
-            {
-                Console.Error.WriteLine("Error: missing target directory argument.");
-                Environment.Exit(2);
-                return;
-            }
-
-            string targetPath = args[0];
-
-            if (!Directory.Exists(targetPath))
-            {
-                Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
-                    targetPath);
-
-                Environment.Exit(2);
-                return;
-            }
-
-            var files = DiscoverJavaFiles(targetPath);
-            int formatted = 0;
-            int skipped = 0;
-            int failed = 0;
-
-            foreach (var file in files)
-            {
-                ProcessFileResult result = ProcessFile(file, targetPath);
-
-                switch (result)
-                {
-                    case ProcessFileResult.Formatted:
-                        formatted++;
-                        break;
-                    case ProcessFileResult.Skipped:
-                        skipped++;
-                        break;
-                    case ProcessFileResult.Failed:
-                        failed++;
-                        break;
-                }
-            }
-
-            PrintSummary(formatted, skipped, failed);
+            Instance.Run(args);
         }
 
-        /// <summary>
-        /// Reads, formats, compares, and optionally writes a single Java file.
-        /// Prints the per-file progress line and returns the processing result.
-        /// </summary>
-        /// <param name="file">The full path to the Java file.</param>
-        /// <param name="root">The root directory used for computing the relative path.</param>
-        /// <returns>The processing result.</returns>
-        private static ProcessFileResult ProcessFile(string file, string root)
+        /// <inheritdoc />
+        protected override IReadOnlyList<string> FileExtensions => JavaExtensions;
+
+        /// <inheritdoc />
+        protected override string LanguageName => "Java";
+
+        /// <inheritdoc />
+        protected override string FormatPipeline(string source, string filePath)
         {
-            string relative = GetRelativePath(root, file);
-
-            try
-            {
-                string original = File.ReadAllText(file, Encoding.UTF8);
-                string formatted = Formatter.Format(original, root);
-
-                if (!string.Equals(original, formatted,
-                    StringComparison.Ordinal))
-                {
-                    string directory = Path.GetDirectoryName(file);
-
-                    string tempPath = Path.Combine(directory,
-                        Path.GetFileName(file) + ".tmp");
-
-                    try
-                    {
-                        File.WriteAllText(tempPath, formatted, Utf8NoBom);
-
-                        try
-                        {
-                            File.Replace(tempPath, file, null);
-                        }
-                        catch (Exception)
-                        {
-                            File.Delete(file);
-                            File.Move(tempPath, file);
-                        }
-                    }
-                    finally
-                    {
-                        if (File.Exists(tempPath))
-                        {
-                            try
-                            {
-                                File.Delete(tempPath);
-                            }
-                            catch (Exception)
-                            {
-                            }
-                        }
-                    }
-
-                    Console.WriteLine("Formatting: " + relative);
-                    return ProcessFileResult.Formatted;
-                }
-
-                Console.WriteLine("Skipped: " + relative);
-                return ProcessFileResult.Skipped;
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine("Error: " + relative + ": " +
-                    ex.Message);
-
-                return ProcessFileResult.Failed;
-            }
-        }
-
-        /// <summary>
-        /// Prints the summary line: Total, Formatted, Skipped, Failed.
-        /// </summary>
-        private static void PrintSummary(int formatted, int skipped, int failed)
-        {
-            int total = formatted + skipped + failed;
-
-            Console.WriteLine("Total: " + total + ", Formatted: " +
-                formatted + ", Skipped: " + skipped + ", Failed: " + failed);
-        }
-
-        /// <summary>
-        /// Recursively discovers all .java files under the target directory,
-        /// sorted alphabetically (OrdinalIgnoreCase). Inaccessible subdirectories
-        /// are skipped with a warning to stderr.
-        /// </summary>
-        /// <param name="root">The root directory.</param>
-        /// <returns>A sorted list of full paths to .java files.</returns>
-        private static List<string> DiscoverJavaFiles(string root)
-        {
-            var files = new List<string>();
-            var stack = new Stack<string>();
-            stack.Push(root);
-
-            while (stack.Count > 0)
-            {
-                string current = stack.Pop();
-
-                string[] currentFiles;
-
-                try
-                {
-                    currentFiles = Directory.GetFiles(current, "*.java",
-                        SearchOption.TopDirectoryOnly);
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
-                        current + " (" + ex.Message + ")");
-
-                    continue;
-                }
-                catch (PathTooLongException ex)
-                {
-                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
-                        current + " (" + ex.Message + ")");
-
-                    continue;
-                }
-                catch (DirectoryNotFoundException ex)
-                {
-                    Console.Error.WriteLine("Warning: skipping missing directory: " +
-                        current + " (" + ex.Message + ")");
-
-                    continue;
-                }
-
-                files.AddRange(currentFiles);
-
-                string[] subdirs;
-
-                try
-                {
-                    subdirs = Directory.GetDirectories(current, "*",
-                        SearchOption.TopDirectoryOnly);
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
-                        current + " (" + ex.Message + ")");
-
-                    continue;
-                }
-                catch (PathTooLongException ex)
-                {
-                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
-                        current + " (" + ex.Message + ")");
-
-                    continue;
-                }
-                catch (DirectoryNotFoundException ex)
-                {
-                    Console.Error.WriteLine("Warning: skipping missing directory: " +
-                        current + " (" + ex.Message + ")");
-
-                    continue;
-                }
-
-                foreach (string dir in subdirs)
-                {
-                    stack.Push(dir);
-                }
-            }
-
-            files.Sort(StringComparer.OrdinalIgnoreCase);
-            return files;
-        }
-
-        /// <summary>
-        /// Computes the relative path of <paramref name="file"/> with respect to
-        /// <paramref name="root"/>, using the system directory separator.
-        /// </summary>
-        /// <param name="root">The root directory.</param>
-        /// <param name="file">The full file path.</param>
-        /// <returns>The relative path.</returns>
-        private static string GetRelativePath(string root, string file)
-        {
-            string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
-                Path.AltDirectorySeparatorChar);
-
-            string normalizedFile = file;
-            string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
-
-            if (normalizedFile.StartsWith(rootWithSep,
-                StringComparison.OrdinalIgnoreCase))
-            {
-                return normalizedFile.Substring(rootWithSep.Length);
-            }
-
-            return normalizedFile;
+            string root = System.IO.Path.GetDirectoryName(filePath);
+            string formatted = Formatter.Instance.Format(source, root);
+            return TextUtils.EnsureSingleTrailingNewline(formatted);
         }
     }
 }

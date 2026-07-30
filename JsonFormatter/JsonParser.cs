@@ -4,48 +4,58 @@ using System.Collections.Generic;
 namespace JsonFormatter
 {
     /// <summary>
-    /// A hand-written recursive descent JSON parser that does not reference any
-    /// external JSON library. Preserves raw literals for strings and numbers
-    /// (does not interpret escapes or convert numbers), and preserves the original
-    /// order and duplicate keys of objects.
+    /// A hand-written recursive descent JSON parser that does not reference
+    /// any external JSON library. Preserves raw literals for strings and
+    /// numbers (does not interpret escapes or convert numbers) and preserves
+    /// the original order and duplicate keys of objects.
     /// </summary>
-    public class JsonParser
+    public sealed class JsonParser
     {
-        private readonly string _text;
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly JsonParser Instance = new JsonParser();
+
+        private const char Utf8Bom = '\uFEFF';
+
+        private string _text;
         private int _index;
         private int _line;
         private int _column;
-        private JsonParser(string text)
-        {
-            _text = text;
-            _index = 0;
-            _line = 1;
-            _column = 1;
-            // Skip a single UTF-8 BOM if present.
 
-            if (_text.Length > 0 && _text[0] == '\uFEFF')
-            {
-                _index = 1;
-            }
+        private JsonParser()
+        {
         }
 
         /// <summary>
-        /// Parses JSON text into a JsonValue abstract syntax tree.
+        /// Parses JSON text into a <see cref="JsonValue"/> abstract syntax
+        /// tree. The parser is reused across calls; the per-call state is
+        /// re-initialized at the start of every invocation.
         /// </summary>
         /// <param name="text">The JSON text.</param>
-        /// <returns>The parsed root JsonValue.</returns>
-        /// <exception cref="FormatException">
-        /// Thrown when the text does not conform to JSON syntax.
-        /// </exception>
-        public static JsonValue Parse(string text)
+        /// <returns>The parsed root value.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="text"/> is null.</exception>
+        /// <exception cref="FormatException">Thrown when the text does not conform to JSON syntax.</exception>
+        public JsonValue Parse(string text)
         {
             if (text == null)
             {
                 throw new ArgumentNullException(nameof(text));
             }
 
-            var parser = new JsonParser(text);
-            return parser.ParseRoot();
+            Initialize(text);
+            return ParseRoot();
+        }
+
+        private void Initialize(string text)
+        {
+            _text = text;
+            _index = 0;
+            _line = 1;
+            _column = 1;
+
+            if (_text.Length > 0 && _text[0] == Utf8Bom)
+            {
+                _index = 1;
+            }
         }
 
         private JsonValue ParseRoot()
@@ -62,10 +72,6 @@ namespace JsonFormatter
             return value;
         }
 
-        /// <summary>
-        /// Skips spaces, tabs, and newline characters, updating line and column
-        /// numbers.
-        /// </summary>
         private void SkipWhitespace()
         {
             while (_index < _text.Length)
@@ -75,21 +81,13 @@ namespace JsonFormatter
                 if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
                 {
                     ReadChar();
+                    continue;
                 }
-                else
-                {
-                    break;
-                }
+
+                break;
             }
         }
 
-        /// <summary>
-        /// Reads and consumes the current character, updating line and column
-        /// numbers. A lone '\r' (old-Mac line ending) increments the line
-        /// counter, and a '\r\n' sequence is treated as a single line break by
-        /// consuming the '\n'.
-        /// </summary>
-        /// <returns>The character that was consumed.</returns>
         private char ReadChar()
         {
             if (_index >= _text.Length)
@@ -104,7 +102,6 @@ namespace JsonFormatter
             {
                 _line++;
                 _column = 1;
-                // Treat \r\n as a single line break by consuming the \n.
 
                 if (_index < _text.Length && _text[_index] == '\n')
                 {
@@ -131,42 +128,32 @@ namespace JsonFormatter
                 throw Error("unexpected end of input");
             }
 
-            char c = _text[_index];
-
-            switch (c)
+            switch (_text[_index])
             {
-                case '{':
-                    return ParseObject();
-                case '[':
-                    return ParseArray();
-                case '"':
-                    return ParseString();
-                case 't':
-                    return ParseKeyword("true", JsonType.True);
-                case 'f':
-                    return ParseKeyword("false", JsonType.False);
-                case 'n':
-                    return ParseKeyword("null", JsonType.Null);
-                case '-':
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                    return ParseNumber();
+                case '{': return ParseObject();
+                case '[': return ParseArray();
+                case '"': return ParseString();
+                case 't': return ParseKeyword("true", JsonType.True);
+                case 'f': return ParseKeyword("false", JsonType.False);
+                case 'n': return ParseKeyword("null", JsonType.Null);
                 default:
-                    throw Error("unexpected character '" + c + "'");
+                    if (IsNumberStart(_text[_index]))
+                    {
+                        return ParseNumber();
+                    }
+
+                    throw Error("unexpected character '" + _text[_index] + "'");
             }
+        }
+
+        private static bool IsNumberStart(char c)
+        {
+            return c == '-' || (c >= '0' && c <= '9');
         }
 
         private JsonValue ParseObject()
         {
-            ReadChar(); // Consume '{'
+            ReadChar();
             JsonValue obj = JsonValue.FromObject();
             SkipWhitespace();
 
@@ -193,13 +180,11 @@ namespace JsonFormatter
                     throw Error("expected ':'");
                 }
 
-                ReadChar(); // Consume ':'
+                ReadChar();
                 SkipWhitespace();
                 JsonValue value = ParseValue();
 
-                obj.Properties.Add(
-                    new KeyValuePair<string, JsonValue>(key.RawText, value));
-
+                obj.Properties.Add(new KeyValuePair<string, JsonValue>(key.RawText, value));
                 SkipWhitespace();
 
                 if (_index >= _text.Length)
@@ -218,18 +203,16 @@ namespace JsonFormatter
                 if (c == '}')
                 {
                     ReadChar();
-                    break;
+                    return obj;
                 }
 
                 throw Error("expected ',' or '}'");
             }
-
-            return obj;
         }
 
         private JsonValue ParseArray()
         {
-            ReadChar(); // Consume '['
+            ReadChar();
             JsonValue arr = JsonValue.FromArray();
             SkipWhitespace();
 
@@ -262,23 +245,17 @@ namespace JsonFormatter
                 if (c == ']')
                 {
                     ReadChar();
-                    break;
+                    return arr;
                 }
 
                 throw Error("expected ',' or ']'");
             }
-
-            return arr;
         }
 
-        /// <summary>
-        /// Parses a string literal, preserving the surrounding quotes and raw escape
-        /// sequences without interpreting escapes.
-        /// </summary>
         private JsonValue ParseString()
         {
             int start = _index;
-            ReadChar(); // Consume opening '"'
+            ReadChar();
 
             while (_index < _text.Length)
             {
@@ -286,23 +263,21 @@ namespace JsonFormatter
 
                 if (c == '\\')
                 {
-                    ReadChar(); // Consume '\'
+                    ReadChar();
 
                     if (_index >= _text.Length)
                     {
                         throw Error("unterminated string");
                     }
 
-                    ReadChar(); // Consume the character following the escape
+                    ReadChar();
                     continue;
                 }
 
                 if (c == '"')
                 {
-                    ReadChar(); // Consume closing '"'
-
-                    return JsonValue.FromScalar(JsonType.String,
-                        _text.Substring(start, _index - start));
+                    ReadChar();
+                    return JsonValue.FromScalar(JsonType.String, _text.Substring(start, _index - start));
                 }
 
                 ReadChar();
@@ -311,26 +286,20 @@ namespace JsonFormatter
             throw Error("unterminated string");
         }
 
-        /// <summary>
-        /// Parses a number literal conforming to RFC 8259 number syntax, preserving
-        /// the raw literal without converting to a numeric value.
-        /// </summary>
         private JsonValue ParseNumber()
         {
             int start = _index;
-            // Optional '-'
 
-            if (_index < _text.Length && _text[_index] == '-')
+            if (_text[_index] == '-')
             {
                 ReadChar();
+
+                if (_index >= _text.Length)
+                {
+                    throw Error("invalid number");
+                }
             }
 
-            if (_index >= _text.Length)
-            {
-                throw Error("invalid number");
-            }
-
-            // Integer part
             char c = _text[_index];
 
             if (c == '0')
@@ -340,72 +309,52 @@ namespace JsonFormatter
             else if (c >= '1' && c <= '9')
             {
                 ReadChar();
-
-                while (_index < _text.Length &&
-                    _text[_index] >= '0' && _text[_index] <= '9')
-                {
-                    ReadChar();
-                }
+                ReadDigits();
             }
             else
             {
                 throw Error("invalid number");
             }
 
-            // Optional fractional part
-
             if (_index < _text.Length && _text[_index] == '.')
             {
                 ReadChar();
-
-                if (_index >= _text.Length ||
-                    _text[_index] < '0' || _text[_index] > '9')
-                {
-                    throw Error("invalid number");
-                }
-
-                while (_index < _text.Length &&
-                    _text[_index] >= '0' && _text[_index] <= '9')
-                {
-                    ReadChar();
-                }
+                RequireDigit();
+                ReadDigits();
             }
 
-            // Optional exponent part
-
-            if (_index < _text.Length &&
-                (_text[_index] == 'e' || _text[_index] == 'E'))
+            if (_index < _text.Length && (_text[_index] == 'e' || _text[_index] == 'E'))
             {
                 ReadChar();
 
-                if (_index < _text.Length &&
-                    (_text[_index] == '+' || _text[_index] == '-'))
+                if (_index < _text.Length && (_text[_index] == '+' || _text[_index] == '-'))
                 {
                     ReadChar();
                 }
 
-                if (_index >= _text.Length ||
-                    _text[_index] < '0' || _text[_index] > '9')
-                {
-                    throw Error("invalid number");
-                }
-
-                while (_index < _text.Length &&
-                    _text[_index] >= '0' && _text[_index] <= '9')
-                {
-                    ReadChar();
-                }
+                RequireDigit();
+                ReadDigits();
             }
 
-            return JsonValue.FromScalar(JsonType.Number,
-                _text.Substring(start, _index - start));
+            return JsonValue.FromScalar(JsonType.Number, _text.Substring(start, _index - start));
         }
 
-        /// <summary>
-        /// Matches a keyword literal character by character.
-        /// </summary>
-        /// <param name="expected">The expected keyword string.</param>
-        /// <param name="kind">The JsonType corresponding to the keyword.</param>
+        private void RequireDigit()
+        {
+            if (_index >= _text.Length || _text[_index] < '0' || _text[_index] > '9')
+            {
+                throw Error("invalid number");
+            }
+        }
+
+        private void ReadDigits()
+        {
+            while (_index < _text.Length && _text[_index] >= '0' && _text[_index] <= '9')
+            {
+                ReadChar();
+            }
+        }
+
         private JsonValue ParseKeyword(string expected, JsonType kind)
         {
             for (int i = 0; i < expected.Length; i++)
