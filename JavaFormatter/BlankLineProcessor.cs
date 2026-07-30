@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace JavaFormatter
@@ -15,7 +16,8 @@ namespace JavaFormatter
     internal sealed partial class BlankLineProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+        public static readonly BlankLineProcessor Instance =
+            new BlankLineProcessor();
 
         private BlankLineProcessor()
         {
@@ -137,19 +139,22 @@ namespace JavaFormatter
                     }
 
                     if (!wantBlankAbove && ApplyBlockEndRule(trimmed,
-                        prevTrimmed, prevIsBlockEnd, currentStartsWithCloseBrace) ==
+                        prevTrimmed, prevIsBlockEnd,
+                        currentStartsWithCloseBrace) ==
                         BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                     }
 
-                    if (ApplyConsecutiveImportsRule(currentIsImport, prevIsImport,
+                    if (ApplyConsecutiveImportsRule(currentIsImport,
+                        prevIsImport,
                         entry.HadBlankAbove) == BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                     }
 
-                    if (ApplyImportAfterPackageRule(currentIsImport, prevIsPackage) ==
+                    if (ApplyImportAfterPackageRule(currentIsImport,
+                        prevIsPackage) ==
                         BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
@@ -162,7 +167,8 @@ namespace JavaFormatter
                     }
 
                     if (ApplyPlainStatementBlankRule(trimmed, prevTrimmed,
-                        entry.HadBlankAbove, lineStartsInCode, prevStartsInCode) ==
+                        entry.HadBlankAbove, lineStartsInCode,
+                        prevStartsInCode) ==
                         BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;

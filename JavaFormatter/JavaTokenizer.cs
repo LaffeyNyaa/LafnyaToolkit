@@ -14,7 +14,6 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly JavaTokenizer Instance = new JavaTokenizer();
-
         private JavaTokenizer()
         {
         }
@@ -37,7 +36,8 @@ namespace JavaFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position, out Token token)
+        protected override int ScanNextToken(string source, int position,
+            out Token token)
         {
             token = default(Token);
             int n = source.Length;
@@ -52,7 +52,9 @@ namespace JavaFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.SingleLineComment, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.SingleLineComment,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -64,14 +66,16 @@ namespace JavaFormatter
 
                 while (position < n && depth > 0)
                 {
-                    if (source[position] == '/' && position + 1 < n && source[position + 1] == '*')
+                    if (source[position] == '/' && position + 1 < n &&
+                        source[position + 1] == '*')
                     {
                         depth++;
                         position += 2;
                         continue;
                     }
 
-                    if (source[position] == '*' && position + 1 < n && source[position + 1] == '/')
+                    if (source[position] == '*' && position + 1 < n &&
+                        source[position + 1] == '/')
                     {
                         depth--;
                         position += 2;
@@ -81,11 +85,14 @@ namespace JavaFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.MultiLineComment, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.MultiLineComment,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
-            if (c == '"' && position + 2 < n && source[position + 1] == '"' && source[position + 2] == '"')
+            if (c == '"' && position + 2 < n && source[position + 1] == '"' &&
+                source[position + 2] == '"')
             {
                 int start = position;
                 position += 3;
@@ -94,7 +101,8 @@ namespace JavaFormatter
                 {
                     if (source[position] == '"')
                     {
-                        if (position + 2 < n && source[position + 1] == '"' && source[position + 2] == '"')
+                        if (position + 2 < n && source[position + 1] == '"' &&
+                            source[position + 2] == '"')
                         {
                             position += 3;
                             break;
@@ -112,7 +120,8 @@ namespace JavaFormatter
                             continue;
                         }
 
-                        if (position + 2 < n && source[position + 1] == '\r' && source[position + 2] == '\n')
+                        if (position + 2 < n && source[position + 1] == '\r' &&
+                            source[position + 2] == '\n')
                         {
                             position += 3;
                             continue;
@@ -125,7 +134,9 @@ namespace JavaFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.VerbatimString, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.VerbatimString,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -159,7 +170,9 @@ namespace JavaFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.String, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.String, source.Substring(start,
+                    position - start), start);
+
                 return position - start;
             }
 
@@ -193,7 +206,9 @@ namespace JavaFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.Char, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.Char, source.Substring(start,
+                    position - start), start);
+
                 return position - start;
             }
 

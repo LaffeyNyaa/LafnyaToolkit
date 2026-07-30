@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
 [assembly: AssemblyTitle("LafnyaToolkit.Tests")]
 [assembly: AssemblyDescription("Test harness for the LafnyaToolkit formatter suite.")]
 [assembly: AssemblyConfiguration("")]

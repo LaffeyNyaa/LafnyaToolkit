@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -14,7 +15,6 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumFormatter Instance = new EnumFormatter();
-
         private EnumFormatter()
         {
         }
@@ -53,21 +53,24 @@ namespace JavaFormatter
                     continue;
                 }
 
-                int braceStart = JavaTextUtils.Instance.FindOpenBrace(text, isCode, i + 4);
+                int braceStart = JavaTextUtils.Instance.FindOpenBrace(text,
+                    isCode, i + 4);
 
                 if (braceStart < 0)
                 {
                     continue;
                 }
 
-                int braceEnd = JavaTextUtils.Instance.FindMatchingClose(text, isCode, braceStart);
+                int braceEnd = JavaTextUtils.Instance.FindMatchingClose(text,
+                    isCode, braceStart);
 
                 if (braceEnd < 0)
                 {
                     continue;
                 }
 
-                string content = text.Substring(braceStart + 1, braceEnd - braceStart - 1);
+                string content = text.Substring(braceStart + 1, braceEnd -
+                    braceStart - 1);
 
                 if (content.IndexOf('\n') >= 0)
                 {
@@ -97,7 +100,8 @@ namespace JavaFormatter
                     sb.Append('\n');
                 }
 
-                replacements.Add(new Replacement(braceStart + 1, braceEnd, sb.ToString()));
+                replacements.Add(new Replacement(braceStart + 1, braceEnd,
+                    sb.ToString()));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -13,7 +14,6 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
-
         private Formatter()
         {
         }
@@ -46,37 +46,60 @@ namespace CppFormatter
             var lines = TextUtils.SplitLines(text);
             string currentText = text;
 
-            lines = IndentationProcessor.Instance.Reindent(lines, currentText, tokens, isCode);
+            lines = IndentationProcessor.Instance.Reindent(lines, currentText,
+                tokens, isCode);
+
             lines = ConstructorInitializerProcessor.Instance.Format(lines);
-            lines = NamespaceBodyTrimmer.Instance.TrimNamespaceBodyBlankLines(lines, currentText, tokens, isCode);
+
+            lines =
+                NamespaceBodyTrimmer.Instance.TrimNamespaceBodyBlankLines(lines,
+                currentText, tokens, isCode);
 
             currentText = string.Join("\n", lines);
             var tokensForLimit = CppTokenizer.Instance.Tokenize(currentText);
-            bool[] isCodeForLimit = CppTokenizer.Instance.BuildCodeMask(currentText, tokensForLimit);
-            int[] lineStartsForLimit = CppTokenizer.Instance.ComputeLineStarts(lines);
+
+            bool[] isCodeForLimit =
+                CppTokenizer.Instance.BuildCodeMask(currentText,
+                tokensForLimit);
+
+            int[] lineStartsForLimit =
+                CppTokenizer.Instance.ComputeLineStarts(lines);
+
             var preSplitContinues = new bool[lines.Count];
 
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = ContinuationScanner.Instance.IsContinuationIndicator(
-                    lines[i], lineStartsForLimit[i], currentText, isCodeForLimit);
+                preSplitContinues[i] =
+                    ContinuationScanner.Instance.IsContinuationIndicator(
+                    lines[i], lineStartsForLimit[i], currentText,
+                    isCodeForLimit);
             }
 
             lines = LineLengthProcessor.Instance.ApplyLineLengthLimit(
-                lines, currentText, preSplitContinues, tokensForLimit, isCodeForLimit);
+                lines, currentText, preSplitContinues, tokensForLimit,
+                isCodeForLimit);
 
             currentText = string.Join("\n", lines);
             tokens = CppTokenizer.Instance.Tokenize(currentText);
             isCode = CppTokenizer.Instance.BuildCodeMask(currentText, tokens);
 
-            lines = IndentationProcessor.Instance.Reindent(lines, currentText, tokens, isCode);
+            lines = IndentationProcessor.Instance.Reindent(lines, currentText,
+                tokens, isCode);
 
             currentText = string.Join("\n", lines);
-            lines = BlankLineProcessor.Instance.ApplyBlankLineRules(lines, currentText);
+
+            lines = BlankLineProcessor.Instance.ApplyBlankLineRules(lines,
+                currentText);
+
             currentText = string.Join("\n", lines);
-            lines = BlankLineProcessor.Instance.CollapseBlankLines(lines, currentText);
+
+            lines = BlankLineProcessor.Instance.CollapseBlankLines(lines,
+                currentText);
+
             currentText = string.Join("\n", lines);
-            lines = BlankLineProcessor.Instance.TrimTrailingWhitespace(lines, currentText);
+
+            lines = BlankLineProcessor.Instance.TrimTrailingWhitespace(lines,
+                currentText);
 
             string result = string.Join("\n", lines);
             result = TextUtils.EnsureSingleTrailingNewline(result);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -17,7 +18,8 @@ namespace CppFormatter
     internal sealed class ConstructorInitializerProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly ConstructorInitializerProcessor Instance = new ConstructorInitializerProcessor();
+        public static readonly ConstructorInitializerProcessor Instance =
+            new ConstructorInitializerProcessor();
 
         private ConstructorInitializerProcessor()
         {
@@ -40,7 +42,8 @@ namespace CppFormatter
                 string line = lines[i];
                 string trimmed = line.TrimStart();
 
-                if (trimmed.StartsWith(":") && !IsAccessSpecifierOrLabel(trimmed))
+                if (trimmed.StartsWith(":") &&
+                    !IsAccessSpecifierOrLabel(trimmed))
                 {
                     int baseIndent = FindConstructorBaseIndent(lines, i);
 
@@ -50,7 +53,8 @@ namespace CppFormatter
 
                         if (afterColon.Length > 0)
                         {
-                            result.Add(new string(' ', baseIndent) + ": " + afterColon);
+                            result.Add(new string(' ', baseIndent) + ": " +
+                                afterColon);
                         }
                         else
                         {
@@ -63,11 +67,14 @@ namespace CppFormatter
 
                 if (i > 0 && IsInitializerContinuationLine(lines, i, result))
                 {
-                    int baseIndent = FindConstructorBaseIndentFromPrevious(lines, i, result);
+                    int baseIndent =
+                        FindConstructorBaseIndentFromPrevious(lines, i, result);
 
                     if (baseIndent >= 0)
                     {
-                        result.Add(new string(' ', baseIndent + TextUtils.IndentSize) + trimmed);
+                        result.Add(new string(' ', baseIndent +
+                            TextUtils.IndentSize) + trimmed);
+
                         continue;
                     }
                 }
@@ -102,7 +109,8 @@ namespace CppFormatter
 
             if (trimmed.EndsWith(":") && trimmed.Length > 1)
             {
-                string beforeColon = trimmed.Substring(0, trimmed.Length - 1).Trim();
+                string beforeColon = trimmed.Substring(0, trimmed.Length -
+                    1).Trim();
 
                 if (TextUtils.IsPureIdentifier(beforeColon))
                 {
@@ -118,7 +126,8 @@ namespace CppFormatter
         /// scanning backward from the colon line to find the
         /// constructor signature start.
         /// </summary>
-        private int FindConstructorBaseIndent(List<string> lines, int colonLineIndex)
+        private int FindConstructorBaseIndent(List<string> lines,
+            int colonLineIndex)
         {
             for (int scanIdx = colonLineIndex - 1; scanIdx >= 0; scanIdx--)
             {
@@ -153,7 +162,8 @@ namespace CppFormatter
         /// Finds the indentation of the constructor signature start line
         /// by scanning backward from the ')' closing line.
         /// </summary>
-        private int FindConstructorStartIndent(List<string> lines, int closingParenLine)
+        private int FindConstructorStartIndent(List<string> lines,
+            int closingParenLine)
         {
             int startLine = -1;
 
@@ -173,7 +183,8 @@ namespace CppFormatter
                     break;
                 }
 
-                if (scanTrimmed.EndsWith(";") || CppLineClassifier.Instance.IsBlockStartLine(scanTrimmed))
+                if (scanTrimmed.EndsWith(";") ||
+                    CppLineClassifier.Instance.IsBlockStartLine(scanTrimmed))
                 {
                     break;
                 }
@@ -181,7 +192,8 @@ namespace CppFormatter
 
             if (startLine >= 0)
             {
-                return lines[startLine].Length - lines[startLine].TrimStart().Length;
+                return lines[startLine].Length -
+                    lines[startLine].TrimStart().Length;
             }
 
             return FindMinimumIndentInParamList(lines, closingParenLine);
@@ -191,9 +203,11 @@ namespace CppFormatter
         /// Finds the minimum indentation in the parameter list area,
         /// which corresponds to the constructor signature base indent.
         /// </summary>
-        private int FindMinimumIndentInParamList(List<string> lines, int closingParenLine)
+        private int FindMinimumIndentInParamList(List<string> lines,
+            int closingParenLine)
         {
-            int minIndent = lines[closingParenLine].Length - lines[closingParenLine].TrimStart().Length;
+            int minIndent = lines[closingParenLine].Length -
+                lines[closingParenLine].TrimStart().Length;
 
             for (int scanIdx = closingParenLine - 1; scanIdx >= 0; scanIdx--)
             {
@@ -218,18 +232,22 @@ namespace CppFormatter
                     break;
                 }
 
-                if (TextUtils.StartsWithKeyword(scanTrimmed, "class") || TextUtils.StartsWithKeyword(scanTrimmed, "struct"))
+                if (TextUtils.StartsWithKeyword(scanTrimmed, "class") ||
+                    TextUtils.StartsWithKeyword(scanTrimmed, "struct"))
                 {
                     if (scanLine.Contains("{"))
                     {
                         int classIndent = indent;
-                        minIndent = Math.Min(minIndent, classIndent + TextUtils.IndentSize);
+
+                        minIndent = Math.Min(minIndent, classIndent +
+                            TextUtils.IndentSize);
                     }
 
                     break;
                 }
 
-                if (scanTrimmed.EndsWith(";") || CppLineClassifier.Instance.IsBlockStartLine(scanTrimmed))
+                if (scanTrimmed.EndsWith(";") ||
+                    CppLineClassifier.Instance.IsBlockStartLine(scanTrimmed))
                 {
                     break;
                 }
@@ -279,7 +297,8 @@ namespace CppFormatter
         /// initializer list (a member initializer that follows the
         /// colon line or previous continuation).
         /// </summary>
-        private bool IsInitializerContinuationLine(List<string> lines, int currentIdx, List<string> processedResult)
+        private bool IsInitializerContinuationLine(List<string> lines,
+            int currentIdx, List<string> processedResult)
         {
             string trimmed = lines[currentIdx].TrimStart();
 
@@ -295,26 +314,33 @@ namespace CppFormatter
 
             string prevProcessed = processedResult[processedResult.Count - 1];
             string prevTrimmed = prevProcessed.TrimStart();
-            return prevTrimmed.StartsWith(":") || prevTrimmed.EndsWith(",") || prevTrimmed.EndsWith("{");
+
+            return prevTrimmed.StartsWith(":") || prevTrimmed.EndsWith(",") ||
+                prevTrimmed.EndsWith("{");
         }
 
         /// <summary>
         /// Finds the constructor base indent by looking at previous
         /// processed lines.
         /// </summary>
-        private int FindConstructorBaseIndentFromPrevious(List<string> lines, int currentIdx, List<string> processedResult)
+        private int FindConstructorBaseIndentFromPrevious(List<string> lines,
+            int currentIdx, List<string> processedResult)
         {
-            for (int scanIdx = processedResult.Count - 1; scanIdx >= 0; scanIdx--)
+            for (int scanIdx = processedResult.Count - 1; scanIdx >= 0;
+                scanIdx--)
             {
                 string scanLine = processedResult[scanIdx];
                 string scanTrimmed = scanLine.TrimStart();
 
-                if (scanTrimmed.StartsWith(":") && !IsAccessSpecifierOrLabel(scanTrimmed))
+                if (scanTrimmed.StartsWith(":") &&
+                    !IsAccessSpecifierOrLabel(scanTrimmed))
                 {
                     return scanLine.Length - scanLine.TrimStart().Length;
                 }
 
-                if (scanTrimmed.EndsWith(";") || scanTrimmed.EndsWith("{") || scanTrimmed.EndsWith("}") || CppLineClassifier.Instance.IsBlockStartLine(scanTrimmed))
+                if (scanTrimmed.EndsWith(";") || scanTrimmed.EndsWith("{") ||
+                    scanTrimmed.EndsWith("}") ||
+                    CppLineClassifier.Instance.IsBlockStartLine(scanTrimmed))
                 {
                     break;
                 }

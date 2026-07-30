@@ -15,7 +15,8 @@ namespace GDScriptFormatter
                 return 2;
             }
 
-            if (sameIndent && DeclarationClassifier.Instance.IsFuncOrClassDecl(prevTrimmed) &&
+            if (sameIndent &&
+                DeclarationClassifier.Instance.IsFuncOrClassDecl(prevTrimmed) &&
                 !DeclarationClassifier.Instance.IsFuncOrClassDecl(curTrimmed))
             {
                 return 2;

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -15,7 +16,8 @@ namespace CSharpFormatter
     internal sealed partial class BlankLineProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+        public static readonly BlankLineProcessor Instance =
+            new BlankLineProcessor();
 
         private BlankLineProcessor()
         {
@@ -156,15 +158,17 @@ namespace CSharpFormatter
             bool[] lineEndsStatement)
         {
             int origIdx = entry.OriginalIndex;
-            int prevOrigIdx = index > 0 ? nonBlank[index - 1].OriginalIndex : -1;
-            string prevTrimmed = index > 0
-                ? nonBlank[index - 1].Line.Trim() : string.Empty;
 
+            int prevOrigIdx = index > 0 ? nonBlank[index -
+                1].OriginalIndex : -1;
+
+            string prevTrimmed = index > 0
+            ? nonBlank[index - 1].Line.Trim() : string.Empty;
             var p = new BlankLinePredicates
             {
                 Trimmed = trimmed,
-                PrevTrimmed = prevTrimmed,
-                EntryHadBlankAbove = entry.HadBlankAbove
+                    PrevTrimmed = prevTrimmed,
+                    EntryHadBlankAbove = entry.HadBlankAbove
             };
 
             p.LineIsCode = origIdx < isCodeLine.Length &&

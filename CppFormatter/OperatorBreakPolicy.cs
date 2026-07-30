@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -16,7 +17,8 @@ namespace CppFormatter
     internal sealed class OperatorBreakPolicy
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly OperatorBreakPolicy Instance = new OperatorBreakPolicy();
+        public static readonly OperatorBreakPolicy Instance =
+            new OperatorBreakPolicy();
 
         /// <summary>
         /// Two-character operators whose break point sits right after
@@ -25,9 +27,9 @@ namespace CppFormatter
         /// single-character operators.
         /// </summary>
         private static readonly string[] TwoCharBreakOps =
-        {
+            {
             "==", "!=", "<=", ">=", "=>", "+=", "-=", "&&", "||"
-        };
+            };
 
         private OperatorBreakPolicy()
         {
@@ -74,12 +76,14 @@ namespace CppFormatter
                     }
                 }
 
-                if (bp < 0 && c == '<' && i + 1 < line.Length && line[i + 1] == '<' && IsStreamOpContext(line, i, startIdx))
+                if (bp < 0 && c == '<' && i + 1 < line.Length && line[i + 1] ==
+                    '<' && IsStreamOpContext(line, i, startIdx))
                 {
                     bp = i;
                     i++;
                 }
-                else if (bp < 0 && c == '>' && i + 1 < line.Length && line[i + 1] == '>' && IsStreamOpContext(line, i, startIdx))
+                else if (bp < 0 && c == '>' && i + 1 < line.Length && line[i +
+                    1] == '>' && IsStreamOpContext(line, i, startIdx))
                 {
                     bp = i;
                     i++;
@@ -95,7 +99,9 @@ namespace CppFormatter
                         bp = i + 1;
                     }
                 }
-                else if (bp < 0 && i > startIdx && IsBinaryOpContext(line, i, startIdx) && (c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '<' || c == '>'))
+                else if (bp < 0 && i > startIdx && IsBinaryOpContext(line, i,
+                    startIdx) && (c == '+' || c == '-' || c == '*' || c ==
+                    '/' || c == '%' || c == '<' || c == '>'))
                 {
                     if (c == '-' && i + 1 < line.Length && line[i + 1] == '>')
                     {
@@ -105,7 +111,9 @@ namespace CppFormatter
 
                     bp = i + 1;
                 }
-                else if (bp < 0 && c == '=' && i > startIdx && IsBinaryOpContext(line, i, startIdx) && (i + 1 >= line.Length || (line[i + 1] != '=' && line[i + 1] != '>')))
+                else if (bp < 0 && c == '=' && i > startIdx &&
+                    IsBinaryOpContext(line, i, startIdx) && (i + 1 >=
+                    line.Length || (line[i + 1] != '=' && line[i + 1] != '>')))
                 {
                     bp = i + 1;
                 }
@@ -145,7 +153,9 @@ namespace CppFormatter
             }
 
             int semiPos = breakAt - 1;
-            return semiPos < isCode.Length && isCode[semiPos] && line[semiPos] == ';';
+
+            return semiPos < isCode.Length && isCode[semiPos] &&
+                line[semiPos] == ';';
         }
 
         /// <summary>
@@ -171,20 +181,24 @@ namespace CppFormatter
             }
 
             char pc = line[prev];
-            return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) || pc == '_' || pc == '"' || pc == '\'';
+
+            return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) || pc ==
+                '_' || pc == '"' || pc == '\'';
         }
 
         /// <summary>
         /// Scans a line for stream operator (<c>&lt;&lt;</c>)
         /// positions in stream context.
         /// </summary>
-        public bool HasStreamOperators(string line, int startIdx, out List<int> positions)
+        public bool HasStreamOperators(string line, int startIdx, out List<int>
+            positions)
         {
             positions = new List<int>();
 
             for (int i = startIdx; i < line.Length - 1; i++)
             {
-                if (line[i] == '<' && line[i + 1] == '<' && IsStreamOpContext(line, i, startIdx))
+                if (line[i] == '<' && line[i + 1] == '<' &&
+                    IsStreamOpContext(line, i, startIdx))
                 {
                     positions.Add(i);
                     i++;
@@ -199,7 +213,8 @@ namespace CppFormatter
         /// positions, placing each <c>&lt;&lt;</c> at the start of its
         /// own continuation line.
         /// </summary>
-        public List<string> SplitAtStreamOperators(string line, List<int> positions, string fixedContIndent, string baseIndent)
+        public List<string> SplitAtStreamOperators(string line, List<int>
+            positions, string fixedContIndent, string baseIndent)
         {
             int indentLen = 0;
 
@@ -210,16 +225,21 @@ namespace CppFormatter
 
             string indent = line.Substring(0, indentLen);
 
-            string contIndent = fixedContIndent != null ? fixedContIndent : (indent + new string(' ', TextUtils.IndentSize));
+            string contIndent = fixedContIndent !=
+                null ? fixedContIndent : (indent + new string(' ',
+                TextUtils.IndentSize));
 
             var result = new List<string>();
             result.Add(line.Substring(0, positions[0]).TrimEnd());
 
             for (int j = 0; j < positions.Count; j++)
             {
-                int end = (j + 1 < positions.Count) ? positions[j + 1] : line.Length;
+                int end = (j + 1 < positions.Count) ? positions[j +
+                    1] : line.Length;
 
-                string segment = contIndent + line.Substring(positions[j], end - positions[j]).TrimStart();
+                string segment = contIndent + line.Substring(positions[j], end -
+                    positions[j]).TrimStart();
+
                 result.Add(segment.TrimEnd());
             }
 
@@ -232,7 +252,8 @@ namespace CppFormatter
         /// pointer member access (-&gt;). Uses the code mask to skip
         /// non-code regions (comments, string literals).
         /// </summary>
-        public bool HasBinaryOperators(string line, bool[] isCode, int startIdx, out List<int> positions)
+        public bool HasBinaryOperators(string line, bool[] isCode, int startIdx,
+            out List<int> positions)
         {
             positions = new List<int>();
 
@@ -245,7 +266,8 @@ namespace CppFormatter
 
                 char c = line[i];
 
-                if ((c == '+' || c == '-' || c == '*' || c == '/' || c == '%') && IsBinaryOpContext(line, i, startIdx))
+                if ((c == '+' || c == '-' || c == '*' || c == '/' || c ==
+                    '%') && IsBinaryOpContext(line, i, startIdx))
                 {
                     if (c == '-' && i + 1 < line.Length && line[i + 1] == '>')
                     {
@@ -265,7 +287,8 @@ namespace CppFormatter
         /// positions, placing each operator at the start of its own
         /// continuation line.
         /// </summary>
-        public List<string> SplitAtBinaryOperators(string line, List<int> positions, string fixedContIndent, string baseIndent)
+        public List<string> SplitAtBinaryOperators(string line, List<int>
+            positions, string fixedContIndent, string baseIndent)
         {
             int indentLen = 0;
 
@@ -276,16 +299,21 @@ namespace CppFormatter
 
             string indent = line.Substring(0, indentLen);
 
-            string contIndent = fixedContIndent != null ? fixedContIndent : (indent + new string(' ', TextUtils.IndentSize));
+            string contIndent = fixedContIndent !=
+                null ? fixedContIndent : (indent + new string(' ',
+                TextUtils.IndentSize));
 
             var result = new List<string>();
             result.Add(line.Substring(0, positions[0]).TrimEnd());
 
             for (int j = 0; j < positions.Count; j++)
             {
-                int end = (j + 1 < positions.Count) ? positions[j + 1] : line.Length;
+                int end = (j + 1 < positions.Count) ? positions[j +
+                    1] : line.Length;
 
-                string segment = contIndent + line.Substring(positions[j], end - positions[j]).TrimStart();
+                string segment = contIndent + line.Substring(positions[j], end -
+                    positions[j]).TrimStart();
+
                 result.Add(segment.TrimEnd());
             }
 
@@ -313,7 +341,9 @@ namespace CppFormatter
             }
 
             char pc = line[prev];
-            return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) || pc == '_' || pc == '"';
+
+            return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) || pc ==
+                '_' || pc == '"';
         }
     }
 }

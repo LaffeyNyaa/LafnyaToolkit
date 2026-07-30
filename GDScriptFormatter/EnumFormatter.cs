@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter
@@ -13,7 +14,6 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumFormatter Instance = new EnumFormatter();
-
         private EnumFormatter()
         {
         }
@@ -27,7 +27,10 @@ namespace GDScriptFormatter
         public string ExpandEnums(string text)
         {
             var tokens = GDScriptTokenizer.Instance.Tokenize(text);
-            bool[] isCode = GDScriptTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = GDScriptTokenizer.Instance.BuildCodeMask(text,
+                tokens);
+
             var replacements = new List<Replacement>();
 
             for (int i = 0; i < text.Length; i++)
@@ -37,12 +40,14 @@ namespace GDScriptFormatter
                     continue;
                 }
 
-                if (i > 0 && LafnyaToolkit.Core.Text.TextUtils.IsWordChar(text[i - 1]))
+                if (i > 0 &&
+                    LafnyaToolkit.Core.Text.TextUtils.IsWordChar(text[i - 1]))
                 {
                     continue;
                 }
 
-                if (!LafnyaToolkit.Core.Text.TextUtils.MatchesWord(text, i, "enum"))
+                if (!LafnyaToolkit.Core.Text.TextUtils.MatchesWord(text, i,
+                    "enum"))
                 {
                     continue;
                 }
@@ -94,7 +99,8 @@ namespace GDScriptFormatter
                     sb.ToString()));
             }
 
-            return LafnyaToolkit.Core.Text.TextUtils.ApplyReplacements(text, replacements);
+            return LafnyaToolkit.Core.Text.TextUtils.ApplyReplacements(text,
+                replacements);
         }
 
         /// <summary>

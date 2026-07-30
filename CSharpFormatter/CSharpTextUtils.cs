@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -14,7 +15,6 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CSharpTextUtils Instance = new CSharpTextUtils();
-
         private CSharpTextUtils()
         {
         }
@@ -56,7 +56,10 @@ namespace CSharpFormatter
         public string MoveOpenBraceToOwnLine(string text)
         {
             var tokens = CSharpTokenizer.Instance.Tokenize(text);
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text,
+                tokens);
+
             string[] lines = text.Split('\n');
             var result = new List<string>(lines.Length + 16);
             int lineStart = 0;

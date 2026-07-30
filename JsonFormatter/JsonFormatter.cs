@@ -19,7 +19,6 @@ namespace JsonFormatter
         public static readonly JsonFormatter Instance = new JsonFormatter();
 
         private static readonly string IndentUnit = new string(' ', IndentSize);
-
         private JsonFormatter()
         {
         }
@@ -38,7 +37,8 @@ namespace JsonFormatter
             return sb.ToString();
         }
 
-        private void SerializeValue(JsonValue value, int indent, StringBuilder sb)
+        private void SerializeValue(JsonValue value, int indent,
+            StringBuilder sb)
         {
             switch (value.Kind)
             {
@@ -62,11 +62,14 @@ namespace JsonFormatter
                     sb.Append("null");
                     break;
                 default:
-                    throw new InvalidOperationException("Unknown JSON type: " + value.Kind);
+
+                    throw new InvalidOperationException("Unknown JSON type: " +
+                        value.Kind);
             }
         }
 
-        private void SerializeObject(JsonValue value, int indent, StringBuilder sb)
+        private void SerializeObject(JsonValue value, int indent,
+            StringBuilder sb)
         {
             if (value.Properties.Count == 0)
             {
@@ -96,7 +99,8 @@ namespace JsonFormatter
             sb.Append('}');
         }
 
-        private void SerializeArray(JsonValue value, int indent, StringBuilder sb)
+        private void SerializeArray(JsonValue value, int indent,
+            StringBuilder sb)
         {
             if (value.Elements.Count == 0)
             {

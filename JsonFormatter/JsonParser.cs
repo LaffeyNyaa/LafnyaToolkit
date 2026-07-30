@@ -20,7 +20,6 @@ namespace JsonFormatter
         private int _index;
         private int _line;
         private int _column;
-
         private JsonParser()
         {
         }
@@ -137,6 +136,7 @@ namespace JsonFormatter
                 case 'f': return ParseKeyword("false", JsonType.False);
                 case 'n': return ParseKeyword("null", JsonType.Null);
                 default:
+
                     if (IsNumberStart(_text[_index]))
                     {
                         return ParseNumber();
@@ -184,7 +184,9 @@ namespace JsonFormatter
                 SkipWhitespace();
                 JsonValue value = ParseValue();
 
-                obj.Properties.Add(new KeyValuePair<string, JsonValue>(key.RawText, value));
+                obj.Properties.Add(new KeyValuePair<string, JsonValue>
+                    (key.RawText, value));
+
                 SkipWhitespace();
 
                 if (_index >= _text.Length)
@@ -277,7 +279,9 @@ namespace JsonFormatter
                 if (c == '"')
                 {
                     ReadChar();
-                    return JsonValue.FromScalar(JsonType.String, _text.Substring(start, _index - start));
+
+                    return JsonValue.FromScalar(JsonType.String,
+                        _text.Substring(start, _index - start));
                 }
 
                 ReadChar();
@@ -323,11 +327,13 @@ namespace JsonFormatter
                 ReadDigits();
             }
 
-            if (_index < _text.Length && (_text[_index] == 'e' || _text[_index] == 'E'))
+            if (_index < _text.Length && (_text[_index] == 'e' ||
+                _text[_index] == 'E'))
             {
                 ReadChar();
 
-                if (_index < _text.Length && (_text[_index] == '+' || _text[_index] == '-'))
+                if (_index < _text.Length && (_text[_index] == '+' ||
+                    _text[_index] == '-'))
                 {
                     ReadChar();
                 }
@@ -336,12 +342,14 @@ namespace JsonFormatter
                 ReadDigits();
             }
 
-            return JsonValue.FromScalar(JsonType.Number, _text.Substring(start, _index - start));
+            return JsonValue.FromScalar(JsonType.Number, _text.Substring(start,
+                _index - start));
         }
 
         private void RequireDigit()
         {
-            if (_index >= _text.Length || _text[_index] < '0' || _text[_index] > '9')
+            if (_index >= _text.Length || _text[_index] < '0' || _text[_index] >
+                '9')
             {
                 throw Error("invalid number");
             }
@@ -349,7 +357,8 @@ namespace JsonFormatter
 
         private void ReadDigits()
         {
-            while (_index < _text.Length && _text[_index] >= '0' && _text[_index] <= '9')
+            while (_index < _text.Length && _text[_index] >= '0' &&
+                _text[_index] <= '9')
             {
                 ReadChar();
             }

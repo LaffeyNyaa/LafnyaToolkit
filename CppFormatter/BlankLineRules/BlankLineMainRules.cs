@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -56,49 +57,80 @@ namespace CppFormatter
             BlankLineRuleResult r;
 
             r = processor.ApplyConsecutiveNamespacesRule(trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
             r = processor.ApplyBlockStartRule(trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
             r = processor.ApplyBlockEndRule(trimmed, prevTrimmed, result);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
-            r = processor.ApplyFunctionDefinitionRule(nonBlank, i, trimmed, prevTrimmed, isContinuation, isFunctionParamListEnd, prevWasDocComment);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            r = processor.ApplyFunctionDefinitionRule(nonBlank, i, trimmed,
+                prevTrimmed, isContinuation, isFunctionParamListEnd,
+                prevWasDocComment);
 
-            r = processor.ApplyConsecutiveIncludesRule(nonBlank[i], trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
-            r = processor.ApplyIncludeGuardDefineRule(trimmed, prevTrimmed, result);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            r = processor.ApplyConsecutiveIncludesRule(nonBlank[i], trimmed,
+                prevTrimmed);
 
-            r = processor.ApplyPreprocessorBeforeIncludeRule(trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
+
+            r = processor.ApplyIncludeGuardDefineRule(trimmed, prevTrimmed,
+                result);
+
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
+
+            r = processor.ApplyPreprocessorBeforeIncludeRule(trimmed,
+                prevTrimmed);
+
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
             r = processor.ApplyCommentBeforeIncludeRule(trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
             r = processor.ApplyDocCommentBlankRule(trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
-            r = processor.ApplyPreserveAuthorBlankRule(nonBlank[i], nonBlank, i, trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            r = processor.ApplyPreserveAuthorBlankRule(nonBlank[i], nonBlank, i,
+                trimmed, prevTrimmed);
+
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
             r = processor.ApplyReturnAtBlockEndRule(nonBlank, i, result);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
-            r = processor.ApplyMultiLineStatementStartRule(nonBlank, i, trimmed, prevTrimmed, isContinuation, isFunctionParamListEnd, prevWasDocComment, nonBlank[i].IsProtected);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            r = processor.ApplyMultiLineStatementStartRule(nonBlank, i, trimmed,
+                prevTrimmed, isContinuation, isFunctionParamListEnd,
+                prevWasDocComment, nonBlank[i].IsProtected);
 
-            r = processor.ApplyMultiLineStatementEndRule(nonBlank, i, trimmed, prevTrimmed, isContinuation, isFunctionParamListEnd, prevWasDocComment, out wantBlankBelow);
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
+
+            r = processor.ApplyMultiLineStatementEndRule(nonBlank, i, trimmed,
+                prevTrimmed, isContinuation, isFunctionParamListEnd,
+                prevWasDocComment, out wantBlankBelow);
+
             if (r != BlankLineRuleResult.None)
             {
                 if (wantBlankBelow) { wantBlankAbove = false; }
                 return r;
             }
 
-            r = processor.ApplyDocCommentSingleLineRule(nonBlank, i, trimmed, prevWasDocComment, nonBlank[i].IsProtected, out wantBlankBelow);
+            r = processor.ApplyDocCommentSingleLineRule(nonBlank, i, trimmed,
+                prevWasDocComment, nonBlank[i].IsProtected, out wantBlankBelow);
+
             if (r != BlankLineRuleResult.None)
             {
                 if (wantBlankBelow) { wantBlankAbove = false; }
@@ -106,7 +138,8 @@ namespace CppFormatter
             }
 
             r = processor.ApplyAccessSpecifierBlankRule(trimmed, prevTrimmed);
-            if (r != BlankLineRuleResult.None) { wantBlankAbove = true; return r; }
+            if (r != BlankLineRuleResult.None) { wantBlankAbove = true;
+                return r; }
 
             return BlankLineRuleResult.None;
         }

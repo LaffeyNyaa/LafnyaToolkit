@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace LafnyaToolkit.Core.Text
@@ -69,7 +70,8 @@ namespace LafnyaToolkit.Core.Text
                 }
             }
 
-            if (pos + word.Length < text.Length && IsWordChar(text[pos + word.Length]))
+            if (pos + word.Length < text.Length && IsWordChar(text[pos +
+                word.Length]))
             {
                 return false;
             }
@@ -186,7 +188,8 @@ namespace LafnyaToolkit.Core.Text
         /// <param name="text">The source text.</param>
         /// <param name="lineEndsInsideToken">Per-line flag from the tokenizer; true means skip that line.</param>
         /// <returns>The text with trailing whitespace removed from each line.</returns>
-        public static string TrimTrailingWhitespace(string text, bool[] lineEndsInsideToken)
+        public static string TrimTrailingWhitespace(string text,
+            bool[] lineEndsInsideToken)
         {
             var lines = SplitLines(text);
             var sb = new StringBuilder(text.Length);
@@ -195,7 +198,8 @@ namespace LafnyaToolkit.Core.Text
             {
                 string trimmed;
 
-                if (lineEndsInsideToken != null && i < lineEndsInsideToken.Length && lineEndsInsideToken[i])
+                if (lineEndsInsideToken != null && i <
+                    lineEndsInsideToken.Length && lineEndsInsideToken[i])
                 {
                     trimmed = lines[i];
                 }
@@ -274,7 +278,8 @@ namespace LafnyaToolkit.Core.Text
         /// <param name="text">The source text.</param>
         /// <param name="replacements">The list of replacements to apply.</param>
         /// <returns>The transformed text.</returns>
-        public static string ApplyReplacements(string text, List<Replacement> replacements)
+        public static string ApplyReplacements(string text, List<Replacement>
+            replacements)
         {
             if (replacements.Count == 0)
             {
@@ -310,7 +315,8 @@ namespace LafnyaToolkit.Core.Text
         /// <param name="text">The source text.</param>
         /// <param name="insertions">The list of insertions to apply.</param>
         /// <returns>The text with all insertions applied.</returns>
-        public static string ApplyInsertions(string text, List<Insertion> insertions)
+        public static string ApplyInsertions(string text, List<Insertion>
+            insertions)
         {
             if (insertions.Count == 0)
             {
@@ -342,8 +348,8 @@ namespace LafnyaToolkit.Core.Text
         public static bool IsCommentLine(string trimmed)
         {
             return trimmed.StartsWith("//", StringComparison.Ordinal)
-                || trimmed.StartsWith("/*", StringComparison.Ordinal)
-                || trimmed.StartsWith("*", StringComparison.Ordinal);
+            || trimmed.StartsWith("/*", StringComparison.Ordinal)
+            || trimmed.StartsWith("*", StringComparison.Ordinal);
         }
 
         /// <summary>

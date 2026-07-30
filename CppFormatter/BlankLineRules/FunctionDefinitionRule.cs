@@ -31,7 +31,8 @@ namespace CppFormatter
                 return BlankLineRuleResult.None;
             }
 
-            bool isBlockStart = CppLineClassifier.Instance.IsBlockStartLine(trimmed);
+            bool isBlockStart =
+                CppLineClassifier.Instance.IsBlockStartLine(trimmed);
 
             if (isBlockStart ||
                 trimmed.StartsWith("}") ||

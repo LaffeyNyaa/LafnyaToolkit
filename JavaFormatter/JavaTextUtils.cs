@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -16,7 +17,6 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly JavaTextUtils Instance = new JavaTextUtils();
-
         private JavaTextUtils()
         {
         }
@@ -78,6 +78,7 @@ namespace JavaFormatter
                     else if (text[i] == '}')
                     {
                         depth--;
+
                         if (depth == 0)
                         {
                             return i;

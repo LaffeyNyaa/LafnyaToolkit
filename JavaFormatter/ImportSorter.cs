@@ -15,7 +15,6 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly ImportSorter Instance = new ImportSorter();
-
         private ImportSorter()
         {
         }

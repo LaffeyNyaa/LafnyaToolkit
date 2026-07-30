@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
@@ -14,7 +15,8 @@ namespace GDScriptFormatter
     public sealed partial class BlankLineProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+        public static readonly BlankLineProcessor Instance =
+            new BlankLineProcessor();
 
         private BlankLineProcessor()
         {
@@ -76,7 +78,10 @@ namespace GDScriptFormatter
             {
                 string line = nonBlank[i].Line;
                 string trimmed = line.Trim();
-                int lineIndent = IndentationProcessor.Instance.LineIndentLevel(line);
+
+                int lineIndent =
+                    IndentationProcessor.Instance.LineIndentLevel(line);
+
                 int wantBlankAbove = 0;
 
                 if (result.Count > 0)

@@ -17,7 +17,8 @@ namespace GDScriptFormatter
         public const int MaxLineLength = 80;
 
         /// <summary>Shared stateless instance.</summary>
-        public static readonly GDScriptTextUtils Instance = new GDScriptTextUtils();
+        public static readonly GDScriptTextUtils Instance =
+            new GDScriptTextUtils();
 
         private GDScriptTextUtils()
         {

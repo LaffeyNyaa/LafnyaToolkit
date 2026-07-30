@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -13,7 +14,6 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly BraceMerger Instance = new BraceMerger();
-
         private BraceMerger()
         {
         }
@@ -43,7 +43,8 @@ namespace CppFormatter
                 {
                     int bracePos = pos + lines[i].IndexOf('{');
 
-                    bool isCodeBrace = bracePos < isCode.Length && isCode[bracePos];
+                    bool isCodeBrace = bracePos < isCode.Length &&
+                        isCode[bracePos];
 
                     if (isCodeBrace)
                     {
@@ -80,7 +81,8 @@ namespace CppFormatter
         /// <param name="isCode">Boolean mask indicating code regions.</param>
         /// <param name="closePos">The position of the close brace.</param>
         /// <returns>The position of the matching open brace, or -1.</returns>
-        public int FindMatchingOpenBrace(string text, bool[] isCode, int closePos)
+        public int FindMatchingOpenBrace(string text, bool[] isCode,
+            int closePos)
         {
             int depth = 1;
             int i = closePos - 1;
@@ -119,11 +121,13 @@ namespace CppFormatter
         /// <param name="isCode">Boolean mask indicating code regions.</param>
         /// <param name="openBracePos">The position of the open brace.</param>
         /// <returns>True if "do" immediately precedes the open brace.</returns>
-        public bool IsDoKeywordBefore(string text, bool[] isCode, int openBracePos)
+        public bool IsDoKeywordBefore(string text, bool[] isCode,
+            int openBracePos)
         {
             int i = openBracePos - 1;
 
-            while (i >= 0 && (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' || text[i] == '\r'))
+            while (i >= 0 && (text[i] == ' ' || text[i] == '\t' || text[i] ==
+                '\n' || text[i] == '\r'))
             {
                 i--;
             }

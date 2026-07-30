@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -18,7 +19,6 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly IncludeSorter Instance = new IncludeSorter();
-
         private IncludeSorter()
         {
         }
@@ -91,7 +91,8 @@ namespace CppFormatter
                 }
             }
 
-            BuildIncludeUnits(lines, firstInclude, lastInclude, out var units, out var preprocessorLines);
+            BuildIncludeUnits(lines, firstInclude, lastInclude, out var units,
+                out var preprocessorLines);
 
             var sortedBlock = BuildSortedIncludeBlock(units, preprocessorLines);
 
@@ -119,14 +120,20 @@ namespace CppFormatter
                 if (scanIdx >= 0)
                 {
                     string lastBeforeInclude = lines[scanIdx].Trim();
-                    bool firstIsInclude = CppTextUtils.Instance.IsIncludeDirective(sortedBlock[0]);
 
-                    if (firstIsInclude && !CppTextUtils.Instance.IsIncludeDirective(lastBeforeInclude) && lastBeforeInclude.Length > 0 && lastBeforeInclude[0] == '#')
+                    bool firstIsInclude =
+                        CppTextUtils.Instance.IsIncludeDirective(sortedBlock[0]);
+
+                    if (firstIsInclude &&
+                        !CppTextUtils.Instance.IsIncludeDirective(lastBeforeInclude) &&
+                        lastBeforeInclude.Length > 0 && lastBeforeInclude[0] ==
+                        '#')
                     {
                         result.Append('\n');
                     }
 
-                    if (firstIsInclude && TextUtils.IsCommentLine(lastBeforeInclude))
+                    if (firstIsInclude &&
+                        TextUtils.IsCommentLine(lastBeforeInclude))
                     {
                         result.Append('\n');
                     }
@@ -167,7 +174,8 @@ namespace CppFormatter
         /// Appends a group of include units to the block, with a blank
         /// line separator if the block is non-empty.
         /// </summary>
-        private static void AppendUnitGroup(List<string> block, List<IncludeUnit> group)
+        private static void AppendUnitGroup(List<string> block, List<
+            IncludeUnit> group)
         {
             if (group.Count == 0)
             {
@@ -201,7 +209,8 @@ namespace CppFormatter
         /// #endif, etc.) are placed at the very top of the file,
         /// before any #include.
         /// </summary>
-        private static List<string> BuildSortedIncludeBlock(List<IncludeUnit> units, List<string> preprocessorLines)
+        private static List<string> BuildSortedIncludeBlock(List<IncludeUnit>
+            units, List<string> preprocessorLines)
         {
             var systemGroup = new List<IncludeUnit>();
             var thirdPartyGroup = new List<IncludeUnit>();
@@ -239,7 +248,9 @@ namespace CppFormatter
 
             if (preprocessorLines.Count > 0)
             {
-                while (preprocessorLines.Count > 0 && preprocessorLines[preprocessorLines.Count - 1].Trim().Length == 0)
+                while (preprocessorLines.Count > 0 &&
+                    preprocessorLines[preprocessorLines.Count -
+                    1].Trim().Length == 0)
                 {
                     preprocessorLines.RemoveAt(preprocessorLines.Count - 1);
                 }
@@ -260,7 +271,9 @@ namespace CppFormatter
         /// Builds include units and collects preprocessor directives
         /// within the include range.
         /// </summary>
-        private static void BuildIncludeUnits(string[] lines, int firstInclude, int lastInclude, out List<IncludeUnit> units, out List<string> preprocessorLines)
+        private static void BuildIncludeUnits(string[] lines, int firstInclude,
+            int lastInclude, out List<IncludeUnit> units, out List<string>
+            preprocessorLines)
         {
             units = new List<IncludeUnit>();
             preprocessorLines = new List<string>();
@@ -294,7 +307,9 @@ namespace CppFormatter
                             depth--;
                         }
 
-                        if (depth > 0 && CppTextUtils.Instance.IsIncludeDirective(jTrimmed) && firstIncludeInBlock == null)
+                        if (depth > 0 &&
+                            CppTextUtils.Instance.IsIncludeDirective(jTrimmed) &&
+                            firstIncludeInBlock == null)
                         {
                             firstIncludeInBlock = lines[j];
                             hasInclude = true;
@@ -307,7 +322,9 @@ namespace CppFormatter
 
                     if (hasInclude)
                     {
-                        units.Add(new IncludeUnit(new List<string>(), firstIncludeInBlock, blockLines));
+                        units.Add(new IncludeUnit(new List<string>(),
+                            firstIncludeInBlock, blockLines));
+
                         inPreprocessorBlock = false;
                     }
                     else
@@ -352,7 +369,8 @@ namespace CppFormatter
         /// </summary>
         private static bool IsPreprocessorConditionalStart(string trimmed)
         {
-            return trimmed.StartsWith("#ifdef") || trimmed.StartsWith("#ifndef") || trimmed.StartsWith("#if");
+            return trimmed.StartsWith("#ifdef") ||
+                trimmed.StartsWith("#ifndef") || trimmed.StartsWith("#if");
         }
 
         /// <summary>
@@ -360,7 +378,8 @@ namespace CppFormatter
         /// </summary>
         private static int CompareUnitByPath(IncludeUnit a, IncludeUnit b)
         {
-            return StringComparer.Ordinal.Compare(ExtractIncludePath(a.IncludeLine), ExtractIncludePath(b.IncludeLine));
+            return StringComparer.Ordinal.Compare(ExtractIncludePath(a.IncludeLine),
+                ExtractIncludePath(b.IncludeLine));
         }
 
         /// <summary>
@@ -374,7 +393,8 @@ namespace CppFormatter
 
             if (form == '<')
             {
-                if (!path.Contains(".") && !path.Contains("/") && !path.Contains("\\"))
+                if (!path.Contains(".") && !path.Contains("/") &&
+                    !path.Contains("\\"))
                 {
                     return 0;
                 }
@@ -382,7 +402,8 @@ namespace CppFormatter
                 return 1;
             }
 
-            if (path.Contains("..") || path.StartsWith("/") || IsWindowsAbsolutePath(path))
+            if (path.Contains("..") || path.StartsWith("/") ||
+                IsWindowsAbsolutePath(path))
             {
                 return 2;
             }
@@ -450,7 +471,8 @@ namespace CppFormatter
 
                 if (blockEnd >= 0)
                 {
-                    s = s.Substring(0, blockComment) + s.Substring(blockEnd + 2);
+                    s = s.Substring(0, blockComment) + s.Substring(blockEnd +
+                        2);
                 }
                 else
                 {

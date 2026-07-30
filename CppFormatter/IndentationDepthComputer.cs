@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -17,7 +18,8 @@ namespace CppFormatter
     internal sealed class IndentationDepthComputer
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly IndentationDepthComputer Instance = new IndentationDepthComputer();
+        public static readonly IndentationDepthComputer Instance =
+            new IndentationDepthComputer();
 
         private IndentationDepthComputer()
         {
@@ -39,7 +41,8 @@ namespace CppFormatter
         /// detected and skipped (they do not contribute an indentation
         /// level).
         /// </summary>
-        public int[] ComputeDepths(List<string> lines, string text, bool[] isCode)
+        public int[] ComputeDepths(List<string> lines, string text,
+            bool[] isCode)
         {
             int[] depths = new int[lines.Count];
             int depth = 0;
@@ -93,7 +96,9 @@ namespace CppFormatter
                     }
                 }
 
-                if (isCode[i] && c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) && TextUtils.MatchesWord(text, i, "namespace"))
+                if (isCode[i] && c == 'n' && (i == 0 ||
+                    !TextUtils.IsWordChar(text[i - 1])) &&
+                    TextUtils.MatchesWord(text, i, "namespace"))
                 {
                     pendingNamespace = true;
                 }
@@ -127,7 +132,8 @@ namespace CppFormatter
                     depths[i] += preprocDepth;
                     isHeaderGuardLevel.Add(true);
                 }
-                else if (keyword == "if" || keyword == "ifdef" || keyword == "ifndef")
+                else if (keyword == "if" || keyword == "ifdef" || keyword ==
+                    "ifndef")
                 {
                     depths[i] += preprocDepth;
                     isHeaderGuardLevel.Add(false);
@@ -135,7 +141,8 @@ namespace CppFormatter
                 }
                 else if (keyword == "elif" || keyword == "else")
                 {
-                    bool enclosingIsHeaderGuard = isHeaderGuardLevel.Count > 0 && isHeaderGuardLevel[isHeaderGuardLevel.Count - 1];
+                    bool enclosingIsHeaderGuard = isHeaderGuardLevel.Count >
+                        0 && isHeaderGuardLevel[isHeaderGuardLevel.Count - 1];
 
                     if (enclosingIsHeaderGuard)
                     {
@@ -194,7 +201,9 @@ namespace CppFormatter
             }
 
             string trimmed = lines[ifndefIndex].TrimStart();
-            string afterIfndef = trimmed.Substring("#ifndef".Length).TrimStart();
+
+            string afterIfndef =
+                trimmed.Substring("#ifndef".Length).TrimStart();
 
             if (afterIfndef.Length == 0)
             {
@@ -231,8 +240,12 @@ namespace CppFormatter
 
                 if (nextKeyword == "define")
                 {
-                    string afterDefine = nextTrimmed.Substring("#define".Length).TrimStart();
-                    string defineName = ExtractPreprocessorIdentifier(afterDefine);
+                    string afterDefine =
+                        nextTrimmed.Substring("#define".Length).TrimStart();
+
+                    string defineName =
+                        ExtractPreprocessorIdentifier(afterDefine);
+
                     return defineName == guardName;
                 }
 
@@ -250,7 +263,8 @@ namespace CppFormatter
         {
             int end = 0;
 
-            while (end < s.Length && (char.IsLetterOrDigit(s[end]) || s[end] == '_'))
+            while (end < s.Length && (char.IsLetterOrDigit(s[end]) || s[end] ==
+                '_'))
             {
                 end++;
             }

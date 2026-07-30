@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+
 using LafnyaToolkit.Core.CLI;
 using LafnyaToolkit.Core.Text;
 
@@ -15,11 +16,11 @@ namespace CSharpFormatter
     /// </summary>
     public sealed class Program : ProgramBase
     {
-        private static readonly IReadOnlyList<string> CsExtensions = new[] { ".cs" };
+        private static readonly IReadOnlyList<string> CsExtensions =
+            new[] { ".cs" };
 
         /// <summary>Shared stateless instance.</summary>
         public static readonly Program Instance = new Program();
-
         private Program()
         {
         }

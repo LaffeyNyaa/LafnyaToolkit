@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace CppFormatter
@@ -17,7 +18,8 @@ namespace CppFormatter
     internal sealed class PreserveIndentComputer
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly PreserveIndentComputer Instance = new PreserveIndentComputer();
+        public static readonly PreserveIndentComputer Instance =
+            new PreserveIndentComputer();
 
         private PreserveIndentComputer()
         {
@@ -39,11 +41,13 @@ namespace CppFormatter
                 int tokenStart = tokenPos;
                 int tokenEnd = tokenPos + token.Text.Length;
 
-                if (token.Kind == TokenKind.VerbatimString || token.Kind == TokenKind.MultiLineComment)
+                if (token.Kind == TokenKind.VerbatimString || token.Kind ==
+                    TokenKind.MultiLineComment)
                 {
                     for (int i = 0; i < lines.Count; i++)
                     {
-                        if (lineStarts[i] > tokenStart && lineStarts[i] < tokenEnd)
+                        if (lineStarts[i] > tokenStart && lineStarts[i] <
+                            tokenEnd)
                         {
                             preserveIndent[i] = true;
                         }

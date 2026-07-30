@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter

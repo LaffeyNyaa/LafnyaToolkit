@@ -20,7 +20,8 @@ namespace LafnyaToolkit.Tests
         /// <param name="args">Command-line arguments. Optional first arg "snapshot-update" regenerates golden files when set.</param>
         public static int Main(string[] args)
         {
-            bool updateSnapshots = args != null && args.Length > 0 && args[0] == "snapshot-update";
+            bool updateSnapshots = args != null && args.Length > 0 && args[0] ==
+                "snapshot-update";
             int passed = 0;
             int failed = 0;
             int skipped = 0;
@@ -38,13 +39,15 @@ namespace LafnyaToolkit.Tests
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine("FAIL: " + cls.FullName + " (ctor): " + ex.Message);
+                    Console.Error.WriteLine("FAIL: " + cls.FullName +
+                        " (ctor): " + ex.Message);
                     failed++;
                     failures.Add(cls.FullName + " (ctor)");
                     continue;
                 }
 
-                var methods = cls.GetMethods(BindingFlags.Instance | BindingFlags.Public);
+                var methods =
+                    cls.GetMethods(BindingFlags.Instance | BindingFlags.Public);
 
                 foreach (var method in methods)
                 {
@@ -57,20 +60,27 @@ namespace LafnyaToolkit.Tests
 
                     try
                     {
-                        method.Invoke(instance, new object[] { updateSnapshots });
+                        method.Invoke(instance,
+                            new object[] { updateSnapshots });
+
                         Console.WriteLine("PASS: " + testName);
                         passed++;
                     }
                     catch (TargetInvocationException tie)
                     {
                         var inner = tie.InnerException ?? tie;
-                        Console.WriteLine("FAIL: " + testName + ": " + inner.Message);
+
+                        Console.WriteLine("FAIL: " + testName + ": " +
+                            inner.Message);
+
                         failed++;
                         failures.Add(testName + ": " + inner.Message);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine("FAIL: " + testName + ": " + ex.Message);
+                        Console.WriteLine("FAIL: " + testName + ": " +
+                            ex.Message);
+
                         failed++;
                         failures.Add(testName + ": " + ex.Message);
                     }
@@ -78,12 +88,16 @@ namespace LafnyaToolkit.Tests
             }
 
             Console.WriteLine();
-            Console.WriteLine("Total: " + (passed + failed + skipped) + ", Passed: " + passed + ", Failed: " + failed + ", Skipped: " + skipped);
+
+            Console.WriteLine("Total: " + (passed + failed + skipped) +
+                ", Passed: " + passed + ", Failed: " + failed + ", Skipped: " +
+                skipped);
 
             if (failed > 0)
             {
                 Console.WriteLine();
                 Console.WriteLine("Failures:");
+
                 foreach (var f in failures)
                 {
                     Console.WriteLine("  " + f);

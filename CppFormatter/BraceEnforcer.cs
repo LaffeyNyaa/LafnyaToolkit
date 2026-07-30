@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -20,17 +21,17 @@ namespace CppFormatter
         public static readonly BraceEnforcer Instance = new BraceEnforcer();
 
         private readonly Dictionary<string, IBraceEnforcerRule> rules;
-
         private BraceEnforcer()
         {
-            rules = new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
+            rules = new Dictionary<string, IBraceEnforcerRule>
+                (StringComparer.Ordinal)
             {
                 { "if", new IfRule() },
-                { "for", new ForRule() },
-                { "while", new WhileRule() },
-                { "do", new DoRule() },
-                { "switch", new SwitchRule() },
-                { "else", new ElseRule() }
+                    { "for", new ForRule() },
+                    { "while", new WhileRule() },
+                    { "do", new DoRule() },
+                    { "switch", new SwitchRule() },
+                    { "else", new ElseRule() }
             };
         }
 
@@ -99,7 +100,8 @@ namespace CppFormatter
         /// at the statement start and the closing <c>}</c> just after
         /// the statement's terminating semicolon.
         /// </summary>
-        private static void CollectBodyInsertions(string text, bool[] isCode, int startPos, List<Insertion> insertions)
+        private static void CollectBodyInsertions(string text, bool[] isCode,
+            int startPos, List<Insertion> insertions)
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
 
@@ -131,7 +133,8 @@ namespace CppFormatter
         /// after the first semicolon encountered at depth 0, or -1 if
         /// no such semicolon is found.
         /// </summary>
-        private static int ScanStatementEnd(string text, bool[] isCode, int startPos)
+        private static int ScanStatementEnd(string text, bool[] isCode,
+            int startPos)
         {
             int j = startPos;
             int depth = 0;
@@ -212,7 +215,8 @@ namespace CppFormatter
 
         private sealed class IfRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 2);
 
@@ -225,7 +229,8 @@ namespace CppFormatter
 
         private sealed class ForRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 3);
 
@@ -238,7 +243,8 @@ namespace CppFormatter
 
         private sealed class WhileRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -249,7 +255,8 @@ namespace CppFormatter
 
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterParen);
 
-                if (nextNonWs < text.Length && isCode[nextNonWs] && text[nextNonWs] == ';')
+                if (nextNonWs < text.Length && isCode[nextNonWs] &&
+                    text[nextNonWs] == ';')
                 {
                     return;
                 }
@@ -260,7 +267,8 @@ namespace CppFormatter
 
         private sealed class DoRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int i = TextUtils.SkipWhitespace(text, keywordPos + 2);
 
@@ -284,7 +292,8 @@ namespace CppFormatter
 
                 int w = TextUtils.SkipWhitespace(text, stmtEnd);
 
-                if (w >= text.Length || !TextUtils.MatchesWord(text, w, "while"))
+                if (w >= text.Length || !TextUtils.MatchesWord(text, w,
+                    "while"))
                 {
                     return;
                 }
@@ -296,7 +305,8 @@ namespace CppFormatter
 
         private sealed class SwitchRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 6);
 
@@ -323,7 +333,8 @@ namespace CppFormatter
 
         private sealed class ElseRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterElse = keywordPos + 4;
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);

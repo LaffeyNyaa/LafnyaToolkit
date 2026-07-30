@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
@@ -14,7 +15,8 @@ namespace GDScriptFormatter
     public sealed class LineContinuationAnalyzer
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly LineContinuationAnalyzer Instance = new LineContinuationAnalyzer();
+        public static readonly LineContinuationAnalyzer Instance =
+            new LineContinuationAnalyzer();
 
         private LineContinuationAnalyzer()
         {

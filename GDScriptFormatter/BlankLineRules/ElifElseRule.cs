@@ -9,8 +9,10 @@ namespace GDScriptFormatter
     {
         private static bool IsElifOrElseBlock(string trimmed)
         {
-            return LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, "elif") ||
-                LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, "else");
+            return LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed,
+                "elif") ||
+                LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed,
+                "else");
         }
     }
 }

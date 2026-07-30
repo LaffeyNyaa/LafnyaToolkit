@@ -28,12 +28,14 @@ namespace CppFormatter
                 return BlankLineRuleResult.None;
             }
 
-            if (!BlankLineHelpers.IsPlainSingleLineStatement(trimmed, entry.IsProtected))
+            if (!BlankLineHelpers.IsPlainSingleLineStatement(trimmed,
+                entry.IsProtected))
             {
                 return BlankLineRuleResult.None;
             }
 
-            if (!BlankLineHelpers.IsPlainSingleLineStatement(prevTrimmed, nonBlank[i - 1].IsProtected))
+            if (!BlankLineHelpers.IsPlainSingleLineStatement(prevTrimmed,
+                nonBlank[i - 1].IsProtected))
             {
                 return BlankLineRuleResult.None;
             }

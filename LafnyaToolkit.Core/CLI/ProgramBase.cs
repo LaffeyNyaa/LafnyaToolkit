@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+
 using LafnyaToolkit.Core.IO;
 
 namespace LafnyaToolkit.Core.CLI
@@ -35,18 +36,25 @@ namespace LafnyaToolkit.Core.CLI
         /// recognizes. For example, the C++ formatter returns
         /// <c>{ "cpp", "cc", "cxx", "hpp", "hh", "hxx", "h" }</c>.
         /// </summary>
-        protected abstract IReadOnlyList<string> FileExtensions { get; }
+        protected abstract IReadOnlyList<string> FileExtensions
+        {
+            get;
+        }
 
         /// <summary>
         /// Optional directory names to exclude from recursive discovery, in
         /// addition to the universally-excluded "build" directory.
         /// </summary>
-        protected virtual IReadOnlyList<string> ExcludedDirectoryNames => Array.Empty<string>();
+        protected virtual IReadOnlyList<string> ExcludedDirectoryNames =>
+            Array.Empty<string>();
 
         /// <summary>
         /// The human-readable name of the language, used in summary output.
         /// </summary>
-        protected abstract string LanguageName { get; }
+        protected abstract string LanguageName
+        {
+            get;
+        }
 
         /// <summary>
         /// Formats a single file's source. Concrete subclasses implement the
@@ -55,7 +63,8 @@ namespace LafnyaToolkit.Core.CLI
         /// <param name="source">The original file content.</param>
         /// <param name="filePath">The full path of the file (for diagnostics).</param>
         /// <returns>The formatted source.</returns>
-        protected abstract string FormatPipeline(string source, string filePath);
+        protected abstract string FormatPipeline(string source,
+            string filePath);
 
         /// <summary>
         /// Program entry point. Validates the target-directory argument,
@@ -75,7 +84,9 @@ namespace LafnyaToolkit.Core.CLI
 
             if (!Directory.Exists(targetPath))
             {
-                Console.Error.WriteLine("Error: path does not exist or is not a directory: " + targetPath);
+                Console.Error.WriteLine("Error: path does not exist or is not a directory: " +
+                    targetPath);
+
                 Environment.Exit(2);
                 return;
             }
@@ -117,7 +128,8 @@ namespace LafnyaToolkit.Core.CLI
                 string original = FileIO.ReadAllTextAutoDetect(file);
                 string formatted = FormatPipeline(original, file);
 
-                if (!string.Equals(original, formatted, StringComparison.Ordinal))
+                if (!string.Equals(original, formatted,
+                    StringComparison.Ordinal))
                 {
                     FileIO.WriteFileAtomic(file, formatted, FileIO.Utf8NoBom);
                     Console.WriteLine("Formatting: " + relative);
@@ -129,7 +141,9 @@ namespace LafnyaToolkit.Core.CLI
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("Error: " + relative + ": " + ex.Message);
+                Console.Error.WriteLine("Error: " + relative + ": " +
+                    ex.Message);
+
                 return ProcessFileResult.Failed;
             }
         }
@@ -140,7 +154,9 @@ namespace LafnyaToolkit.Core.CLI
         private void PrintSummary(int formatted, int skipped, int failed)
         {
             int total = formatted + skipped + failed;
-            Console.WriteLine("Total: " + total + ", Formatted: " + formatted + ", Skipped: " + skipped + ", Failed: " + failed);
+
+            Console.WriteLine("Total: " + total + ", Formatted: " + formatted +
+                ", Skipped: " + skipped + ", Failed: " + failed);
         }
 
         /// <summary>
@@ -159,7 +175,9 @@ namespace LafnyaToolkit.Core.CLI
             var stack = new Stack<string>();
             stack.Push(root);
 
-            var excludedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "build" };
+            var excludedNames = new HashSet<string>
+                (StringComparer.OrdinalIgnoreCase) { "build" };
+
             foreach (var name in ExcludedDirectoryNames)
             {
                 excludedNames.Add(name);
@@ -175,21 +193,28 @@ namespace LafnyaToolkit.Core.CLI
 
                     try
                     {
-                        currentFiles = Directory.GetFiles(current, "*" + ext, SearchOption.TopDirectoryOnly);
+                        currentFiles = Directory.GetFiles(current, "*" + ext,
+                            SearchOption.TopDirectoryOnly);
                     }
                     catch (UnauthorizedAccessException ex)
                     {
-                        Console.Error.WriteLine("Warning: skipping inaccessible directory: " + current + " (" + ex.Message + ")");
+                        Console.Error.WriteLine("Warning: skipping inaccessible directory: " +
+                            current + " (" + ex.Message + ")");
+
                         continue;
                     }
                     catch (PathTooLongException ex)
                     {
-                        Console.Error.WriteLine("Warning: skipping directory with path too long: " + current + " (" + ex.Message + ")");
+                        Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                            current + " (" + ex.Message + ")");
+
                         continue;
                     }
                     catch (DirectoryNotFoundException ex)
                     {
-                        Console.Error.WriteLine("Warning: skipping missing directory: " + current + " (" + ex.Message + ")");
+                        Console.Error.WriteLine("Warning: skipping missing directory: " +
+                            current + " (" + ex.Message + ")");
+
                         continue;
                     }
 
@@ -206,21 +231,28 @@ namespace LafnyaToolkit.Core.CLI
 
                 try
                 {
-                    subdirs = Directory.GetDirectories(current, "*", SearchOption.TopDirectoryOnly);
+                    subdirs = Directory.GetDirectories(current, "*",
+                        SearchOption.TopDirectoryOnly);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " + current + " (" + ex.Message + ")");
+                    Console.Error.WriteLine("Warning: cannot enumerate subdirectories of: " +
+                        current + " (" + ex.Message + ")");
+
                     continue;
                 }
                 catch (PathTooLongException ex)
                 {
-                    Console.Error.WriteLine("Warning: skipping directory with path too long: " + current + " (" + ex.Message + ")");
+                    Console.Error.WriteLine("Warning: skipping directory with path too long: " +
+                        current + " (" + ex.Message + ")");
+
                     continue;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
-                    Console.Error.WriteLine("Warning: skipping missing directory: " + current + " (" + ex.Message + ")");
+                    Console.Error.WriteLine("Warning: skipping missing directory: " +
+                        current + " (" + ex.Message + ")");
+
                     continue;
                 }
 
@@ -251,10 +283,13 @@ namespace LafnyaToolkit.Core.CLI
         /// <returns>The relative path.</returns>
         private static string GetRelativePath(string root, string file)
         {
-            string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar);
+
             string rootWithSep = normalizedRoot + Path.DirectorySeparatorChar;
 
-            if (file.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase))
+            if (file.StartsWith(rootWithSep,
+                StringComparison.OrdinalIgnoreCase))
             {
                 return file.Substring(rootWithSep.Length);
             }

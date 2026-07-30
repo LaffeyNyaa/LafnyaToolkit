@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -13,7 +14,6 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly DoWhileMerger Instance = new DoWhileMerger();
-
         private DoWhileMerger()
         {
         }
@@ -58,20 +58,29 @@ namespace CppFormatter
 
                     if (bracePos < isCode.Length && isCode[bracePos])
                     {
-                        int openBracePos = BraceMerger.Instance.FindMatchingOpenBrace(text, isCode, bracePos);
+                        int openBracePos =
+                            BraceMerger.Instance.FindMatchingOpenBrace(text,
+                            isCode, bracePos);
 
-                        if (openBracePos >= 0 && BraceMerger.Instance.IsDoKeywordBefore(text, isCode, openBracePos))
+                        if (openBracePos >= 0 &&
+                            BraceMerger.Instance.IsDoKeywordBefore(text, isCode,
+                            openBracePos))
                         {
                             int j = i + 1;
 
-                            while (j < lines.Length && lines[j].Trim().Length == 0)
+                            while (j < lines.Length && lines[j].Trim().Length ==
+                                0)
                             {
                                 j++;
                             }
 
-                            if (j < lines.Length && TextUtils.StartsWithKeyword(lines[j].Trim(), "while"))
+                            if (j < lines.Length &&
+                                TextUtils.StartsWithKeyword(lines[j].Trim(),
+                                "while"))
                             {
-                                result.Add(lines[i].TrimEnd() + " " + lines[j].Trim());
+                                result.Add(lines[i].TrimEnd() + " " +
+                                    lines[j].Trim());
+
                                 merged[j] = true;
                                 continue;
                             }

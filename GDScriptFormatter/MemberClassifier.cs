@@ -30,7 +30,8 @@ namespace GDScriptFormatter
     public sealed class MemberClassifier
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly MemberClassifier Instance = new MemberClassifier();
+        public static readonly MemberClassifier Instance =
+            new MemberClassifier();
 
         private MemberClassifier()
         {

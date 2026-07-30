@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -20,22 +21,22 @@ namespace CSharpFormatter
         public static readonly BraceEnforcer Instance = new BraceEnforcer();
 
         private readonly Dictionary<string, IBraceEnforcerRule> rules;
-
         private BraceEnforcer()
         {
-            rules = new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
+            rules = new Dictionary<string, IBraceEnforcerRule>
+                (StringComparer.Ordinal)
             {
                 { "if", new IfRule() },
-                { "for", new ForRule() },
-                { "foreach", new ForEachRule() },
-                { "while", new WhileRule() },
-                { "do", new DoRule() },
-                { "lock", new LockRule() },
-                { "using", new UsingRule() },
-                { "fixed", new FixedRule() },
-                { "checked", new CheckedRule() },
-                { "unchecked", new UncheckedRule() },
-                { "else", new ElseRule() }
+                    { "for", new ForRule() },
+                    { "foreach", new ForEachRule() },
+                    { "while", new WhileRule() },
+                    { "do", new DoRule() },
+                    { "lock", new LockRule() },
+                    { "using", new UsingRule() },
+                    { "fixed", new FixedRule() },
+                    { "checked", new CheckedRule() },
+                    { "unchecked", new UncheckedRule() },
+                    { "else", new ElseRule() }
             };
         }
 
@@ -54,7 +55,10 @@ namespace CSharpFormatter
             }
 
             string text = CSharpTokenizer.Instance.Reconstruct(tokens);
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text,
+                tokens);
+
             var insertions = new List<Insertion>();
 
             for (int i = 0; i < text.Length; i++)
@@ -234,7 +238,8 @@ namespace CSharpFormatter
 
         private sealed class IfRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 2);
 
@@ -247,7 +252,8 @@ namespace CSharpFormatter
 
         private sealed class ForRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 3);
 
@@ -260,7 +266,8 @@ namespace CSharpFormatter
 
         private sealed class ForEachRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 7);
 
@@ -273,7 +280,8 @@ namespace CSharpFormatter
 
         private sealed class WhileRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -296,7 +304,8 @@ namespace CSharpFormatter
 
         private sealed class DoRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 CollectBodyInsertions(text, isCode, keywordPos + 2, insertions);
             }
@@ -304,7 +313,8 @@ namespace CSharpFormatter
 
         private sealed class LockRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 4);
 
@@ -317,7 +327,8 @@ namespace CSharpFormatter
 
         private sealed class UsingRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -330,7 +341,8 @@ namespace CSharpFormatter
 
         private sealed class FixedRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -343,23 +355,28 @@ namespace CSharpFormatter
 
         private sealed class CheckedRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
-                CollectOptionalParenBody(text, isCode, keywordPos + 7, insertions);
+                CollectOptionalParenBody(text, isCode, keywordPos + 7,
+                    insertions);
             }
         }
 
         private sealed class UncheckedRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
-                CollectOptionalParenBody(text, isCode, keywordPos + 9, insertions);
+                CollectOptionalParenBody(text, isCode, keywordPos + 9,
+                    insertions);
             }
         }
 
         private sealed class ElseRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterElse = keywordPos + 4;
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);

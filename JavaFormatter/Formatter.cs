@@ -11,7 +11,6 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
-
         private Formatter()
         {
         }
@@ -53,14 +52,19 @@ namespace JavaFormatter
             lines = IndentationProcessor.Instance.Reindent(lines, text);
             string textForLimit = string.Join("\n", lines);
             var tokensForLimit = JavaTokenizer.Instance.Tokenize(textForLimit);
+
             bool[] isCodeForLimit = JavaTokenizer.Instance.BuildCodeMask(
                 textForLimit, tokensForLimit);
-            int[] lineStartsForLimit = JavaTextUtils.Instance.ComputeLineStarts(lines);
+
+            int[] lineStartsForLimit =
+                JavaTextUtils.Instance.ComputeLineStarts(lines);
+
             var preSplitContinues = new bool[lines.Count];
 
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = LineClassifier.Instance.IsContinuationIndicator(
+                preSplitContinues[i] =
+                    LineClassifier.Instance.IsContinuationIndicator(
                     lines[i], lineStartsForLimit[i], textForLimit,
                     isCodeForLimit);
             }

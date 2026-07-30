@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -13,7 +14,8 @@ namespace GDScriptFormatter
     public sealed class LineLengthProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly LineLengthProcessor Instance = new LineLengthProcessor();
+        public static readonly LineLengthProcessor Instance =
+            new LineLengthProcessor();
 
         private LineLengthProcessor()
         {
@@ -47,7 +49,8 @@ namespace GDScriptFormatter
                 {
                     result.Add(line);
 
-                    runningBraceDepth = BracketDepthTracker.Instance.UpdateDepth(
+                    runningBraceDepth =
+                        BracketDepthTracker.Instance.UpdateDepth(
                         line, runningBraceDepth);
 
                     continue;
@@ -135,11 +138,15 @@ namespace GDScriptFormatter
             }
 
             string indent = line.Substring(0, indentLen);
+
             string contIndent = fixedContIndent ?? (indent +
                 new string(' ', GDScriptTextUtils.IndentSize));
 
             var tokens = GDScriptTokenizer.Instance.Tokenize(line);
-            bool[] isCode = GDScriptTokenizer.Instance.BuildCodeMask(line, tokens);
+
+            bool[] isCode = GDScriptTokenizer.Instance.BuildCodeMask(line,
+                tokens);
+
             var result = TryUnclosedBracketSplit(line, contIndent, isCode,
                 indentLen);
 
@@ -157,7 +164,8 @@ namespace GDScriptFormatter
 
             result = TryClosedBracketSplit(line, contIndent, isCode, indentLen);
 
-            if (result != null && result[0].Length <= GDScriptTextUtils.MaxLineLength)
+            if (result != null && result[0].Length <=
+                GDScriptTextUtils.MaxLineLength)
             {
                 return result;
             }
@@ -186,7 +194,8 @@ namespace GDScriptFormatter
         private List<string> TryUnclosedBracketSplit(string line,
             string contIndent, bool[] isCode, int indentLen)
         {
-            int bracketDepth = BracketDepthTracker.Instance.FindBracketDepth(line,
+            int bracketDepth =
+                BracketDepthTracker.Instance.FindBracketDepth(line,
                 isCode, indentLen);
 
             if (bracketDepth <= 0)
@@ -229,7 +238,8 @@ namespace GDScriptFormatter
         private List<string> TryClosedBracketSplit(string line,
             string contIndent, bool[] isCode, int indentLen)
         {
-            int bracketDepth = BracketDepthTracker.Instance.FindBracketDepth(line,
+            int bracketDepth =
+                BracketDepthTracker.Instance.FindBracketDepth(line,
                 isCode, indentLen);
 
             if (bracketDepth > 0)
@@ -300,7 +310,8 @@ namespace GDScriptFormatter
                 var rhsSplit = SplitLongLine(rhsCont, contIndent);
 
                 if (rhsSplit.Count == 1 &&
-                    rhsSplit[0].TrimStart().Length > GDScriptTextUtils.MaxLineLength)
+                    rhsSplit[0].TrimStart().Length >
+                    GDScriptTextUtils.MaxLineLength)
                 {
                     return null;
                 }
@@ -472,7 +483,8 @@ namespace GDScriptFormatter
         private List<string> TryBraceAlignSplit(string line,
             string contIndent, bool[] isCode, int indentLen)
         {
-            int bracketDepth = BracketDepthTracker.Instance.FindBracketDepth(line,
+            int bracketDepth =
+                BracketDepthTracker.Instance.FindBracketDepth(line,
                 isCode, indentLen);
 
             if (bracketDepth > 0)

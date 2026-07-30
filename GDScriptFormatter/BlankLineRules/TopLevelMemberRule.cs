@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
@@ -29,7 +30,8 @@ namespace GDScriptFormatter
 
             if (MemberClassifier.Instance.IsTopLevelMember(prevTrimmed))
             {
-                prevGroup = MemberClassifier.Instance.ClassifyMember(prevTrimmed);
+                prevGroup =
+                    MemberClassifier.Instance.ClassifyMember(prevTrimmed);
             }
             else if (IsStandaloneAnnotation(prevTrimmed))
             {
@@ -54,10 +56,12 @@ namespace GDScriptFormatter
 
             if (prevGroup == curGroup && prevGroup != (MemberGroup)(-1))
             {
-                bool prevIsBare = MemberClassifier.Instance.IsTopLevelMember(prevTrimmed) &&
+                bool prevIsBare =
+                    MemberClassifier.Instance.IsTopLevelMember(prevTrimmed) &&
                     !IsStandaloneAnnotation(prevTrimmed);
 
-                bool curIsBare = MemberClassifier.Instance.IsTopLevelMember(curTrimmed) &&
+                bool curIsBare =
+                    MemberClassifier.Instance.IsTopLevelMember(curTrimmed) &&
                     !IsStandaloneAnnotation(curTrimmed);
 
                 bool prevIsAnnotated = IsStandaloneAnnotation(prevTrimmed);

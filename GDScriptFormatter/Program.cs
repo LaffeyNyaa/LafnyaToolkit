@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.CLI;
 
 namespace GDScriptFormatter
@@ -24,12 +25,14 @@ namespace GDScriptFormatter
         /// <summary>
         /// File extensions recognized by the GDScript formatter.
         /// </summary>
-        protected override IReadOnlyList<string> FileExtensions => new[] { "gd" };
+        protected override IReadOnlyList<string> FileExtensions =>
+            new[] { "gd" };
 
         /// <summary>
         /// GDScript-specific excluded directory names (Godot "addons" directory).
         /// </summary>
-        protected override IReadOnlyList<string> ExcludedDirectoryNames => new[] { "addons" };
+        protected override IReadOnlyList<string> ExcludedDirectoryNames =>
+            new[] { "addons" };
 
         /// <summary>
         /// Human-readable language name used in the summary.

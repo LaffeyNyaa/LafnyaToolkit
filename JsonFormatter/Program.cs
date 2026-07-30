@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+
 using LafnyaToolkit.Core.CLI;
 
 namespace JsonFormatter
@@ -14,7 +15,8 @@ namespace JsonFormatter
         /// <summary>Shared stateless instance.</summary>
         public static readonly Program Instance = new Program();
 
-        private static readonly IReadOnlyList<string> JsonExtensions = new[] { ".json" };
+        private static readonly IReadOnlyList<string> JsonExtensions =
+            new[] { ".json" };
 
         private Program()
         {
@@ -31,7 +33,8 @@ namespace JsonFormatter
         }
 
         /// <inheritdoc />
-        protected override IReadOnlyList<string> FileExtensions => JsonExtensions;
+        protected override IReadOnlyList<string> FileExtensions =>
+            JsonExtensions;
 
         /// <inheritdoc />
         protected override string LanguageName => "JSON";

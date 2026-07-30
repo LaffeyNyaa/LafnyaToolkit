@@ -1,6 +1,8 @@
 using System;
-using LafnyaToolkit.Tests;
+
 using CppFormatter;
+
+using LafnyaToolkit.Tests;
 
 namespace LafnyaToolkit.Tests.Idempotency
 {
@@ -24,17 +26,27 @@ namespace LafnyaToolkit.Tests.Idempotency
             RunCase("if with else", "if(x){a();}else{b();}");
             RunCase("while loop", "while(x>0){--x;}");
             RunCase("for loop", "for(int i=0;i<n;i++){sum+=i;}");
-            RunCase("switch case", "switch(x){case 1:a();break;case 2:b();break;default:c();break;}");
+
+            RunCase("switch case",
+                "switch(x){case 1:a();break;case 2:b();break;default:c();break;}");
             RunCase("string literal", "const char* s=\"hello\\nworld\";");
             RunCase("raw string", "auto s=R\"(multi\nline\nraw)\";");
             RunCase("char literal", "char c='a';");
             RunCase("preprocessor", "#include <iostream>\n#define MAX 100\n");
             RunCase("enum", "enum Color{Red,Green,Blue};");
-            RunCase("template", "template<typename T>T max(T a,T b){return a>b?a:b;}");
-            RunCase("include sort", "#include \"local.h\"\n#include <vector>\n#include <map>\n");
+
+            RunCase("template",
+                "template<typename T>T max(T a,T b){return a>b?a:b;}");
+
+            RunCase("include sort",
+                "#include \"local.h\"\n#include <vector>\n#include <map>\n");
             RunCase("constructor init", "Foo::Foo():x(0),y(0),name(\"a\"){}");
-            RunCase("long line", "int veryLongVariableName=someFunction(arg1,arg2,arg3,arg4,arg5,arg6);");
-            RunCase("nested namespaces", "namespace a{namespace b{namespace c{class D{};}}}");
+
+            RunCase("long line",
+                "int veryLongVariableName=someFunction(arg1,arg2,arg3,arg4,arg5,arg6);");
+
+            RunCase("nested namespaces",
+                "namespace a{namespace b{namespace c{class D{};}}}");
             RunCase("trailing whitespace", "int x=1;   \nint y=2;\t\n");
         }
 

@@ -12,7 +12,8 @@ namespace CppFormatter
     internal sealed class ContinuationScanner
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly ContinuationScanner Instance = new ContinuationScanner();
+        public static readonly ContinuationScanner Instance =
+            new ContinuationScanner();
 
         private ContinuationScanner()
         {
@@ -32,7 +33,8 @@ namespace CppFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the line ends with a continuation indicator; otherwise false.</returns>
-        public bool IsContinuationIndicator(string line, int lineStart, string text, bool[] isCode)
+        public bool IsContinuationIndicator(string line, int lineStart,
+            string text, bool[] isCode)
         {
             int lastCodeIdx = LastCodeCharIndex(line, lineStart, text, isCode);
 
@@ -43,7 +45,9 @@ namespace CppFormatter
 
             char last = line[lastCodeIdx];
 
-            if (last == ',' || last == '+' || last == '-' || last == '*' || last == '/' || last == '%' || last == '(' || last == '=' || last == '?' || last == '<' || last == '>')
+            if (last == ',' || last == '+' || last == '-' || last == '*' ||
+                last == '/' || last == '%' || last == '(' || last == '=' ||
+                last == '?' || last == '<' || last == '>')
             {
                 return true;
             }
@@ -60,7 +64,8 @@ namespace CppFormatter
 
             int prevTextPos = lineStart + lastCodeIdx - 1;
 
-            if (prevTextPos < 0 || prevTextPos >= isCode.Length || !isCode[prevTextPos])
+            if (prevTextPos < 0 || prevTextPos >= isCode.Length ||
+                !isCode[prevTextPos])
             {
                 return false;
             }
@@ -76,7 +81,8 @@ namespace CppFormatter
         /// transparently passes the continuation chain through to the
         /// preceding line.
         /// </summary>
-        public bool HasCodeChar(string line, int lineStart, string text, bool[] isCode)
+        public bool HasCodeChar(string line, int lineStart, string text,
+            bool[] isCode)
         {
             for (int i = 0; i < line.Length; i++)
             {
@@ -106,7 +112,8 @@ namespace CppFormatter
         /// skipping space/tab characters. Correctly handles trailing
         /// comments (e.g., <c>code, // comment</c>).
         /// </summary>
-        public int LastCodeCharIndex(string line, int lineStart, string text, bool[] isCode)
+        public int LastCodeCharIndex(string line, int lineStart, string text,
+            bool[] isCode)
         {
             for (int i = line.Length - 1; i >= 0; i--)
             {
@@ -146,7 +153,8 @@ namespace CppFormatter
                 return false;
             }
 
-            if (trimmed == "public:" || trimmed == "private:" || trimmed == "protected:")
+            if (trimmed == "public:" || trimmed == "private:" || trimmed ==
+                "protected:")
             {
                 return true;
             }

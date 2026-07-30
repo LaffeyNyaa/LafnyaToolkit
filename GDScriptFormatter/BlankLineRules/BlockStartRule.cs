@@ -11,7 +11,8 @@ namespace GDScriptFormatter
             string curTrimmed, bool sameIndent, bool deeperThanPrev)
         {
             if (GDScriptTextUtils.Instance.IsBlockStartLine(curTrimmed) &&
-                !MemberClassifier.Instance.IsSameGroup(prevTrimmed, curTrimmed) && sameIndent)
+                !MemberClassifier.Instance.IsSameGroup(prevTrimmed,
+                curTrimmed) && sameIndent)
             {
                 return 1;
             }

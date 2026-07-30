@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
@@ -32,7 +33,8 @@ namespace GDScriptFormatter
             bool prevIsBlockOpenBrace = prevTrimmed == "{" ||
                 prevTrimmed.EndsWith("{");
 
-            bool prevIsFileHeader = DeclarationClassifier.Instance.IsFileHeaderLine(prevTrimmed);
+            bool prevIsFileHeader =
+                DeclarationClassifier.Instance.IsFileHeaderLine(prevTrimmed);
 
             if (prevTrimmed.Length > 0 && !prevIsDocComment &&
                 !prevIsRegularComment && !prevIsBlockOpenBrace &&

@@ -76,7 +76,8 @@ namespace CppFormatter
                 return BlankLineRuleResult.None;
             }
 
-            if (CppLineClassifier.Instance.IsBlockEndLine(nonBlank[i + 1].Line.Trim()))
+            if (CppLineClassifier.Instance.IsBlockEndLine(nonBlank[i +
+                1].Line.Trim()))
             {
                 return BlankLineRuleResult.None;
             }

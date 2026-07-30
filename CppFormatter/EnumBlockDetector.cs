@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -13,7 +14,8 @@ namespace CppFormatter
     internal sealed class EnumBlockDetector
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly EnumBlockDetector Instance = new EnumBlockDetector();
+        public static readonly EnumBlockDetector Instance =
+            new EnumBlockDetector();
 
         private EnumBlockDetector()
         {
@@ -22,7 +24,8 @@ namespace CppFormatter
         /// <summary>
         /// Computes whether each line lies inside an enum block.
         /// </summary>
-        public bool[] ComputeInEnumBlock(List<string> lines, string text, bool[] isCode)
+        public bool[] ComputeInEnumBlock(List<string> lines, string text,
+            bool[] isCode)
         {
             var inEnumBlock = new bool[lines.Count];
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
@@ -42,7 +45,8 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) && TextUtils.MatchesWord(text, i, "enum"))
+                if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i -
+                    1])) && TextUtils.MatchesWord(text, i, "enum"))
                 {
                     pendingEnum = true;
                 }
@@ -69,7 +73,9 @@ namespace CppFormatter
 
                     if (enumDepth >= 0 && depth < enumDepth)
                     {
-                        enumRanges.Add(new KeyValuePair<int, int>(enumStart, i));
+                        enumRanges.Add(new KeyValuePair<int, int>(enumStart,
+                            i));
+
                         enumStart = -1;
                         enumDepth = -1;
                     }
@@ -84,7 +90,8 @@ namespace CppFormatter
             {
                 for (int i = 0; i < lines.Count; i++)
                 {
-                    if (lineStarts[i] > range.Key && lineStarts[i] <= range.Value)
+                    if (lineStarts[i] > range.Key && lineStarts[i] <=
+                        range.Value)
                     {
                         inEnumBlock[i] = true;
                     }

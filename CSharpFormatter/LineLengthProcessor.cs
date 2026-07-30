@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -11,7 +12,8 @@ namespace CSharpFormatter
     internal sealed class LineLengthProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly LineLengthProcessor Instance = new LineLengthProcessor();
+        public static readonly LineLengthProcessor Instance =
+            new LineLengthProcessor();
 
         private LineLengthProcessor()
         {
@@ -116,7 +118,10 @@ namespace CSharpFormatter
             }
 
             var tokens = CSharpTokenizer.Instance.Tokenize(line);
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line, tokens);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line,
+                tokens);
+
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
 
             if (breakAt < 0 || breakAt >= line.Length)

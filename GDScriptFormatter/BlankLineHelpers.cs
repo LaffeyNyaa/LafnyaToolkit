@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
@@ -79,13 +80,21 @@ namespace GDScriptFormatter
             }
 
             string rest = trimmed.Substring(spaceIdx + 1).TrimStart();
-            return !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "var") &&
-                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "func") &&
-                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "signal") &&
-                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "const") &&
-                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "enum") &&
-                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "class") &&
-                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest, "static");
+
+            return !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "var") &&
+                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "func") &&
+                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "signal") &&
+                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "const") &&
+                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "enum") &&
+                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "class") &&
+                !LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(rest,
+                "static");
         }
 
         /// <summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -16,7 +17,6 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CppTextUtils Instance = new CppTextUtils();
-
         private CppTextUtils()
         {
         }
@@ -100,7 +100,8 @@ namespace CppFormatter
         /// <returns>True if the line is an access specifier.</returns>
         public bool IsAccessSpecifier(string trimmed)
         {
-            return trimmed == "public:" || trimmed == "protected:" || trimmed == "private:";
+            return trimmed == "public:" || trimmed == "protected:" || trimmed ==
+                "private:";
         }
 
         /// <summary>
@@ -150,7 +151,10 @@ namespace CppFormatter
 
             string beforeInit = s.Substring(0, initPos);
             return TextUtils.IsPureIdentifier(beforeInit)
-                || (beforeInit.EndsWith("_") && beforeInit.Length > 1 && TextUtils.IsPureIdentifier(beforeInit.Substring(0, beforeInit.Length - 1)));
+
+            || (beforeInit.EndsWith("_") && beforeInit.Length > 1 &&
+                TextUtils.IsPureIdentifier(beforeInit.Substring(0,
+                beforeInit.Length - 1)));
         }
     }
 }

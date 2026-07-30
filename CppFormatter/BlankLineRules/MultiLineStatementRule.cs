@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -114,7 +115,9 @@ namespace CppFormatter
             if (trimmed.EndsWith(";"))
             {
                 int curIndent = nonBlank[i].Line.Length - trimmed.Length;
-                int prevContinuationIndent = nonBlank[i - 1].Line.Length - nonBlank[i - 1].Line.TrimStart().Length;
+
+                int prevContinuationIndent = nonBlank[i - 1].Line.Length -
+                    nonBlank[i - 1].Line.TrimStart().Length;
 
                 if (curIndent >= prevContinuationIndent)
                 {

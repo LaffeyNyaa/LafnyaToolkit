@@ -51,7 +51,9 @@ namespace CppFormatter
             }
 
             int lastIndent = lastLine.Length - lastLine.TrimStart().Length;
-            int returnIndent = nonBlank[i].Line.Length - nonBlank[i].Line.TrimStart().Length;
+
+            int returnIndent = nonBlank[i].Line.Length -
+                nonBlank[i].Line.TrimStart().Length;
 
             if (lastIndent == returnIndent)
             {

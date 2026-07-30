@@ -16,7 +16,8 @@ namespace CppFormatter
         private const int MaxNesting = 32;
 
         /// <summary>Shared stateless instance.</summary>
-        public static readonly EndifCommentProcessor Instance = new EndifCommentProcessor();
+        public static readonly EndifCommentProcessor Instance =
+            new EndifCommentProcessor();
 
         private EndifCommentProcessor()
         {
@@ -31,7 +32,10 @@ namespace CppFormatter
         public string AppendEndifComments(string source)
         {
             string[] lines = source.Split('\n');
-            var stack = new System.Collections.Generic.Stack<string>(MaxNesting);
+
+            var stack = new System.Collections.Generic.Stack<string>
+                (MaxNesting);
+
             var result = new StringBuilder(source.Length);
 
             for (int i = 0; i < lines.Length; i++)
@@ -57,7 +61,8 @@ namespace CppFormatter
                         stack.Push(macro);
                     }
                 }
-                else if (trimmed.StartsWith("#if") && !trimmed.StartsWith("#ifdef"))
+                else if (trimmed.StartsWith("#if") &&
+                    !trimmed.StartsWith("#ifdef"))
                 {
                     string macro = ExtractMacroName(trimmed, "#if");
 
@@ -118,7 +123,8 @@ namespace CppFormatter
                 return ReadIdentifier(trimmed, ref pos);
             }
 
-            while (pos < trimmed.Length && (trimmed[pos] == '!' || trimmed[pos] == '('))
+            while (pos < trimmed.Length && (trimmed[pos] == '!' ||
+                trimmed[pos] == '('))
             {
                 pos++;
             }
@@ -133,11 +139,13 @@ namespace CppFormatter
                 return null;
             }
 
-            if (pos + 7 <= trimmed.Length && trimmed.Substring(pos, 7) == "defined")
+            if (pos + 7 <= trimmed.Length && trimmed.Substring(pos, 7) ==
+                "defined")
             {
                 pos += 7;
 
-                while (pos < trimmed.Length && (char.IsWhiteSpace(trimmed[pos]) || trimmed[pos] == '('))
+                while (pos < trimmed.Length &&
+                    (char.IsWhiteSpace(trimmed[pos]) || trimmed[pos] == '('))
                 {
                     pos++;
                 }
@@ -156,7 +164,8 @@ namespace CppFormatter
         {
             int start = pos;
 
-            while (pos < text.Length && (char.IsLetterOrDigit(text[pos]) || text[pos] == '_'))
+            while (pos < text.Length && (char.IsLetterOrDigit(text[pos]) ||
+                text[pos] == '_'))
             {
                 pos++;
             }

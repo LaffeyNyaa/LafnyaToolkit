@@ -11,7 +11,8 @@ namespace GDScriptFormatter
             string curTrimmed, bool deeperThanPrev)
         {
             if (DeclarationClassifier.Instance.IsFileHeaderLine(prevTrimmed) &&
-                !DeclarationClassifier.Instance.IsFileHeaderLine(curTrimmed) && !deeperThanPrev)
+                !DeclarationClassifier.Instance.IsFileHeaderLine(curTrimmed) &&
+                !deeperThanPrev)
             {
                 return 1;
             }

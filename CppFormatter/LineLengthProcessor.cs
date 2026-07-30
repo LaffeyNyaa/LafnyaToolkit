@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -16,7 +17,8 @@ namespace CppFormatter
     internal sealed class LineLengthProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly LineLengthProcessor Instance = new LineLengthProcessor();
+        public static readonly LineLengthProcessor Instance =
+            new LineLengthProcessor();
 
         private LineLengthProcessor()
         {
@@ -40,11 +42,18 @@ namespace CppFormatter
         /// <param name="preTokens">Pre-computed tokens of <paramref name="text"/> (optional).</param>
         /// <param name="preIsCode">Pre-computed code mask of <paramref name="text"/> (optional).</param>
         /// <returns>The processed line list.</returns>
-        public List<string> ApplyLineLengthLimit(List<string> lines, string text, bool[] lineContinuesNext, List<Token> preTokens = null, bool[] preIsCode = null)
+        public List<string> ApplyLineLengthLimit(List<string> lines,
+            string text, bool[] lineContinuesNext, List<Token> preTokens = null,
+            bool[] preIsCode = null)
         {
             var tokens = preTokens ?? CppTokenizer.Instance.Tokenize(text);
-            bool[] isCode = preIsCode ?? CppTokenizer.Instance.BuildCodeMask(text, tokens);
-            bool[] protectedLines = CppTokenizer.Instance.ComputeProtectedLines(text, tokens, lines.Count);
+
+            bool[] isCode =
+                preIsCode ?? CppTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] protectedLines =
+                CppTokenizer.Instance.ComputeProtectedLines(text, tokens,
+                lines.Count);
 
             var result = new List<string>(lines.Count);
 
@@ -65,9 +74,13 @@ namespace CppFormatter
                 }
 
                 string line = lines[i];
-                bool isContinuation = lineContinuesNext != null && i > 0 && i - 1 < lineContinuesNext.Length && lineContinuesNext[i - 1];
 
-                if (!isContinuation && TryUnwrapStreamChain(lines, line, i, out var unwrapped) && unwrapped.Length > TextUtils.MaxLineLength)
+                bool isContinuation = lineContinuesNext != null && i > 0 && i -
+                    1 < lineContinuesNext.Length && lineContinuesNext[i - 1];
+
+                if (!isContinuation && TryUnwrapStreamChain(lines, line, i,
+                    out var unwrapped) && unwrapped.Length >
+                    TextUtils.MaxLineLength)
                 {
                     var split = SplitLongLine(unwrapped, null, null);
                     result.AddRange(split);
@@ -120,7 +133,8 @@ namespace CppFormatter
         /// baseIndent so that trailing doc comments (<c>/**&lt;</c>)
         /// use the correct indent.
         /// </summary>
-        private List<string> SplitLongLine(string line, string fixedContIndent, string baseIndent)
+        private List<string> SplitLongLine(string line, string fixedContIndent,
+            string baseIndent)
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -149,11 +163,15 @@ namespace CppFormatter
             var tokens = CppTokenizer.Instance.Tokenize(line);
             bool[] isCode = CppTokenizer.Instance.BuildCodeMask(line, tokens);
 
-            if (OperatorBreakPolicy.Instance.HasStreamOperators(line, indentLen, out var streamPositions))
+            if (OperatorBreakPolicy.Instance.HasStreamOperators(line, indentLen,
+                out var streamPositions))
             {
-                var streamResult = OperatorBreakPolicy.Instance.SplitAtStreamOperators(line, streamPositions, fixedContIndent, baseIndent);
+                var streamResult =
+                    OperatorBreakPolicy.Instance.SplitAtStreamOperators(line,
+                    streamPositions, fixedContIndent, baseIndent);
 
-                if (streamResult.Count > 0 && streamResult[0].Length > TextUtils.MaxLineLength)
+                if (streamResult.Count > 0 && streamResult[0].Length >
+                    TextUtils.MaxLineLength)
                 {
                     var split = SplitLongLine(streamResult[0], null, null);
                     streamResult.RemoveAt(0);
@@ -163,11 +181,15 @@ namespace CppFormatter
                 return streamResult;
             }
 
-            if (OperatorBreakPolicy.Instance.HasBinaryOperators(line, isCode, indentLen, out var binaryPositions))
+            if (OperatorBreakPolicy.Instance.HasBinaryOperators(line, isCode,
+                indentLen, out var binaryPositions))
             {
-                var binaryResult = OperatorBreakPolicy.Instance.SplitAtBinaryOperators(line, binaryPositions, fixedContIndent, baseIndent);
+                var binaryResult =
+                    OperatorBreakPolicy.Instance.SplitAtBinaryOperators(line,
+                    binaryPositions, fixedContIndent, baseIndent);
 
-                if (binaryResult.Count > 0 && binaryResult[0].Length > TextUtils.MaxLineLength)
+                if (binaryResult.Count > 0 && binaryResult[0].Length >
+                    TextUtils.MaxLineLength)
                 {
                     var split = SplitLongLine(binaryResult[0], null, null);
                     binaryResult.RemoveAt(0);
@@ -177,7 +199,8 @@ namespace CppFormatter
                 return binaryResult;
             }
 
-            int breakAt = OperatorBreakPolicy.Instance.FindSafeBreakPoint(line, isCode, indentLen);
+            int breakAt = OperatorBreakPolicy.Instance.FindSafeBreakPoint(line,
+                isCode, indentLen);
 
             if (breakAt < 0 || breakAt >= line.Length)
             {
@@ -186,16 +209,19 @@ namespace CppFormatter
 
             if (fixedContIndent == null)
             {
-                if (OperatorBreakPolicy.Instance.IsSemicolonBreak(line, isCode, breakAt))
+                if (OperatorBreakPolicy.Instance.IsSemicolonBreak(line, isCode,
+                    breakAt))
                 {
                     fixedContIndent = indent;
                 }
                 else
                 {
-                    fixedContIndent = indent + new string(' ', TextUtils.IndentSize);
+                    fixedContIndent = indent + new string(' ',
+                        TextUtils.IndentSize);
                 }
             }
-            else if (OperatorBreakPolicy.Instance.IsSemicolonBreak(line, isCode, breakAt))
+            else if (OperatorBreakPolicy.Instance.IsSemicolonBreak(line, isCode,
+                breakAt))
             {
                 fixedContIndent = baseIndent;
             }
@@ -221,7 +247,8 @@ namespace CppFormatter
         /// continuation lines into a single unwrapped expression
         /// string returned via <paramref name="unwrapped"/>.
         /// </summary>
-        private static bool TryUnwrapStreamChain(List<string> lines, string line, int startIndex, out string unwrapped)
+        private static bool TryUnwrapStreamChain(List<string> lines,
+            string line, int startIndex, out string unwrapped)
         {
             string trimmed = line.TrimEnd();
 
@@ -231,7 +258,8 @@ namespace CppFormatter
                 return false;
             }
 
-            if (!(trimmed[trimmed.Length - 2] == '<' && trimmed[trimmed.Length - 1] == '<'))
+            if (!(trimmed[trimmed.Length - 2] == '<' && trimmed[trimmed.Length -
+                1] == '<'))
             {
                 unwrapped = null;
                 return false;
@@ -252,7 +280,8 @@ namespace CppFormatter
 
             char pc = trimmed[lastCodeIdx];
 
-            if (!(pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) || pc == '_' || pc == '"' || pc == '\''))
+            if (!(pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) || pc ==
+                '_' || pc == '"' || pc == '\''))
             {
                 unwrapped = null;
                 return false;
@@ -284,7 +313,8 @@ namespace CppFormatter
 
                 if (nextTrimmed.EndsWith("<<") && nextTrimmed.Length >= 2)
                 {
-                    nextTrimmed = nextTrimmed.Substring(0, nextTrimmed.Length - 2).TrimEnd();
+                    nextTrimmed = nextTrimmed.Substring(0, nextTrimmed.Length -
+                        2).TrimEnd();
                 }
 
                 parts.Add(nextTrimmed.TrimStart());
@@ -330,7 +360,8 @@ namespace CppFormatter
         /// Uses indent-based detection (continuation has greater indent
         /// than the first line of the chain).
         /// </summary>
-        private static void SkipContinuationLines(List<string> lines, bool[] lineContinuesNext, ref int i)
+        private static void SkipContinuationLines(List<string> lines,
+            bool[] lineContinuesNext, ref int i)
         {
             int indentLen = CountLeadingSpaces(lines[i]);
 

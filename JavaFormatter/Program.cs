@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.CLI;
 using LafnyaToolkit.Core.Text;
 
@@ -11,11 +12,11 @@ namespace JavaFormatter
     /// </summary>
     public sealed class Program : ProgramBase
     {
-        private static readonly IReadOnlyList<string> JavaExtensions = new[] { ".java" };
+        private static readonly IReadOnlyList<string> JavaExtensions =
+            new[] { ".java" };
 
         /// <summary>Shared stateless instance.</summary>
         public static readonly Program Instance = new Program();
-
         private Program()
         {
         }
@@ -31,7 +32,8 @@ namespace JavaFormatter
         }
 
         /// <inheritdoc />
-        protected override IReadOnlyList<string> FileExtensions => JavaExtensions;
+        protected override IReadOnlyList<string> FileExtensions =>
+            JavaExtensions;
 
         /// <inheritdoc />
         protected override string LanguageName => "Java";

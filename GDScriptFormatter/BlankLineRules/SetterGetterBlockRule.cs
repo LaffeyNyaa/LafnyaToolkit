@@ -43,7 +43,8 @@ namespace GDScriptFormatter
                 return false;
             }
 
-            MemberGroup memberType = MemberClassifier.Instance.ClassifyMember(trimmed);
+            MemberGroup memberType =
+                MemberClassifier.Instance.ClassifyMember(trimmed);
 
             if (memberType == MemberGroup.Export || memberType ==
                 MemberGroup.RegularVar || memberType == MemberGroup.Onready ||
@@ -52,7 +53,8 @@ namespace GDScriptFormatter
                 return true;
             }
 
-            if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, "var"))
+            if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed,
+                "var"))
             {
                 return true;
             }

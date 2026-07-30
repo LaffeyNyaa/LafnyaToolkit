@@ -1,4 +1,5 @@
 using System;
+
 using LafnyaToolkit.Core.IO;
 using LafnyaToolkit.Core.Text;
 
@@ -18,13 +19,14 @@ namespace CppFormatter
     internal sealed class CppLineClassifier : LineClassifierBase
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly CppLineClassifier Instance = new CppLineClassifier();
+        public static readonly CppLineClassifier Instance =
+            new CppLineClassifier();
 
         private static readonly string[] CppBlockStartKeywords =
-        {
+            {
             "namespace", "struct", "switch", "catch", "class", "while",
-            "union", "enum", "else", "for", "try", "do", "if"
-        };
+                "union", "enum", "else", "for", "try", "do", "if"
+            };
 
         private CppLineClassifier()
         {
@@ -43,7 +45,8 @@ namespace CppFormatter
         /// <returns>True if the line introduces a brace-delimited block.</returns>
         public override bool IsBlockStartLine(string trimmed)
         {
-            if (string.IsNullOrEmpty(trimmed) || trimmed == "{" || trimmed.EndsWith(";", StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(trimmed) || trimmed == "{" ||
+                trimmed.EndsWith(";", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -75,12 +78,15 @@ namespace CppFormatter
 
             string afterBrace = trimmed.Substring(1).TrimStart();
 
-            if (afterBrace.Length == 0 || afterBrace == ";" || afterBrace.StartsWith("//", StringComparison.Ordinal) || afterBrace.StartsWith("/*", StringComparison.Ordinal))
+            if (afterBrace.Length == 0 || afterBrace == ";" ||
+                afterBrace.StartsWith("//", StringComparison.Ordinal) ||
+                afterBrace.StartsWith("/*", StringComparison.Ordinal))
             {
                 return true;
             }
 
-            if (TextUtils.StartsWithKeyword(afterBrace, "else") || TextUtils.StartsWithKeyword(afterBrace, "catch"))
+            if (TextUtils.StartsWithKeyword(afterBrace, "else") ||
+                TextUtils.StartsWithKeyword(afterBrace, "catch"))
             {
                 return false;
             }

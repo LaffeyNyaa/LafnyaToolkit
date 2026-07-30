@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -11,7 +12,6 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
-
         private Formatter()
         {
         }
@@ -43,7 +43,9 @@ namespace GDScriptFormatter
             bool[] isCode = ComputeTokensAndMask(text, out var tokens);
 
             var lines = TextUtils.SplitLines(text);
-            lines = IndentationProcessor.Instance.Reindent(lines, text, tokens, isCode);
+
+            lines = IndentationProcessor.Instance.Reindent(lines, text, tokens,
+                isCode);
 
             string textForLimit = string.Join("\n", lines);
 
@@ -53,7 +55,8 @@ namespace GDScriptFormatter
             int[] lineStartsForLimit =
                 IndentationProcessor.Instance.ComputeLineStarts(lines);
 
-            var lineInfoForLimit = IndentationProcessor.Instance.ComputeLineInfo(lines,
+            var lineInfoForLimit =
+                IndentationProcessor.Instance.ComputeLineInfo(lines,
                 textForLimit,
                 isCodeForLimit, lineStartsForLimit);
 
@@ -66,7 +69,6 @@ namespace GDScriptFormatter
             }
 
             CollapseWrappedExpressions(lines);
-
             {
                 var postCollapseText = string.Join("\n", lines);
 
@@ -117,7 +119,8 @@ namespace GDScriptFormatter
                 IndentationProcessor.Instance.ComputeLineStarts(lines);
 
             var postSplitLineInfo =
-                IndentationProcessor.Instance.ComputeLineInfo(lines, postSplitText,
+                IndentationProcessor.Instance.ComputeLineInfo(lines,
+                postSplitText,
                 postSplitIsCode, postSplitLineStarts);
 
             var postSplitContinues = new bool[lines.Count];

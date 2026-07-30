@@ -12,7 +12,6 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
-
         private Formatter()
         {
         }
@@ -37,8 +36,12 @@ namespace CSharpFormatter
             text = CSharpTextUtils.Instance.MoveOpenBraceToOwnLine(text);
             var lines = TextUtils.SplitLines(text);
             var tokenized = CSharpTokenizer.Instance.Tokenize(text);
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokenized);
-            bool[] isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines, isCode);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text,
+                tokenized);
+
+            bool[] isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines,
+                isCode);
 
             lines = IndentationProcessor.Instance.Reindent(lines, text,
                 tokenized, isCode, isCodeLine);
@@ -46,12 +49,16 @@ namespace CSharpFormatter
             text = string.Join("\n", lines);
             tokenized = CSharpTokenizer.Instance.Tokenize(text);
             isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokenized);
-            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            int[] lineStarts =
+                CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
             var preSplitContinues = new bool[lines.Count];
 
             for (int i = 0; i < lines.Count; i++)
             {
-                preSplitContinues[i] = LineClassifier.Instance.IsContinuationIndicator(
+                preSplitContinues[i] =
+                    LineClassifier.Instance.IsContinuationIndicator(
                     lines[i], lineStarts[i], text, isCode);
             }
 
@@ -61,14 +68,18 @@ namespace CSharpFormatter
             text = string.Join("\n", lines);
             tokenized = CSharpTokenizer.Instance.Tokenize(text);
             isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokenized);
-            isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines, isCode);
+
+            isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines,
+                isCode);
+
             lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
             var lineContinuesNext = new bool[lines.Count];
             var lineEndsStatement = new bool[lines.Count];
 
             for (int i = 0; i < lines.Count; i++)
             {
-                lineContinuesNext[i] = LineClassifier.Instance.IsContinuationIndicator(
+                lineContinuesNext[i] =
+                    LineClassifier.Instance.IsContinuationIndicator(
                     lines[i], lineStarts[i], text, isCode);
 
                 lineEndsStatement[i] = LineClassifier.Instance.EndsStatement(

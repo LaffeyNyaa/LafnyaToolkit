@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace CSharpFormatter
@@ -16,7 +17,6 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CSharpTokenizer Instance = new CSharpTokenizer();
-
         private CSharpTokenizer()
         {
         }
@@ -30,7 +30,8 @@ namespace CSharpFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position, out Token token)
+        protected override int ScanNextToken(string source, int position,
+            out Token token)
         {
             token = default(Token);
             int n = source.Length;
@@ -45,7 +46,9 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.SingleLineComment, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.SingleLineComment,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -56,7 +59,8 @@ namespace CSharpFormatter
 
                 while (position < n)
                 {
-                    if (source[position] == '*' && position + 1 < n && source[position + 1] == '/')
+                    if (source[position] == '*' && position + 1 < n &&
+                        source[position + 1] == '/')
                     {
                         position += 2;
                         break;
@@ -65,12 +69,16 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.MultiLineComment, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.MultiLineComment,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
-            if ((c == '$' && position + 1 < n && source[position + 1] == '@' && position + 2 < n && source[position + 2] == '"') ||
-                (c == '@' && position + 1 < n && source[position + 1] == '$' && position + 2 < n && source[position + 2] == '"'))
+            if ((c == '$' && position + 1 < n && source[position + 1] == '@' &&
+                position + 2 < n && source[position + 2] == '"') ||
+                (c == '@' && position + 1 < n && source[position + 1] == '$' &&
+                position + 2 < n && source[position + 2] == '"'))
             {
                 int start = position;
                 position += 3;
@@ -78,7 +86,8 @@ namespace CSharpFormatter
 
                 while (position < n)
                 {
-                    if (source[position] == '"' && position + 1 < n && source[position + 1] == '"')
+                    if (source[position] == '"' && position + 1 < n &&
+                        source[position + 1] == '"')
                     {
                         position += 2;
                         continue;
@@ -104,11 +113,14 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.InterpolatedVerbatimString, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.InterpolatedVerbatimString,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
-            if (c == '@' && position + 1 < n && source[position + 1] == '"' && (position + 2 >= n || source[position + 2] != '$'))
+            if (c == '@' && position + 1 < n && source[position + 1] == '"' &&
+                (position + 2 >= n || source[position + 2] != '$'))
             {
                 int start = position;
                 position += 2;
@@ -130,7 +142,9 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.VerbatimString, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.VerbatimString,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -168,7 +182,9 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.InterpolatedString, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.InterpolatedString,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -202,7 +218,9 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.String, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.String, source.Substring(start,
+                    position - start), start);
+
                 return position - start;
             }
 
@@ -236,7 +254,9 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.Char, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.Char, source.Substring(start,
+                    position - start), start);
+
                 return position - start;
             }
 
@@ -246,13 +266,16 @@ namespace CSharpFormatter
 
                 while (position < n)
                 {
-                    if (source[position] == '\\' && position + 1 < n && source[position + 1] == '\n')
+                    if (source[position] == '\\' && position + 1 < n &&
+                        source[position + 1] == '\n')
                     {
                         position += 2;
                         continue;
                     }
 
-                    if (source[position] == '\\' && position + 2 < n && source[position + 1] == '\r' && source[position + 2] == '\n')
+                    if (source[position] == '\\' && position + 2 < n &&
+                        source[position + 1] == '\r' && source[position + 2] ==
+                        '\n')
                     {
                         position += 3;
                         continue;
@@ -266,7 +289,9 @@ namespace CSharpFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.Preprocessor, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.Preprocessor,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 

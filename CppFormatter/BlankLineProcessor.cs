@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -16,7 +17,8 @@ namespace CppFormatter
     internal sealed partial class BlankLineProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly BlankLineProcessor Instance = new BlankLineProcessor();
+        public static readonly BlankLineProcessor Instance =
+            new BlankLineProcessor();
 
         private BlankLineProcessor()
         {
@@ -37,7 +39,11 @@ namespace CppFormatter
             string text)
         {
             var tokens = CppTokenizer.Instance.Tokenize(text);
-            bool[] protectedLines = CppTokenizer.Instance.ComputeProtectedLines(text, tokens, lines.Count);
+
+            bool[] protectedLines =
+                CppTokenizer.Instance.ComputeProtectedLines(text, tokens,
+                lines.Count);
+
             var nonBlank = new List<CppNonBlankEntry>(lines.Count);
             bool prevWasBlank = false;
             bool isFirst = true;
@@ -45,7 +51,9 @@ namespace CppFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
-                bool isProtected = i < protectedLines.Length && protectedLines[i];
+
+                bool isProtected = i < protectedLines.Length &&
+                    protectedLines[i];
 
                 if (line.Trim().Length == 0 && !isProtected)
                 {
@@ -54,7 +62,10 @@ namespace CppFormatter
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
-                nonBlank.Add(new CppNonBlankEntry(hadBlankAbove, line, isProtected));
+
+                nonBlank.Add(new CppNonBlankEntry(hadBlankAbove, line,
+                    isProtected));
+
                 prevWasBlank = false;
                 isFirst = false;
             }
@@ -67,6 +78,7 @@ namespace CppFormatter
             {
                 string line = nonBlank[i].Line;
                 string trimmed = line.Trim();
+
                 bool isFunctionParamListEnd = trimmed.Contains(")") &&
                     trimmed.EndsWith("{") &&
                     !CppLineClassifier.Instance.IsBlockStartLine(trimmed) &&
@@ -113,7 +125,8 @@ namespace CppFormatter
         /// they end with <c>{</c> or <c>;</c> or are block-start/
         /// block-end lines.
         /// </summary>
-        private static bool[] ComputeContinuationFlags(List<CppNonBlankEntry> nonBlank)
+        private static bool[] ComputeContinuationFlags(List<CppNonBlankEntry>
+            nonBlank)
         {
             bool[] isContinuation = new bool[nonBlank.Count];
 
@@ -121,7 +134,10 @@ namespace CppFormatter
             {
                 string curTrimmed = nonBlank[j].Line.Trim();
                 int curIndent = nonBlank[j].Line.Length - curTrimmed.Length;
-                int prevIndent = nonBlank[j - 1].Line.Length - nonBlank[j - 1].Line.TrimStart().Length;
+
+                int prevIndent = nonBlank[j - 1].Line.Length - nonBlank[j -
+                    1].Line.TrimStart().Length;
+
                 string prevTrimmed = nonBlank[j - 1].Line.Trim();
 
                 if (curIndent >= prevIndent + TextUtils.IndentSize &&
@@ -161,7 +177,11 @@ namespace CppFormatter
             string text)
         {
             var tokens = CppTokenizer.Instance.Tokenize(text);
-            bool[] protectedLines = CppTokenizer.Instance.ComputeProtectedLines(text, tokens, lines.Count);
+
+            bool[] protectedLines =
+                CppTokenizer.Instance.ComputeProtectedLines(text, tokens,
+                lines.Count);
+
             var result = new List<string>(lines.Count);
             int blankRun = 0;
 
@@ -208,7 +228,11 @@ namespace CppFormatter
         {
             var tokens = CppTokenizer.Instance.Tokenize(text);
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
-            bool[] endsInside = CppTokenizer.Instance.ComputeLineEndsInsideToken(text, tokens, lineStarts, lines);
+
+            bool[] endsInside =
+                CppTokenizer.Instance.ComputeLineEndsInsideToken(text, tokens,
+                lineStarts, lines);
+
             var result = new List<string>(lines.Count);
 
             for (int i = 0; i < lines.Count; i++)

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter
@@ -11,7 +12,8 @@ namespace GDScriptFormatter
     public sealed partial class IndentationProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+        public static readonly IndentationProcessor Instance =
+            new IndentationProcessor();
 
         private IndentationProcessor()
         {

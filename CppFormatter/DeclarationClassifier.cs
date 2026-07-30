@@ -11,7 +11,8 @@ namespace CppFormatter
     internal sealed class DeclarationClassifier
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly DeclarationClassifier Instance = new DeclarationClassifier();
+        public static readonly DeclarationClassifier Instance =
+            new DeclarationClassifier();
 
         private DeclarationClassifier()
         {
@@ -39,16 +40,22 @@ namespace CppFormatter
             }
 
             int parenPos = scanTrimmed.LastIndexOf(')');
-            string beforeParen = parenPos > 0 ? scanTrimmed.Substring(0, parenPos).TrimEnd() : "";
+
+            string beforeParen = parenPos > 0 ? scanTrimmed.Substring(0,
+                parenPos).TrimEnd() : "";
 
             if (beforeParen.EndsWith("("))
             {
-                beforeParen = beforeParen.Substring(0, beforeParen.Length - 1).TrimEnd();
+                beforeParen = beforeParen.Substring(0, beforeParen.Length -
+                    1).TrimEnd();
             }
 
             if (beforeParen.Length == 0)
             {
-                return TextUtils.StartsWithKeyword(scanTrimmed, "void") || TextUtils.StartsWithKeyword(scanTrimmed, "int") || TextUtils.StartsWithKeyword(scanTrimmed, "auto") || TextUtils.StartsWithKeyword(scanTrimmed, "bool");
+                return TextUtils.StartsWithKeyword(scanTrimmed, "void") ||
+                    TextUtils.StartsWithKeyword(scanTrimmed, "int") ||
+                    TextUtils.StartsWithKeyword(scanTrimmed, "auto") ||
+                    TextUtils.StartsWithKeyword(scanTrimmed, "bool");
             }
 
             char lastChar = beforeParen[beforeParen.Length - 1];
@@ -68,12 +75,32 @@ namespace CppFormatter
                 return false;
             }
 
-            if (scanTrimmed.StartsWith("std::") || scanTrimmed.StartsWith("const ") || scanTrimmed.StartsWith("const&") || scanTrimmed.StartsWith("typename ") || TextUtils.StartsWithKeyword(scanTrimmed, "const") || scanTrimmed.Contains("std::"))
+            if (scanTrimmed.StartsWith("std::") ||
+                scanTrimmed.StartsWith("const ") ||
+                scanTrimmed.StartsWith("const&") ||
+                scanTrimmed.StartsWith("typename ") ||
+                TextUtils.StartsWithKeyword(scanTrimmed, "const") ||
+                scanTrimmed.Contains("std::"))
             {
                 return false;
             }
 
-            bool hasReturnType = TextUtils.StartsWithKeyword(beforeParen, "void") || TextUtils.StartsWithKeyword(beforeParen, "int") || TextUtils.StartsWithKeyword(beforeParen, "auto") || TextUtils.StartsWithKeyword(beforeParen, "bool") || TextUtils.StartsWithKeyword(beforeParen, "char") || TextUtils.StartsWithKeyword(beforeParen, "double") || TextUtils.StartsWithKeyword(beforeParen, "float") || TextUtils.StartsWithKeyword(beforeParen, "size_t") || beforeParen.StartsWith("void ") || beforeParen.StartsWith("int ") || beforeParen.StartsWith("auto ") || beforeParen.StartsWith("bool ") || beforeParen.StartsWith("char ") || beforeParen.StartsWith("double ") || beforeParen.StartsWith("float ") || beforeParen.StartsWith("size_t ");
+            bool hasReturnType = TextUtils.StartsWithKeyword(beforeParen,
+                "void") || TextUtils.StartsWithKeyword(beforeParen, "int") ||
+                TextUtils.StartsWithKeyword(beforeParen, "auto") ||
+                TextUtils.StartsWithKeyword(beforeParen, "bool") ||
+                TextUtils.StartsWithKeyword(beforeParen, "char") ||
+                TextUtils.StartsWithKeyword(beforeParen, "double") ||
+                TextUtils.StartsWithKeyword(beforeParen, "float") ||
+                TextUtils.StartsWithKeyword(beforeParen, "size_t") ||
+                beforeParen.StartsWith("void ") ||
+                beforeParen.StartsWith("int ") ||
+                beforeParen.StartsWith("auto ") ||
+                beforeParen.StartsWith("bool ") ||
+                beforeParen.StartsWith("char ") ||
+                beforeParen.StartsWith("double ") ||
+                beforeParen.StartsWith("float ") ||
+                beforeParen.StartsWith("size_t ");
 
             if (!hasReturnType)
             {

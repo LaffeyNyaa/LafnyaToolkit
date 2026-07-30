@@ -11,7 +11,8 @@ namespace GDScriptFormatter
     public sealed class BracketDepthTracker
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly BracketDepthTracker Instance = new BracketDepthTracker();
+        public static readonly BracketDepthTracker Instance =
+            new BracketDepthTracker();
 
         private BracketDepthTracker()
         {

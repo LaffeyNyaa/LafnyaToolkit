@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Tokenization;
 
 namespace GDScriptFormatter
@@ -14,7 +15,8 @@ namespace GDScriptFormatter
     public sealed class GDScriptTokenizer : TokenizerBase
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly GDScriptTokenizer Instance = new GDScriptTokenizer();
+        public static readonly GDScriptTokenizer Instance =
+            new GDScriptTokenizer();
 
         private GDScriptTokenizer()
         {
@@ -78,6 +80,7 @@ namespace GDScriptFormatter
         private static bool IsTripleQuoteOpen(string source, int i, int n)
         {
             char c = source[i];
+
             return (c == '"' || c == '\'') && i + 2 < n &&
                 source[i + 1] == c && source[i + 2] == c;
         }
@@ -112,6 +115,7 @@ namespace GDScriptFormatter
 
             token = new Token(TokenKind.VerbatimString,
                 source.Substring(start, i - start), start);
+
             return i - start;
         }
 
@@ -164,6 +168,7 @@ namespace GDScriptFormatter
 
             token = new Token(TokenKind.String,
                 source.Substring(start, i - start), start);
+
             return i - start;
         }
 
@@ -188,6 +193,7 @@ namespace GDScriptFormatter
 
             token = new Token(TokenKind.SingleLineComment,
                 source.Substring(start, i - start), start);
+
             return i - start;
         }
 

@@ -11,10 +11,10 @@ namespace JavaFormatter
     {
         /// <summary>Run order: add-blank rules first, suppress rules last.</summary>
         public static readonly string[] RunOrder =
-        {
+            {
             "BlockStart", "BlockEnd", "ConsecutiveImports",
-            "ImportAfterPackage", "DocComment", "PlainStatement",
-            "SuppressBlankAbove"
+                "ImportAfterPackage", "DocComment", "PlainStatement",
+                "SuppressBlankAbove"
         };
     }
 }

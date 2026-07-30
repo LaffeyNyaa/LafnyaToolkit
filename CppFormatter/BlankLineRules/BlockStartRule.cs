@@ -21,13 +21,15 @@ namespace CppFormatter
         internal BlankLineRuleResult ApplyBlockStartRule(
             string trimmed, string prevTrimmed)
         {
-            bool isBlockStart = CppLineClassifier.Instance.IsBlockStartLine(trimmed) ||
+            bool isBlockStart =
+                CppLineClassifier.Instance.IsBlockStartLine(trimmed) ||
                 trimmed.StartsWith("#ifdef") ||
                 trimmed.StartsWith("#ifndef") ||
                 trimmed.StartsWith("#if");
 
             if (isBlockStart && prevTrimmed.Length > 0 &&
-                prevTrimmed != "{" && !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
+                prevTrimmed != "{" &&
+                !TextUtils.EndsWithOpenBrace(prevTrimmed) &&
                 prevTrimmed != "*/" &&
                 !prevTrimmed.StartsWith("/**") &&
                 !prevTrimmed.StartsWith("///"))

@@ -22,10 +22,12 @@ namespace JavaFormatter
             bool prevStartsInCode)
         {
             bool currentIsPlainStmt =
-                BlankLineHelpers.IsPlainSingleLineStatement(trimmed, lineStartsInCode);
+                BlankLineHelpers.IsPlainSingleLineStatement(trimmed,
+                lineStartsInCode);
 
             bool prevIsPlainStmt =
-                BlankLineHelpers.IsPlainSingleLineStatement(prevTrimmed, prevStartsInCode);
+                BlankLineHelpers.IsPlainSingleLineStatement(prevTrimmed,
+                prevStartsInCode);
 
             if (currentIsPlainStmt && prevIsPlainStmt && hadBlankAbove)
             {

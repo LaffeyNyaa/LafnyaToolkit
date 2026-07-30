@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+
 using LafnyaToolkit.Core.Text;
 
 namespace GDScriptFormatter
@@ -35,7 +36,6 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly MemberReorderer Instance = new MemberReorderer();
-
         private MemberReorderer()
         {
         }
@@ -99,7 +99,8 @@ namespace GDScriptFormatter
                     {
                         if (blocks.Count > 0)
                         {
-                            blocks[blocks.Count - 1].BodyLines.AddRange(leading);
+                            blocks[blocks.Count -
+                                1].BodyLines.AddRange(leading);
                         }
 
                         break;
@@ -119,9 +120,9 @@ namespace GDScriptFormatter
                 blocks.Add(new MemberBlock
                 {
                     PrecedingLines = leading,
-                    DeclarationLine = declLine,
-                    BodyLines = body,
-                    Group = group
+                        DeclarationLine = declLine,
+                        BodyLines = body,
+                        Group = group
                 });
             }
 
@@ -142,15 +143,16 @@ namespace GDScriptFormatter
                         nextTrimmed.StartsWith("enum ") ||
                         nextTrimmed.StartsWith("static "))
                     {
-                        MemberGroup nextGroup = MemberClassifier.Instance.ClassifyMember(
+                        MemberGroup nextGroup =
+                            MemberClassifier.Instance.ClassifyMember(
                             nextTrimmed);
 
                         blocks[i] = new MemberBlock
                         {
                             PrecedingLines = blocks[i].PrecedingLines,
-                            DeclarationLine = blocks[i].DeclarationLine,
-                            BodyLines = blocks[i].BodyLines,
-                            Group = nextGroup
+                                DeclarationLine = blocks[i].DeclarationLine,
+                                BodyLines = blocks[i].BodyLines,
+                                Group = nextGroup
                         };
                     }
                 }
@@ -282,7 +284,7 @@ namespace GDScriptFormatter
                     {
                         string peekTrim = lines[nextNonBlank].Trim();
                         int peekIndent = IndentationProcessor.Instance
-                            .LineIndentLevel(lines[nextNonBlank]);
+                        .LineIndentLevel(lines[nextNonBlank]);
 
                         if (peekTrim.Length > 0 &&
                             (peekTrim[0] == ')' || peekTrim[0] == ']' ||

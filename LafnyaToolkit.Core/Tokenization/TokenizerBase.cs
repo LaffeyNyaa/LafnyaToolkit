@@ -132,7 +132,8 @@ namespace LafnyaToolkit.Core.Tokenization
         /// <param name="position">The current character position.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed (positive), or zero if this character is ordinary code.</returns>
-        protected abstract int ScanNextToken(string source, int position, out Token token);
+        protected abstract int ScanNextToken(string source, int position,
+            out Token token);
 
         /// <summary>
         /// Flushes accumulated Code characters as a single Code token and
@@ -141,7 +142,8 @@ namespace LafnyaToolkit.Core.Tokenization
         /// <param name="tokens">The token list to append to.</param>
         /// <param name="code">The accumulator of Code characters.</param>
         /// <param name="start">The start position of the accumulated code in the source.</param>
-        private void FlushCode(List<Token> tokens, StringBuilder code, int start)
+        private void FlushCode(List<Token> tokens, StringBuilder code,
+            int start)
         {
             if (code.Length > 0)
             {

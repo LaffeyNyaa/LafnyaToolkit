@@ -15,7 +15,6 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly UsingSorter Instance = new UsingSorter();
-
         private UsingSorter()
         {
         }

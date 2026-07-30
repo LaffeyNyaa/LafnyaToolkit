@@ -18,8 +18,13 @@ namespace CppFormatter
         internal BlankLineRuleResult ApplyConsecutiveNamespacesRule(
             string trimmed, string prevTrimmed)
         {
-            bool curIsNamespace = LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, "namespace");
-            bool prevIsNamespace = LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(prevTrimmed, "namespace");
+            bool curIsNamespace =
+                LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed,
+                "namespace");
+
+            bool prevIsNamespace =
+                LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(prevTrimmed,
+                "namespace");
 
             if (curIsNamespace && prevIsNamespace)
             {

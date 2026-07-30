@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -74,7 +75,8 @@ namespace GDScriptFormatter
                 info[i].StartBracketDepth = parenBracketDepth;
                 info[i].IsContinuation = parenBracketDepth > 0;
 
-                if (i > 0 && LineContinuationAnalyzer.Instance.EndsWithBackslash(text,
+                if (i > 0 &&
+                    LineContinuationAnalyzer.Instance.EndsWithBackslash(text,
                     isCode,
                     lineStarts[i - 1], lines[i - 1].Length))
                 {
@@ -124,7 +126,8 @@ namespace GDScriptFormatter
                 }
 
                 for (int ci = lineStarts[i];
-                ci < lineStarts[i] + line.Length && ci < isCode.Length;
+                    ci < lineStarts[i] + line.Length && ci < isCode.Length;
+
                 ci++)
                 {
                     if (!isCode[ci])
@@ -268,7 +271,7 @@ namespace GDScriptFormatter
             int bracketDepthBeforeColon = 0;
 
             for (int ci = wordStart;
-            ci < lastCodeIdx && ci < isCode.Length; ci++)
+                ci < lastCodeIdx && ci < isCode.Length; ci++)
             {
                 if (!isCode[ci])
                 {

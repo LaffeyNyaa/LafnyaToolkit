@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -14,7 +15,8 @@ namespace JavaFormatter
     internal sealed class IndentationProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+        public static readonly IndentationProcessor Instance =
+            new IndentationProcessor();
 
         private IndentationProcessor()
         {
@@ -110,7 +112,8 @@ namespace JavaFormatter
                 int baseDepth = depths[i];
 
                 if (i > 0 && !inEnumBlock[i] &&
-                    LineClassifier.Instance.IsContinuationIndicator(lines[i - 1],
+                    LineClassifier.Instance.IsContinuationIndicator(lines[i -
+                    1],
                     lineStarts[i - 1], text, isCode))
                 {
                     baseDepth++;

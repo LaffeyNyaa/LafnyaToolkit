@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace CppFormatter
@@ -13,13 +14,14 @@ namespace CppFormatter
     internal sealed class IndentationProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+        public static readonly IndentationProcessor Instance =
+            new IndentationProcessor();
 
         private static readonly string[] BlockStartKeywords =
-        {
+            {
             "namespace", "struct", "switch", "catch", "class", "while",
-            "union", "enum", "else", "for", "try", "do", "if"
-        };
+                "union", "enum", "else", "for", "try", "do", "if"
+            };
 
         private IndentationProcessor()
         {
@@ -37,19 +39,31 @@ namespace CppFormatter
         /// <param name="tokens">Pre-computed tokens of <paramref name="text"/>.</param>
         /// <param name="isCode">Pre-computed code mask of <paramref name="text"/>.</param>
         /// <returns>The re-indented line list.</returns>
-        public List<string> Reindent(List<string> lines, string text, List<LafnyaToolkit.Core.Tokenization.Token> tokens, bool[] isCode)
+        public List<string> Reindent(List<string> lines, string text, List<
+            LafnyaToolkit.Core.Tokenization.Token> tokens, bool[] isCode)
         {
-            int[] depths = IndentationDepthComputer.Instance.ComputeDepths(lines, text, isCode);
-            bool[] preserveIndent = PreserveIndentComputer.Instance.Compute(lines, tokens);
-            bool[] inEnumBlock = EnumBlockDetector.Instance.ComputeInEnumBlock(lines, text, isCode);
-            bool[] caseBody = CaseScopeDetector.Instance.ComputeCaseScope(lines, text, isCode);
+            int[] depths =
+                IndentationDepthComputer.Instance.ComputeDepths(lines, text,
+                isCode);
+
+            bool[] preserveIndent =
+                PreserveIndentComputer.Instance.Compute(lines, tokens);
+
+            bool[] inEnumBlock =
+                EnumBlockDetector.Instance.ComputeInEnumBlock(lines, text,
+                isCode);
+
+            bool[] caseBody = CaseScopeDetector.Instance.ComputeCaseScope(lines,
+                text, isCode);
+
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
 
             var result = new List<string>(lines.Count);
 
             for (int i = 0; i < lines.Count; i++)
             {
-                result.Add(ComputeIndentedLine(i, lines, depths, preserveIndent, inEnumBlock, caseBody, text, isCode, lineStarts));
+                result.Add(ComputeIndentedLine(i, lines, depths, preserveIndent,
+                    inEnumBlock, caseBody, text, isCode, lineStarts));
             }
 
             return result;
@@ -62,7 +76,9 @@ namespace CppFormatter
         /// adjustment, namespace depth adjustment, and access specifier
         /// adjustment.
         /// </summary>
-        private string ComputeIndentedLine(int i, List<string> lines, int[] depths, bool[] preserveIndent, bool[] inEnumBlock, bool[] caseBody, string text, bool[] isCode, int[] lineStarts)
+        private string ComputeIndentedLine(int i, List<string> lines,
+            int[] depths, bool[] preserveIndent, bool[] inEnumBlock,
+            bool[] caseBody, string text, bool[] isCode, int[] lineStarts)
         {
             if (preserveIndent[i])
             {
@@ -78,12 +94,15 @@ namespace CppFormatter
 
             if (IsPreprocessorConditionalDirective(content))
             {
-                return new string(' ', depths[i] * TextUtils.IndentSize) + content;
+                return new string(' ', depths[i] * TextUtils.IndentSize) +
+                    content;
             }
 
             int baseDepth = depths[i];
 
-            bool isConstructorColon = content.StartsWith(":") && content.Length > 1 && CppTextUtils.Instance.LooksLikeMemberInitializer(content.Substring(1).TrimStart());
+            bool isConstructorColon = content.StartsWith(":") &&
+                content.Length > 1 &&
+                CppTextUtils.Instance.LooksLikeMemberInitializer(content.Substring(1).TrimStart());
 
             if (isConstructorColon)
             {
@@ -99,7 +118,8 @@ namespace CppFormatter
 
             if (i > 0 && !inEnumBlock[i] && !isConstructorColon)
             {
-                int newBaseDepth = ApplyContinuationScan(i, lines, lineStarts, text, isCode, baseDepth);
+                int newBaseDepth = ApplyContinuationScan(i, lines, lineStarts,
+                    text, isCode, baseDepth);
 
                 if (newBaseDepth > baseDepth)
                 {
@@ -119,26 +139,31 @@ namespace CppFormatter
                 {
                     char first = content[0];
 
-                    if ((first == '+' || first == '-' || first == '*' || first == '/' || first == '%') && content[1] == ' ')
+                    if ((first == '+' || first == '-' || first == '*' ||
+                        first == '/' || first == '%') && content[1] == ' ')
                     {
-                        baseDepth = ComputeBinaryOpDepth(i, lines, baseDepth, first);
+                        baseDepth = ComputeBinaryOpDepth(i, lines, baseDepth,
+                            first);
                     }
                 }
             }
 
-            baseDepth = AdjustClosingBraceDepth(i, lines, text, isCode, baseDepth);
+            baseDepth = AdjustClosingBraceDepth(i, lines, text, isCode,
+                baseDepth);
 
             if (caseBody[i])
             {
                 baseDepth++;
             }
 
-            if (TextUtils.StartsWithKeyword(content, "namespace") && !content.TrimEnd().EndsWith(";"))
+            if (TextUtils.StartsWithKeyword(content, "namespace") &&
+                !content.TrimEnd().EndsWith(";"))
             {
                 baseDepth = baseDepth > 0 ? baseDepth - 1 : 0;
             }
 
-            if (content == "public:" || content == "private:" || content == "protected:")
+            if (content == "public:" || content == "private:" || content ==
+                "protected:")
             {
                 baseDepth = baseDepth > 0 ? baseDepth - 1 : 0;
             }
@@ -151,7 +176,8 @@ namespace CppFormatter
         /// indented line string, or null if the line is not a
         /// constructor initializer list colon.
         /// </summary>
-        private string TryConstructorColon(int i, List<string> lines, int[] depths, string content)
+        private string TryConstructorColon(int i, List<string> lines,
+            int[] depths, string content)
         {
             int prevLine = i - 1;
 
@@ -178,7 +204,8 @@ namespace CppFormatter
         /// boundaries (semicolon-terminated lines) and code-carrying
         /// lines that are not continuations.
         /// </summary>
-        private int ApplyContinuationScan(int i, List<string> lines, int[] lineStarts, string text, bool[] isCode, int baseDepth)
+        private int ApplyContinuationScan(int i, List<string> lines,
+            int[] lineStarts, string text, bool[] isCode, int baseDepth)
         {
             int scanLine = i - 1;
 
@@ -197,22 +224,29 @@ namespace CppFormatter
                     break;
                 }
 
-                bool isForHeader = DeclarationClassifier.Instance.IsForLoopHeader(scanTrimmed);
-                bool isSingleLineDecl = DeclarationClassifier.Instance.IsSingleLineFunctionDeclaration(scanTrimmed);
+                bool isForHeader =
+                    DeclarationClassifier.Instance.IsForLoopHeader(scanTrimmed);
 
-                if ((scanTrimmed.EndsWith(") {") || scanTrimmed.EndsWith("){")) && !isForHeader && !isSingleLineDecl)
+                bool isSingleLineDecl =
+                    DeclarationClassifier.Instance.IsSingleLineFunctionDeclaration(scanTrimmed);
+
+                if ((scanTrimmed.EndsWith(") {") ||
+                    scanTrimmed.EndsWith("){")) && !isForHeader &&
+                    !isSingleLineDecl)
                 {
                     TryApplyLambdaContinuation(lines, scanLine, ref baseDepth);
                     break;
                 }
 
-                if (ContinuationScanner.Instance.IsContinuationIndicator(lines[scanLine], lineStarts[scanLine], text, isCode))
+                if (ContinuationScanner.Instance.IsContinuationIndicator(lines[scanLine],
+                    lineStarts[scanLine], text, isCode))
                 {
                     baseDepth++;
                     break;
                 }
 
-                if (ContinuationScanner.Instance.HasCodeChar(lines[scanLine], lineStarts[scanLine], text, isCode))
+                if (ContinuationScanner.Instance.HasCodeChar(lines[scanLine],
+                    lineStarts[scanLine], text, isCode))
                 {
                     break;
                 }
@@ -232,7 +266,8 @@ namespace CppFormatter
         /// the base depth so the closing brace aligns with the
         /// continuation-adjusted content.
         /// </summary>
-        private int AdjustClosingBraceDepth(int i, List<string> lines, string text, bool[] isCode, int baseDepth)
+        private int AdjustClosingBraceDepth(int i, List<string> lines,
+            string text, bool[] isCode, int baseDepth)
         {
             string trimmed = lines[i].TrimStart();
 
@@ -266,12 +301,18 @@ namespace CppFormatter
 
                 if (braceDepth == 0)
                 {
-                    bool isForHeader = DeclarationClassifier.Instance.IsForLoopHeader(scanLineText);
-                    bool isSingleLineDecl = DeclarationClassifier.Instance.IsSingleLineFunctionDeclaration(scanLineText);
+                    bool isForHeader =
+                        DeclarationClassifier.Instance.IsForLoopHeader(scanLineText);
 
-                    if ((scanLineText.EndsWith(") {") || scanLineText.EndsWith("){")) && !isForHeader && !isSingleLineDecl)
+                    bool isSingleLineDecl =
+                        DeclarationClassifier.Instance.IsSingleLineFunctionDeclaration(scanLineText);
+
+                    if ((scanLineText.EndsWith(") {") ||
+                        scanLineText.EndsWith("){")) && !isForHeader &&
+                        !isSingleLineDecl)
                     {
-                        TryApplyLambdaContinuation(lines, scanLine, ref baseDepth);
+                        TryApplyLambdaContinuation(lines, scanLine,
+                            ref baseDepth);
                     }
 
                     break;
@@ -298,7 +339,8 @@ namespace CppFormatter
         /// so that the content inside the multi-line parameter block
         /// receives an extra indent.
         /// </summary>
-        private void TryApplyLambdaContinuation(List<string> lines, int scanLine, ref int baseDepth)
+        private void TryApplyLambdaContinuation(List<string> lines,
+            int scanLine, ref int baseDepth)
         {
             int openingLine = scanLine;
             bool isLambda = false;
@@ -341,7 +383,8 @@ namespace CppFormatter
             {
                 string prevTrimmed = lines[prevScanLine].Trim();
 
-                if (prevTrimmed.EndsWith(",") || prevTrimmed.EndsWith("+") || prevTrimmed.EndsWith("-") || prevTrimmed.EndsWith("("))
+                if (prevTrimmed.EndsWith(",") || prevTrimmed.EndsWith("+") ||
+                    prevTrimmed.EndsWith("-") || prevTrimmed.EndsWith("("))
                 {
                     baseDepth++;
                 }
@@ -354,7 +397,8 @@ namespace CppFormatter
         /// constructor signature start line. The colon should be at
         /// the same indent level as the constructor signature.
         /// </summary>
-        private int FindConstructorColonDepth(List<string> lines, int colonLineIndex, int[] depths)
+        private int FindConstructorColonDepth(List<string> lines,
+            int colonLineIndex, int[] depths)
         {
             for (int scanIdx = colonLineIndex - 1; scanIdx >= 0; scanIdx--)
             {
@@ -366,7 +410,8 @@ namespace CppFormatter
                     continue;
                 }
 
-                if (scanTrimmed == "public:" || scanTrimmed == "private:" || scanTrimmed == "protected:")
+                if (scanTrimmed == "public:" || scanTrimmed == "private:" ||
+                    scanTrimmed == "protected:")
                 {
                     int depth = depths[scanIdx] - 1;
                     return depth > 0 ? depth : 0;
@@ -376,22 +421,27 @@ namespace CppFormatter
 
                 if (parenPos >= 0 && parenPos > 0)
                 {
-                    string beforeParen = scanTrimmed.Substring(0, parenPos).TrimEnd();
+                    string beforeParen = scanTrimmed.Substring(0,
+                        parenPos).TrimEnd();
 
-                    if (beforeParen.Contains("::") || TextUtils.IsPureIdentifier(beforeParen))
+                    if (beforeParen.Contains("::") ||
+                        TextUtils.IsPureIdentifier(beforeParen))
                     {
                         int depth = depths[scanIdx] - 1;
                         return depth > 0 ? depth : 0;
                     }
                 }
 
-                if (scanTrimmed.EndsWith(";") || IsBlockStartKeywordLine(scanTrimmed))
+                if (scanTrimmed.EndsWith(";") ||
+                    IsBlockStartKeywordLine(scanTrimmed))
                 {
                     break;
                 }
             }
 
-            int fallbackDepth = depths[colonLineIndex] > 0 ? depths[colonLineIndex] - 1 : depths[colonLineIndex];
+            int fallbackDepth = depths[colonLineIndex] >
+                0 ? depths[colonLineIndex] - 1 : depths[colonLineIndex];
+
             return fallbackDepth > 0 ? fallbackDepth : 0;
         }
 
@@ -407,7 +457,9 @@ namespace CppFormatter
 
             foreach (var kw in BlockStartKeywords)
             {
-                if (trimmed.StartsWith(kw) && (trimmed.Length == kw.Length || (!char.IsLetterOrDigit(trimmed[kw.Length]) && trimmed[kw.Length] != '_')))
+                if (trimmed.StartsWith(kw) && (trimmed.Length == kw.Length ||
+                    (!char.IsLetterOrDigit(trimmed[kw.Length]) &&
+                    trimmed[kw.Length] != '_')))
                 {
                     return true;
                 }
@@ -424,7 +476,8 @@ namespace CppFormatter
         /// share the same hanging indent. Otherwise returns
         /// <paramref name="baseDepth"/> + 1.
         /// </summary>
-        private int ComputeStreamOperatorDepth(int i, List<string> lines, int baseDepth)
+        private int ComputeStreamOperatorDepth(int i, List<string> lines,
+            int baseDepth)
         {
             int prev = i - 1;
 
@@ -437,9 +490,12 @@ namespace CppFormatter
             {
                 string prevContent = lines[prev].TrimStart();
 
-                if (prevContent.StartsWith("<<") || prevContent.StartsWith(">>"))
+                if (prevContent.StartsWith("<<") ||
+                    prevContent.StartsWith(">>"))
                 {
-                    int prevIndent = lines[prev].Length - lines[prev].TrimStart().Length;
+                    int prevIndent = lines[prev].Length -
+                        lines[prev].TrimStart().Length;
+
                     return prevIndent / TextUtils.IndentSize;
                 }
             }
@@ -454,7 +510,8 @@ namespace CppFormatter
         /// its indent so all operator lines stay at the same hanging
         /// indent. Otherwise returns <paramref name="baseDepth"/> + 1.
         /// </summary>
-        private int ComputeBinaryOpDepth(int i, List<string> lines, int baseDepth, char op)
+        private int ComputeBinaryOpDepth(int i, List<string> lines,
+            int baseDepth, char op)
         {
             int prev = i - 1;
 
@@ -467,9 +524,12 @@ namespace CppFormatter
             {
                 string prevContent = lines[prev].TrimStart();
 
-                if (prevContent.Length > 1 && prevContent[0] == op && prevContent[1] == ' ')
+                if (prevContent.Length > 1 && prevContent[0] == op &&
+                    prevContent[1] == ' ')
                 {
-                    int prevIndent = lines[prev].Length - lines[prev].TrimStart().Length;
+                    int prevIndent = lines[prev].Length -
+                        lines[prev].TrimStart().Length;
+
                     return prevIndent / TextUtils.IndentSize;
                 }
             }
@@ -508,7 +568,10 @@ namespace CppFormatter
             }
 
             string keyword = afterHash.Substring(0, kwEnd);
-            return keyword == "if" || keyword == "ifdef" || keyword == "ifndef" || keyword == "elif" || keyword == "else" || keyword == "endif";
+
+            return keyword == "if" || keyword == "ifdef" || keyword ==
+                "ifndef" || keyword == "elif" || keyword == "else" || keyword ==
+                "endif";
         }
     }
 }

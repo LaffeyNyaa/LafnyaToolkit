@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -20,18 +21,18 @@ namespace JavaFormatter
         public static readonly BraceEnforcer Instance = new BraceEnforcer();
 
         private readonly Dictionary<string, IBraceEnforcerRule> rules;
-
         private BraceEnforcer()
         {
-            rules = new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
+            rules = new Dictionary<string, IBraceEnforcerRule>
+                (StringComparer.Ordinal)
             {
                 { "if", new IfRule() },
-                { "for", new ForRule() },
-                { "while", new WhileRule() },
-                { "do", new DoRule() },
-                { "synchronized", new SynchronizedRule() },
-                { "try", new TryRule() },
-                { "else", new ElseRule() }
+                    { "for", new ForRule() },
+                    { "while", new WhileRule() },
+                    { "do", new DoRule() },
+                    { "synchronized", new SynchronizedRule() },
+                    { "try", new TryRule() },
+                    { "else", new ElseRule() }
             };
         }
 
@@ -100,7 +101,8 @@ namespace JavaFormatter
         /// at the statement start and the closing <c>}</c> just after
         /// the statement's terminating semicolon.
         /// </summary>
-        private static void CollectBodyInsertions(string text, bool[] isCode, int startPos, List<Insertion> insertions)
+        private static void CollectBodyInsertions(string text, bool[] isCode,
+            int startPos, List<Insertion> insertions)
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
 
@@ -204,7 +206,8 @@ namespace JavaFormatter
 
         private sealed class IfRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 2);
 
@@ -217,7 +220,8 @@ namespace JavaFormatter
 
         private sealed class ForRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 3);
 
@@ -230,7 +234,8 @@ namespace JavaFormatter
 
         private sealed class WhileRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -241,7 +246,8 @@ namespace JavaFormatter
 
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterParen);
 
-                if (nextNonWs < text.Length && isCode[nextNonWs] && text[nextNonWs] == ';')
+                if (nextNonWs < text.Length && isCode[nextNonWs] &&
+                    text[nextNonWs] == ';')
                 {
                     return;
                 }
@@ -252,7 +258,8 @@ namespace JavaFormatter
 
         private sealed class DoRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 CollectBodyInsertions(text, isCode, keywordPos + 2, insertions);
             }
@@ -260,7 +267,8 @@ namespace JavaFormatter
 
         private sealed class SynchronizedRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 12);
 
@@ -273,7 +281,8 @@ namespace JavaFormatter
 
         private sealed class TryRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 CollectBodyInsertions(text, isCode, keywordPos + 3, insertions);
             }
@@ -281,7 +290,8 @@ namespace JavaFormatter
 
         private sealed class ElseRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<Insertion> insertions)
+            public void Apply(string text, bool[] isCode, int keywordPos, List<
+                Insertion> insertions)
             {
                 int afterElse = keywordPos + 4;
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);

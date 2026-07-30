@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -12,7 +13,8 @@ namespace CSharpFormatter
     internal sealed class IndentationProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly IndentationProcessor Instance = new IndentationProcessor();
+        public static readonly IndentationProcessor Instance =
+            new IndentationProcessor();
 
         private IndentationProcessor()
         {
@@ -24,6 +26,15 @@ namespace CSharpFormatter
         /// VerbatimString, MultiLineComment, InterpolatedString, or
         /// InterpolatedVerbatimString token retain their original
         /// leading whitespace.
+        ///
+        /// A closing brace (<c>}</c>) only lowers the recorded depth
+        /// of the line it appears on when the line has no preceding
+        /// code-region content (i.e., the line consists solely of
+        /// the closing brace, optionally followed by whitespace or
+        /// a comment). This prevents the re-indent pass from
+        /// collapsing the continuation indent of a multi-line
+        /// statement such as <c>if (cond) { foo(); }</c> on a
+        /// second format pass.
         /// </summary>
         /// <param name="lines">The line list.</param>
         /// <param name="text">The full source text corresponding to <paramref name="lines"/>.</param>
@@ -44,6 +55,7 @@ namespace CSharpFormatter
 
             int depth = 0;
             int lineIdx = 0;
+            bool[] lineHasCodeContent = new bool[lines.Count];
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -61,6 +73,15 @@ namespace CSharpFormatter
                     continue;
                 }
 
+                if (isCode[i] && c != '{' && c != '}' && c != ' ' &&
+                    c != '\t' && c != '\r')
+                {
+                    if (lineIdx < lineHasCodeContent.Length)
+                    {
+                        lineHasCodeContent[lineIdx] = true;
+                    }
+                }
+
                 if (isCode[i] && c == '{')
                 {
                     depth++;
@@ -74,7 +95,8 @@ namespace CSharpFormatter
                         depth = 0;
                     }
 
-                    if (lineIdx < depths.Length)
+                    if (lineIdx < depths.Length &&
+                        !lineHasCodeContent[lineIdx])
                     {
                         depths[lineIdx] = depth;
                     }
@@ -82,7 +104,9 @@ namespace CSharpFormatter
             }
 
             var result = new List<string>(lines.Count);
-            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            int[] lineStarts =
+                CSharpTokenizer.Instance.ComputeLineStarts(lines);
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -137,7 +161,10 @@ namespace CSharpFormatter
             List<Token> tokens)
         {
             var preserveIndent = new bool[lines.Count];
-            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            int[] lineStarts =
+                CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
             int tokenPos = 0;
 
             foreach (var token in tokens)
@@ -177,7 +204,10 @@ namespace CSharpFormatter
             string text, bool[] isCode)
         {
             var inEnumBlock = new bool[lines.Count];
-            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            int[] lineStarts =
+                CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
             var enumRanges = new List<KeyValuePair<int, int>>();
             int depth = 0;
             int enumDepth = -1;
@@ -265,7 +295,10 @@ namespace CSharpFormatter
             string text, bool[] isCode, bool[] isCodeLine)
         {
             var caseBody = new bool[lines.Count];
-            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            int[] lineStarts =
+                CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
             var switchRanges = new List<KeyValuePair<int, int>>();
             var braceStack = new Stack<KeyValuePair<bool, int>>();
             bool pendingSwitch = false;

@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
-using LafnyaToolkit.Core.Tokenization;
+
 using LafnyaToolkit.Core.Text;
+using LafnyaToolkit.Core.Tokenization;
 
 namespace CppFormatter
 {
@@ -18,7 +19,6 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CppTokenizer Instance = new CppTokenizer();
-
         private CppTokenizer()
         {
         }
@@ -41,7 +41,8 @@ namespace CppFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position, out Token token)
+        protected override int ScanNextToken(string source, int position,
+            out Token token)
         {
             token = default(Token);
             int n = source.Length;
@@ -56,7 +57,9 @@ namespace CppFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.SingleLineComment, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.SingleLineComment,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -67,7 +70,8 @@ namespace CppFormatter
 
                 while (position < n)
                 {
-                    if (source[position] == '*' && position + 1 < n && source[position + 1] == '/')
+                    if (source[position] == '*' && position + 1 < n &&
+                        source[position + 1] == '/')
                     {
                         position += 2;
                         break;
@@ -76,7 +80,9 @@ namespace CppFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.MultiLineComment, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.MultiLineComment,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -95,15 +101,20 @@ namespace CppFormatter
 
                 if (position >= n)
                 {
-                    token = new Token(TokenKind.VerbatimString, source.Substring(start, position - start), start);
+                    token = new Token(TokenKind.VerbatimString,
+                        source.Substring(start, position - start), start);
+
                     return position - start;
                 }
 
-                string delim = source.Substring(delimStart, position - delimStart);
+                string delim = source.Substring(delimStart, position -
+                    delimStart);
+
                 position++;
                 string terminator = ")" + delim + "\"";
 
-                int endIdx = source.IndexOf(terminator, position, StringComparison.Ordinal);
+                int endIdx = source.IndexOf(terminator, position,
+                    StringComparison.Ordinal);
 
                 if (endIdx < 0)
                 {
@@ -114,13 +125,16 @@ namespace CppFormatter
                     position = endIdx + terminator.Length;
                 }
 
-                token = new Token(TokenKind.VerbatimString, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.VerbatimString,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
             int strPrefixLen = TryMatchStringPrefix(source, position);
 
-            if (strPrefixLen >= 0 && (strPrefixLen == 0 || !IsPrevIdentChar(source, position)))
+            if (strPrefixLen >= 0 && (strPrefixLen == 0 ||
+                !IsPrevIdentChar(source, position)))
             {
                 int start = position;
                 position += strPrefixLen + 1;
@@ -142,7 +156,9 @@ namespace CppFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.String, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.String, source.Substring(start,
+                    position - start), start);
+
                 return position - start;
             }
 
@@ -168,7 +184,9 @@ namespace CppFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.Char, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.Char, source.Substring(start,
+                    position - start), start);
+
                 return position - start;
             }
 
@@ -178,13 +196,16 @@ namespace CppFormatter
 
                 while (position < n)
                 {
-                    if (source[position] == '\\' && position + 1 < n && source[position + 1] == '\n')
+                    if (source[position] == '\\' && position + 1 < n &&
+                        source[position + 1] == '\n')
                     {
                         position += 2;
                         continue;
                     }
 
-                    if (source[position] == '\\' && position + 2 < n && source[position + 1] == '\r' && source[position + 2] == '\n')
+                    if (source[position] == '\\' && position + 2 < n &&
+                        source[position + 1] == '\r' && source[position + 2] ==
+                        '\n')
                     {
                         position += 3;
                         continue;
@@ -198,7 +219,9 @@ namespace CppFormatter
                     position++;
                 }
 
-                token = new Token(TokenKind.Preprocessor, source.Substring(start, position - start), start);
+                token = new Token(TokenKind.Preprocessor,
+                    source.Substring(start, position - start), start);
+
                 return position - start;
             }
 
@@ -215,7 +238,8 @@ namespace CppFormatter
         /// <param name="tokens">The token list.</param>
         /// <param name="lineCount">The number of lines.</param>
         /// <returns>A boolean array; true means the line is entirely inside a multi-line token.</returns>
-        public bool[] ComputeProtectedLines(string text, List<Token> tokens, int lineCount)
+        public bool[] ComputeProtectedLines(string text, List<Token> tokens,
+            int lineCount)
         {
             var protectedLines = new bool[lineCount];
 
@@ -235,7 +259,8 @@ namespace CppFormatter
                 int tokenEnd = tokenStart + t.Text.Length;
                 pos = tokenEnd;
 
-                if (t.Kind != TokenKind.VerbatimString && t.Kind != TokenKind.MultiLineComment)
+                if (t.Kind != TokenKind.VerbatimString && t.Kind !=
+                    TokenKind.MultiLineComment)
                 {
                     continue;
                 }
@@ -267,7 +292,8 @@ namespace CppFormatter
         /// <param name="lineStarts">The line start positions.</param>
         /// <param name="lines">The list of lines.</param>
         /// <returns>A boolean array; true means the line's end position is inside a multi-line token.</returns>
-        public bool[] ComputeLineEndsInsideToken(string text, List<Token> tokens, int[] lineStarts, IList<string> lines)
+        public bool[] ComputeLineEndsInsideToken(string text, List<Token>
+            tokens, int[] lineStarts, IList<string> lines)
         {
             int lineCount = lines.Count;
             var result = new bool[lineCount];
@@ -285,7 +311,8 @@ namespace CppFormatter
                 int tokenEnd = tokenStart + t.Text.Length;
                 pos = tokenEnd;
 
-                if (t.Kind != TokenKind.VerbatimString && t.Kind != TokenKind.MultiLineComment)
+                if (t.Kind != TokenKind.VerbatimString && t.Kind !=
+                    TokenKind.MultiLineComment)
                 {
                     continue;
                 }
@@ -319,7 +346,8 @@ namespace CppFormatter
         /// <returns>True if the '#' is at line start; otherwise false.</returns>
         private static bool IsLineStart(string source, int index)
         {
-            int lastNewline = index > 0 ? source.LastIndexOf('\n', index - 1) : -1;
+            int lastNewline = index > 0 ? source.LastIndexOf('\n', index -
+                1) : -1;
 
             for (int j = lastNewline + 1; j < index; j++)
             {
@@ -342,7 +370,8 @@ namespace CppFormatter
         /// <returns>True if the character is an identifier character.</returns>
         private static bool IsIdentChar(char c)
         {
-            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >=
+                '0' && c <= '9') || c == '_';
         }
 
         /// <summary>
@@ -378,12 +407,15 @@ namespace CppFormatter
                 return 0;
             }
 
-            if (i + 2 < n && (source[i] == 'L' || source[i] == 'u' || source[i] == 'U') && source[i + 1] == 'R' && source[i + 2] == '"')
+            if (i + 2 < n && (source[i] == 'L' || source[i] == 'u' ||
+                source[i] == 'U') && source[i + 1] == 'R' && source[i + 2] ==
+                '"')
             {
                 return 1;
             }
 
-            if (i + 3 < n && source[i] == 'u' && source[i + 1] == '8' && source[i + 2] == 'R' && source[i + 3] == '"')
+            if (i + 3 < n && source[i] == 'u' && source[i + 1] == '8' &&
+                source[i + 2] == 'R' && source[i + 3] == '"')
             {
                 return 2;
             }
@@ -407,12 +439,14 @@ namespace CppFormatter
                 return 0;
             }
 
-            if (i + 1 < n && (source[i] == 'L' || source[i] == 'u' || source[i] == 'U') && source[i + 1] == '"')
+            if (i + 1 < n && (source[i] == 'L' || source[i] == 'u' ||
+                source[i] == 'U') && source[i + 1] == '"')
             {
                 return 1;
             }
 
-            if (i + 2 < n && source[i] == 'u' && source[i + 1] == '8' && source[i + 2] == '"')
+            if (i + 2 < n && source[i] == 'u' && source[i + 1] == '8' &&
+                source[i + 2] == '"')
             {
                 return 2;
             }

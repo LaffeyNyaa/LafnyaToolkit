@@ -10,7 +10,8 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplyPreserveAuthorBlankRule(List<bool> hadBlankAbove,
+        private static int ApplyPreserveAuthorBlankRule(List<bool>
+            hadBlankAbove,
             int curIdx, string prevTrimmed, string curTrimmed)
         {
             if (hadBlankAbove[curIdx] &&

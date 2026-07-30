@@ -9,7 +9,8 @@ namespace GDScriptFormatter
     public sealed class DeclarationClassifier
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly DeclarationClassifier Instance = new DeclarationClassifier();
+        public static readonly DeclarationClassifier Instance =
+            new DeclarationClassifier();
 
         private DeclarationClassifier()
         {

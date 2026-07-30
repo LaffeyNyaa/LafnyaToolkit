@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -12,7 +13,8 @@ namespace CSharpFormatter
     internal sealed class PropertyFormatter
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly PropertyFormatter Instance = new PropertyFormatter();
+        public static readonly PropertyFormatter Instance =
+            new PropertyFormatter();
 
         private PropertyFormatter()
         {
@@ -28,7 +30,9 @@ namespace CSharpFormatter
         public string FormatPropertyAccessors(string text)
         {
             var tokens = CSharpTokenizer.Instance.Tokenize(text);
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text,
+                tokens);
 
             var replacements = new List<Replacement>();
 
@@ -139,7 +143,7 @@ namespace CSharpFormatter
                 if (keyword != null)
                 {
                     string after = trimmed.Substring(keyword.Length)
-                        .TrimStart();
+                    .TrimStart();
 
                     if (after.StartsWith("{"))
                     {

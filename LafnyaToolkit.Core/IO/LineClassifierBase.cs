@@ -20,7 +20,10 @@ namespace LafnyaToolkit.Core.IO
         /// Keywords that introduce a brace-delimited block, in the order the
         /// derived class wants them checked.
         /// </summary>
-        public abstract string[] BlockStartKeywords { get; }
+        public abstract string[] BlockStartKeywords
+        {
+            get;
+        }
 
         /// <summary>
         /// Determines whether <paramref name="c"/> is a continuation
@@ -42,14 +45,16 @@ namespace LafnyaToolkit.Core.IO
         /// <returns>True if the line introduces a brace-delimited block.</returns>
         public virtual bool IsBlockStartLine(string trimmed)
         {
-            if (string.IsNullOrEmpty(trimmed) || trimmed == "{" || trimmed.EndsWith(";", StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(trimmed) || trimmed == "{" ||
+                trimmed.EndsWith(";", StringComparison.Ordinal))
             {
                 return false;
             }
 
             foreach (var kw in BlockStartKeywords)
             {
-                if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed, kw))
+                if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(trimmed,
+                    kw))
                 {
                     return true;
                 }
@@ -80,13 +85,16 @@ namespace LafnyaToolkit.Core.IO
             }
 
             if (afterBrace.StartsWith("//", StringComparison.Ordinal)
-                || afterBrace.StartsWith("/*", StringComparison.Ordinal))
+            || afterBrace.StartsWith("/*", StringComparison.Ordinal))
             {
                 return true;
             }
 
-            if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace, "else")
-                || LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace, "catch"))
+            if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace,
+                "else")
+
+            || LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace,
+                "catch"))
             {
                 return false;
             }

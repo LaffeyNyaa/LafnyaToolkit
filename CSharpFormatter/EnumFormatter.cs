@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -13,7 +14,6 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumFormatter Instance = new EnumFormatter();
-
         private EnumFormatter()
         {
         }
@@ -27,7 +27,9 @@ namespace CSharpFormatter
         public string FormatEnums(string text)
         {
             var tokens = CSharpTokenizer.Instance.Tokenize(text);
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(text,
+                tokens);
 
             var replacements = new List<Replacement>();
 

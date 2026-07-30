@@ -50,7 +50,8 @@ namespace JsonFormatter
         /// Gets the property list of an object value, preserving insertion
         /// order and duplicate keys. Null for non-object types.
         /// </summary>
-        public List<KeyValuePair<string, JsonValue>> Properties { get; private set; }
+        public List<KeyValuePair<string, JsonValue>> Properties { get;
+            private set; }
 
         /// <summary>
         /// Gets the element list of an array value. Null for non-array types.

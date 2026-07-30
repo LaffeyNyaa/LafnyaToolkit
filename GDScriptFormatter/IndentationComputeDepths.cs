@@ -32,7 +32,9 @@ namespace GDScriptFormatter
         {
             int[] depths = new int[lines.Count];
             var stack = new List<int>();
-            var continuationColonPushes = new List<(int height, int origDepth)>();
+
+            var continuationColonPushes = new List<(int height, int origDepth)>
+                ();
 
             bool previousWasColonOrBrace = false;
 
@@ -64,7 +66,7 @@ namespace GDScriptFormatter
                 if (trimmed.StartsWith("#"))
                 {
                     depths[i] = origDepth < stack.Count
-                        ? origDepth : stack.Count;
+                    ? origDepth : stack.Count;
                     previousWasColonOrBrace = false;
                     continue;
                 }

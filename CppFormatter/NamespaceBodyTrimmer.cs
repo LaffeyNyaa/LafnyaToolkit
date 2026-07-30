@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -13,7 +14,8 @@ namespace CppFormatter
     internal sealed class NamespaceBodyTrimmer
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly NamespaceBodyTrimmer Instance = new NamespaceBodyTrimmer();
+        public static readonly NamespaceBodyTrimmer Instance =
+            new NamespaceBodyTrimmer();
 
         private NamespaceBodyTrimmer()
         {
@@ -29,7 +31,8 @@ namespace CppFormatter
         /// <param name="tokens">The token list.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>The processed line list.</returns>
-        public List<string> TrimNamespaceBodyBlankLines(List<string> lines, string text, List<Token> tokens, bool[] isCode)
+        public List<string> TrimNamespaceBodyBlankLines(List<string> lines,
+            string text, List<Token> tokens, bool[] isCode)
         {
             var result = new List<string>(lines.Count);
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
@@ -48,7 +51,8 @@ namespace CppFormatter
 
                 char c = text[i];
 
-                if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i - 1])) && TextUtils.MatchesWord(text, i, "namespace"))
+                if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i -
+                    1])) && TextUtils.MatchesWord(text, i, "namespace"))
                 {
                     pendingNamespace = true;
                 }
@@ -78,7 +82,8 @@ namespace CppFormatter
 
                         if (idx >= 0 && idx < nsBlocks.Count)
                         {
-                            nsBlocks[idx] = new KeyValuePair<int, int>(nsBlocks[idx].Key, i);
+                            nsBlocks[idx] = new KeyValuePair<int, int>
+                                (nsBlocks[idx].Key, i);
                         }
                     }
 
@@ -118,19 +123,22 @@ namespace CppFormatter
 
                     int nextNonBlank = li + 1;
 
-                    while (nextNonBlank < lines.Count && lines[nextNonBlank].Trim().Length == 0)
+                    while (nextNonBlank < lines.Count &&
+                        lines[nextNonBlank].Trim().Length == 0)
                     {
                         nextNonBlank++;
                     }
 
-                    bool isAfterOpenBrace = li > 0 && lineStarts[li - 1] + lines[li - 1].Length <= openBracePos + 1;
+                    bool isAfterOpenBrace = li > 0 && lineStarts[li - 1] +
+                        lines[li - 1].Length <= openBracePos + 1;
 
                     if (isAfterOpenBrace)
                     {
                         removeSet.Add(li);
                     }
 
-                    bool isBeforeCloseBrace = nextNonBlank < lines.Count && lineStarts[nextNonBlank] >= closeBracePos;
+                    bool isBeforeCloseBrace = nextNonBlank < lines.Count &&
+                        lineStarts[nextNonBlank] >= closeBracePos;
 
                     if (isBeforeCloseBrace)
                     {

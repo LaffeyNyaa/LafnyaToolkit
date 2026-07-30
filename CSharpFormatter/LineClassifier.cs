@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 using LafnyaToolkit.Core.Tokenization;
 
@@ -15,7 +16,6 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly LineClassifier Instance = new LineClassifier();
-
         private LineClassifier()
         {
         }
@@ -134,7 +134,9 @@ namespace CSharpFormatter
             bool[] isCode)
         {
             var isCodeLine = new bool[lines.Count];
-            int[] lineStarts = CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            int[] lineStarts =
+                CSharpTokenizer.Instance.ComputeLineStarts(lines);
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -230,6 +232,15 @@ namespace CSharpFormatter
         /// <c>||</c>. Compound assignment operators (<c>==</c>,
         /// <c>!=</c>, <c>&lt;=</c>, <c>&gt;=</c>, <c>+=</c>, <c>-=</c>)
         /// end with <c>=</c> and are thus covered.
+        ///
+        /// A trailing <c>;</c> is also treated as a continuation
+        /// indicator when the line has more opening than closing
+        /// parentheses in its code region. This covers the
+        /// separator-style <c>;</c> inside the header of a multi-line
+        /// <c>for</c> statement (e.g. <c>for (a; b;</c>) where the
+        /// terminating <c>)</c> lives on the following line, ensuring
+        /// that the continuation indent is re-applied on every
+        /// re-format pass.
         /// </summary>
         /// <param name="line">The line text.</param>
         /// <param name="lineStart">The starting offset of this line in <paramref name="text"/>.</param>
@@ -270,7 +281,61 @@ namespace CSharpFormatter
             }
 
             string last2 = line.Substring(lastCodeIdx - 1, 2);
-            return last2 == "&&" || last2 == "||";
+
+            if (last2 == "&&" || last2 == "||")
+            {
+                return true;
+            }
+
+            if (last == ';' &&
+                CountUnbalancedParens(line, lineStart, text, isCode) > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Counts the net number of unclosed parentheses on the
+        /// line: +1 for each code-region <c>(</c> and -1 for each
+        /// code-region <c>)</c>. A positive result means the line
+        /// leaves at least one paren open for a later line to close,
+        /// which signals that the line is itself a continuation.
+        /// </summary>
+        /// <param name="line">The line text.</param>
+        /// <param name="lineStart">The starting offset of this line in <paramref name="text"/>.</param>
+        /// <param name="text">The full source text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <returns>The net open-paren count on the line.</returns>
+        private static int CountUnbalancedParens(string line, int lineStart,
+            string text, bool[] isCode)
+        {
+            int count = 0;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                int textPos = lineStart + i;
+
+                if (textPos < 0 || textPos >= isCode.Length ||
+                    !isCode[textPos])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if (c == '(')
+                {
+                    count++;
+                }
+                else if (c == ')')
+                {
+                    count--;
+                }
+            }
+
+            return count;
         }
     }
 }

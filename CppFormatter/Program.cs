@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.CLI;
 
 namespace CppFormatter
@@ -13,12 +14,13 @@ namespace CppFormatter
     public class Program : ProgramBase
     {
         private static readonly string[] CppExtensions =
-        {
+            {
             ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h"
-        };
+            };
 
         /// <inheritdoc />
-        protected override IReadOnlyList<string> FileExtensions => CppExtensions;
+        protected override IReadOnlyList<string> FileExtensions =>
+            CppExtensions;
 
         /// <inheritdoc />
         protected override string LanguageName => "C++";

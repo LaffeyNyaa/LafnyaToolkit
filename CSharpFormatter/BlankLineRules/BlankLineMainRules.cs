@@ -33,41 +33,50 @@ namespace CSharpFormatter
             BlankLineVerdict v;
 
             v = processor.ApplyIfElseRule(p);
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
 
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
+
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
             v = processor.ApplyCatchFinallyRule(p);
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
 
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
+
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
             v = processor.ApplyBlockStartRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyBlockEndRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyUsingDirectiveRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyMultiLineEndRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyMultiLineStartRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyDocCommentRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyAuthorBlankRule(p);
-            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
-            if (v == BlankLineVerdict.SuppressBlank) { return false; }
 
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             return false;
         }
     }

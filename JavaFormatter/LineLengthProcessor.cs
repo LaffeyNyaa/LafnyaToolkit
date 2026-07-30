@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using LafnyaToolkit.Core.Text;
 
 namespace JavaFormatter
@@ -12,7 +13,8 @@ namespace JavaFormatter
     internal sealed class LineLengthProcessor
     {
         /// <summary>Shared stateless instance.</summary>
-        public static readonly LineLengthProcessor Instance = new LineLengthProcessor();
+        public static readonly LineLengthProcessor Instance =
+            new LineLengthProcessor();
 
         private LineLengthProcessor()
         {
