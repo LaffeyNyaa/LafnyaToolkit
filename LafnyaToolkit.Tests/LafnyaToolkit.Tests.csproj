@@ -56,6 +56,7 @@
     <Compile Include="Snapshots\SnapshotTests.cs" />
     <Compile Include="Snapshots\PythonExcludedDirectoryTests.cs" />
     <Compile Include="ManualFormatterHarness.cs" />
+    <Compile Include="FinalVerify.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -66,5 +67,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <PropertyGroup>
+    <StartupObject>FinalVerify.Program</StartupObject>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

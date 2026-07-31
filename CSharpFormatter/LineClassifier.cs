@@ -106,19 +106,102 @@ namespace CSharpFormatter
         /// Determines whether a trimmed line is a switch
         /// <c>case</c>/<c>default</c> label line. This is a text-only
         /// check; callers should also verify the line is in a code
-        /// region.
+        /// region. Recognises both the standalone form (<c>case X:</c>,
+        /// <c>default:</c>) and the form where the case body is on
+        /// the same line (<c>case X: body;</c>, <c>default: body;</c>).
+        /// The latter recognition is required so that the case body
+        /// indent is re-applied on subsequent format passes after
+        /// <see cref="LineLengthProcessor"/> has split a long
+        /// <c>case</c> label at the <c>;</c>.
         /// </summary>
         /// <param name="trimmed">The trimmed line.</param>
         /// <returns>True if the line is a case label.</returns>
         internal bool IsCaseLabelLine(string trimmed)
         {
-            if (trimmed.Length == 0 || !trimmed.EndsWith(":"))
+            if (trimmed.Length == 0)
             {
                 return false;
             }
 
-            return TextUtils.StartsWithKeyword(trimmed, "case") ||
-                TextUtils.StartsWithKeyword(trimmed, "default");
+            if (trimmed.EndsWith(":"))
+            {
+                return TextUtils.StartsWithKeyword(trimmed, "case") ||
+                    TextUtils.StartsWithKeyword(trimmed, "default");
+            }
+
+            if (TextUtils.StartsWithKeyword(trimmed, "case"))
+            {
+                return FindCaseLabelColon(trimmed, "case".Length) > 0;
+            }
+
+            if (TextUtils.StartsWithKeyword(trimmed, "default"))
+            {
+                return StartsWithDefaultColon(trimmed);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Scans the line for the first <c>:</c> at paren/bracket
+        /// depth 0 starting from the position after the case label
+        /// keyword. Returns the index of the colon, or -1 if none is
+        /// found before the end of the line.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line.</param>
+        /// <param name="startAfter">The index after the case keyword.</param>
+        /// <returns>The colon index, or -1.</returns>
+        private static int FindCaseLabelColon(string trimmed, int startAfter)
+        {
+            int depth = 0;
+            int i = startAfter;
+
+            while (i < trimmed.Length)
+            {
+                char c = trimmed[i];
+
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+                else if (c == ':' && depth == 0)
+                {
+                    return i;
+                }
+
+                i++;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Determines whether the line, after the <c>default</c>
+        /// keyword and any whitespace, starts with a colon (i.e. the
+        /// default case label form). Lines like
+        /// <c>defaultAction()</c> or <c>default(T)</c> are not case
+        /// labels and return false.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line.</param>
+        /// <returns>True if the line is a default case label.</returns>
+        private static bool StartsWithDefaultColon(string trimmed)
+        {
+            int i = "default".Length;
+
+            while (i < trimmed.Length && (trimmed[i] == ' ' ||
+                trimmed[i] == '\t'))
+            {
+                i++;
+            }
+
+            return i < trimmed.Length && trimmed[i] == ':';
         }
 
         /// <summary>

@@ -44,6 +44,10 @@ namespace LafnyaToolkit.Tests.Idempotency
             RunCase("switch",
                 "switch(x){case 1:A();break;case 2:B();break;default:C();break;}");
 
+            RunCase("long case label split",
+                "class C{void M(){switch(x){case SomeEnum.VeryLongValue:" +
+                " DoSomething(); break;}}}");
+
             RunCase("try catch",
                 "try{A();}catch(Exception e){B();}finally{C();}");
             RunCase("namespace", "namespace MyApp{public class Foo{}}");

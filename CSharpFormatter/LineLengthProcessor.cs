@@ -155,7 +155,11 @@ namespace CSharpFormatter
         /// Finds a safe break point within a Code token: prefers the
         /// largest break point not exceeding 80 characters; if no
         /// such point exists, returns the first break point beyond
-        /// 80 characters.
+        /// 80 characters. If the line starts with a <c>case</c> or
+        /// <c>default</c> label whose colon falls inside the line,
+        /// that colon is preferred as the break point so that the
+        /// case label stands on its own line and the body starts on
+        /// a freshly indented line.
         /// </summary>
         /// <param name="line">The line to scan.</param>
         /// <param name="isCode">The code mask.</param>
@@ -164,6 +168,13 @@ namespace CSharpFormatter
         private static int FindSafeBreakPoint(string line, bool[] isCode,
             int startIdx)
         {
+            int caseColonBp = TryCaseLabelBreakPoint(line, isCode, startIdx);
+
+            if (caseColonBp > 0)
+            {
+                return caseColonBp;
+            }
+
             int bestInRange = -1;
             int firstOutOfRange = -1;
             int i = startIdx;
@@ -224,6 +235,97 @@ namespace CSharpFormatter
             }
 
             return firstOutOfRange;
+        }
+
+        /// <summary>
+        /// Detects whether the line begins with a <c>case</c> or
+        /// <c>default</c> switch label and, if so, returns the break
+        /// position immediately after the label's colon. Returns -1
+        /// when the line is not a case label or when no colon is
+        /// present.
+        /// </summary>
+        /// <param name="line">The line to scan.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <param name="startIdx">The position to start scanning from.</param>
+        /// <returns>The break position after the case label colon, or -1.</returns>
+        private static int TryCaseLabelBreakPoint(string line, bool[] isCode,
+            int startIdx)
+        {
+            int i = startIdx;
+
+            while (i < line.Length && (line[i] == ' ' || line[i] == '\t'))
+            {
+                i++;
+            }
+
+            bool isCase = i + 4 <= line.Length && line[i] == 'c' &&
+                line[i + 1] == 'a' && line[i + 2] == 's' &&
+                line[i + 3] == 'e' &&
+                (i + 4 == line.Length || !TextUtils.IsWordChar(line[i + 4]));
+
+            bool isDefault = !isCase && i + 7 <= line.Length && line[i] == 'd' &&
+                line[i + 1] == 'e' && line[i + 2] == 'f' &&
+                line[i + 3] == 'a' && line[i + 4] == 'u' &&
+                line[i + 5] == 'l' && line[i + 6] == 't' &&
+                (i + 7 == line.Length || !TextUtils.IsWordChar(line[i + 7]));
+
+            if (!isCase && !isDefault)
+            {
+                return -1;
+            }
+
+            int keywordLen = isCase ? 4 : 7;
+            int scan = i + keywordLen;
+
+            while (scan < line.Length && (line[scan] == ' ' ||
+                line[scan] == '\t'))
+            {
+                scan++;
+            }
+
+            if (isDefault)
+            {
+                if (scan >= line.Length || line[scan] != ':' ||
+                    scan >= isCode.Length || !isCode[scan])
+                {
+                    return -1;
+                }
+
+                return scan + 1;
+            }
+
+            int depth = 0;
+
+            while (scan < line.Length)
+            {
+                if (scan < isCode.Length && !isCode[scan])
+                {
+                    scan++;
+                    continue;
+                }
+
+                char c = line[scan];
+
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+                else if (c == ':' && depth == 0)
+                {
+                    return scan + 1;
+                }
+
+                scan++;
+            }
+
+            return -1;
         }
 
         /// <summary>

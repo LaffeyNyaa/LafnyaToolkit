@@ -1,0 +1,12 @@
+class C
+{
+    void M()
+    {
+        switch (x)
+        {
+            case SomeEnum.VeryLongValue:
+                DoSomething();
+                break;
+        }
+    }
+}
