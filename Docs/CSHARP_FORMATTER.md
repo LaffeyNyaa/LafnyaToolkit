@@ -119,6 +119,29 @@
 
 完全位于原义字符串（`@""`）或多行注释（`/* */`）中的行，其原始前导空白保留不变，不会被重新缩进。
 
+#### 集合初始化器缩进
+
+集合初始化器（`new T() { ... }`）或对象初始化器中的元素保持一致的缩进级别，不受前置续行的影响。
+
+- **错误示例**：
+  ```csharp
+  {
+      { "if", new IfRule() },
+              { "for", new ForRule() },
+              { "foreach", new ForEachRule() },
+      // ...
+  };
+  ```
+- **正确示例**：
+  ```csharp
+  {
+      { "if", new IfRule() },
+      { "for", new ForRule() },
+      { "foreach", new ForEachRule() },
+      // ...
+  };
+  ```
+
 ### 行长度限制
 
 - **最大长度**：每行代码不得超过 **80 个字符**。
@@ -131,6 +154,52 @@
 #### `++` 和 `--` 运算符保护
 
 `++` 和 `--` 运算符被视为原子单元，不允许在其中间断行。
+
+#### 赋值运算符优先断点
+
+当行超过 80 个字符需要拆分时，格式化器优先选择 `=` 赋值运算符（非 `==`、`=>` 或复合赋值运算符）作为断点，选择不超过 80 字符的最靠右的 `=` 位置。如果不存在 `=` 断点，则回退到通用断点逻辑。
+
+- **错误示例**：
+  ```csharp
+  rules = new Dictionary<string, IBraceEnforcerRule>
+      (StringComparer.Ordinal)
+  ```
+- **正确示例**：
+  ```csharp
+  rules =
+      new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
+  ```
+
+#### 方法参数换行
+
+当方法签名或构造调用的参数列表超长，且断点在 `(` 之后时，采用两阶段策略：
+
+##### 阶段一：单行参数续行
+
+将所有参数放在同一续行上，续行相对于 `(` 缩进一级。如果续行长度 ≤ 80，保持此格式。
+
+- **正确示例**：
+  ```csharp
+  public List<string> ApplyLineLengthLimit(
+      List<string> lines, bool[] lineContinuesNext)
+  {
+  }
+  ```
+
+##### 阶段二：每参数一行
+
+如果续行仍超过 80 字符，则每个参数独占一行，续行相对于 `(` 缩进一级，右括号 `)` 紧贴在最后一个参数所在行的末尾。
+
+- **正确示例**：
+  ```csharp
+  internal List<string> ApplyBlankLineRules(
+      List<string> lines,
+      bool[] isCodeLine,
+      bool[] lineContinuesNext,
+      bool[] lineEndsStatement)
+  {
+  }
+  ```
 
 ### 空行：代码块与多行语句
 

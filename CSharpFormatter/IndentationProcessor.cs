@@ -103,10 +103,13 @@ namespace CSharpFormatter
                 }
             }
 
-            var result = new List<string>(lines.Count);
-
             int[] lineStarts =
                 CSharpTokenizer.Instance.ComputeLineStarts(lines);
+
+            bool[] inInitializer = ComputeInitializerScope(lines, text,
+                isCode, lineStarts);
+
+            var result = new List<string>(lines.Count);
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -126,7 +129,7 @@ namespace CSharpFormatter
 
                 int baseDepth = depths[i];
 
-                if (i > 0 && !inEnumBlock[i] &&
+                if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
                     IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
                     text, isCode))
                 {
@@ -423,6 +426,118 @@ namespace CSharpFormatter
         {
             return LineClassifier.Instance.IsContinuationIndicator(line,
                 lineStart, text, isCode);
+        }
+
+        /// <summary>
+        /// Computes whether each line falls inside a collection or
+        /// object initializer block. These are <c>{ ... }</c> blocks
+        /// whose opening brace is on a line starting with <c>{</c>
+        /// (first code character) and whose previous non-blank line
+        /// is a continuation indicator. Inside such blocks, the
+        /// <c>,</c> at the end of each element is a separator, not a
+        /// line continuation, so the continuation-indent from one
+        /// element to the next must be suppressed.
+        /// </summary>
+        /// <param name="lines">The line list.</param>
+        /// <param name="text">The full source text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <param name="lineStarts">The starting offsets of each line in <paramref name="text"/>.</param>
+        /// <returns>A boolean array; true means the line is inside a collection/object initializer block.</returns>
+        private static bool[] ComputeInitializerScope(List<string> lines,
+            string text, bool[] isCode, int[] lineStarts)
+        {
+            var inInitializer = new bool[lines.Count];
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (inInitializer[i])
+                {
+                    continue;
+                }
+
+                // Find the first non-whitespace character of the line
+                int firstNonWs = 0;
+
+                while (firstNonWs < lines[i].Length &&
+                    (lines[i][firstNonWs] == ' ' ||
+                    lines[i][firstNonWs] == '\t'))
+                {
+                    firstNonWs++;
+                }
+
+                if (firstNonWs >= lines[i].Length)
+                {
+                    continue;
+                }
+
+                int firstCodePos = lineStarts[i] + firstNonWs;
+
+                // The first code character must be `{`
+                if (firstCodePos >= isCode.Length ||
+                    !isCode[firstCodePos] ||
+                    text[firstCodePos] != '{')
+                {
+                    continue;
+                }
+
+                // The previous non-blank line must be a continuation
+                int prev = i - 1;
+
+                while (prev >= 0 && lines[prev].Trim().Length == 0)
+                {
+                    prev--;
+                }
+
+                if (prev < 0 ||
+                    !IsContinuationIndicator(lines[prev],
+                    lineStarts[prev], text, isCode))
+                {
+                    continue;
+                }
+
+                // Find the matching `}` for this `{`
+                int depth = 1;
+                int endPos = -1;
+
+                for (int ti = firstCodePos + 1;
+                    ti < text.Length && depth > 0; ti++)
+                {
+                    if (isCode[ti])
+                    {
+                        if (text[ti] == '{')
+                        {
+                            depth++;
+                        }
+                        else if (text[ti] == '}')
+                        {
+                            depth--;
+
+                            if (depth == 0)
+                            {
+                                endPos = ti;
+                            }
+                        }
+                    }
+                }
+
+                if (endPos < 0)
+                {
+                    continue;
+                }
+
+                // Mark all lines between the opening `{` and
+                // matching `}` as inside an initializer block
+                for (int j = 0; j < lines.Count; j++)
+                {
+                    if (lineStarts[j] > firstCodePos &&
+                        lineStarts[j] < endPos)
+                    {
+                        inInitializer[j] = true;
+                    }
+                }
+            }
+
+            return inInitializer;
         }
     }
 }

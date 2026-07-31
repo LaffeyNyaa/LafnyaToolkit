@@ -129,6 +129,36 @@ namespace CSharpFormatter
                 return new List<string> { line };
             }
 
+            // Two-phase parameter list strategy:
+            // when the break point is right after '(',
+            // try all parameters on one continuation line first.
+            if (IsAfterOpenParen(line, isCode, breakAt))
+            {
+                string baseIndent = line.Substring(0, indentLen);
+                string paramIndent = baseIndent +
+                    new string(' ', TextUtils.IndentSize);
+
+                string afterParen = line.Substring(breakAt);
+                string singleContinuation = paramIndent +
+                    afterParen.TrimStart();
+
+                if (singleContinuation.Length <= TextUtils.MaxLineLength)
+                {
+                    // Phase 1: single continuation line
+                    string firstPart = line.Substring(0, breakAt).TrimEnd();
+                    var phase1Result = new List<string> { firstPart };
+                    phase1Result.AddRange(SplitLongLine(singleContinuation,
+                        paramIndent));
+                    return phase1Result;
+                }
+                else
+                {
+                    // Phase 2: one parameter per line
+                    return SplitParametersPerLine(line, breakAt,
+                        paramIndent);
+                }
+            }
+
             string afterTrimmed = line.Substring(breakAt).TrimStart();
 
             if (afterTrimmed.StartsWith("//") ||
@@ -173,6 +203,13 @@ namespace CSharpFormatter
             if (caseColonBp > 0)
             {
                 return caseColonBp;
+            }
+
+            int assignBp = TryAssignmentBreakPoint(line, isCode, startIdx);
+
+            if (assignBp > 0)
+            {
+                return assignBp;
             }
 
             int bestInRange = -1;
@@ -327,6 +364,147 @@ namespace CSharpFormatter
             }
 
             return -1;
+        }
+
+        /// <summary>
+        /// Scans the line for a standalone <c>=</c> assignment operator
+        /// (not <c>==</c>, <c>=&gt;</c>, or compound assignments) and
+        /// returns the break position after the rightmost <c>=</c> that
+        /// falls within the maximum line length. Returns -1 if no
+        /// suitable assignment operator is found.
+        /// </summary>
+        private static int TryAssignmentBreakPoint(string line, bool[] isCode,
+            int startIdx)
+        {
+            int bestBp = -1;
+
+            for (int i = startIdx; i < line.Length; i++)
+            {
+                if (!isCode[i])
+                {
+                    continue;
+                }
+
+                if (line[i] == '=')
+                {
+                    if (i + 1 < line.Length &&
+                        (line[i + 1] == '=' || line[i + 1] == '>'))
+                    {
+                        continue;
+                    }
+
+                    if (IsBinaryOpContext(line, i, startIdx))
+                    {
+                        int bp = i + 1;
+
+                        if (bp <= TextUtils.MaxLineLength)
+                        {
+                            bestBp = bp;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return bestBp;
+        }
+
+        /// <summary>
+        /// Determines whether <paramref name="breakAt"/> is the position
+        /// immediately after an opening parenthesis <c>(</c> that is in
+        /// code context, indicating the start of a parameter list.
+        /// </summary>
+        private static bool IsAfterOpenParen(string line, bool[] isCode,
+            int breakAt)
+        {
+            if (breakAt <= 0 || breakAt > line.Length)
+            {
+                return false;
+            }
+
+            int parenPos = breakAt - 1;
+
+            return parenPos < isCode.Length && isCode[parenPos] &&
+                line[parenPos] == '(';
+        }
+
+        /// <summary>
+        /// Splits the line at a parameter list start so that each
+        /// parameter occupies its own continuation line. The closing
+        /// <c>)</c> stays on the same line as the last parameter.
+        /// </summary>
+        private static List<string> SplitParametersPerLine(string line,
+            int breakAt, string paramIndent)
+        {
+            string beforeParen = line.Substring(0, breakAt).TrimEnd();
+            string afterParen = line.Substring(breakAt);
+
+            var parameters = new List<string>();
+            int depth = 0;
+            int paramStart = 0;
+
+            for (int i = 0; i < afterParen.Length; i++)
+            {
+                char c = afterParen[i];
+
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                    else if (c == ')')
+                    {
+                        string lastParam = afterParen.Substring(paramStart,
+                            i - paramStart).Trim();
+                        parameters.Add(lastParam + ")");
+                        paramStart = i + 1;
+                        break;
+                    }
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    parameters.Add(afterParen.Substring(paramStart,
+                        i - paramStart).Trim());
+                    paramStart = i + 1;
+                }
+            }
+
+            if (paramStart < afterParen.Length)
+            {
+                string remaining = afterParen.Substring(paramStart).Trim();
+
+                if (remaining.Length > 0)
+                {
+                    if (parameters.Count > 0)
+                    {
+                        parameters[parameters.Count - 1] =
+                            parameters[parameters.Count - 1] + " " +
+                            remaining;
+                    }
+                    else
+                    {
+                        parameters.Add(remaining);
+                    }
+                }
+            }
+
+            var result = new List<string>(parameters.Count + 1);
+            result.Add(beforeParen);
+
+            foreach (var param in parameters)
+            {
+                result.Add(paramIndent + param);
+            }
+
+            return result;
         }
 
         /// <summary>
