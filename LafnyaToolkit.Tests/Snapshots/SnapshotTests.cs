@@ -118,6 +118,7 @@ namespace LafnyaToolkit.Tests.Snapshots
                 string expectedFile = Path.Combine(dir, name + ".expected");
                 string input = File.ReadAllText(inFile);
                 string actual;
+
                 try
                 {
                     actual = format(input);
@@ -143,6 +144,7 @@ namespace LafnyaToolkit.Tests.Snapshots
                 }
 
                 string expected = File.ReadAllText(expectedFile);
+
                 try
                 {
                     TestHarness.AssertEqual(expected, actual);
@@ -152,15 +154,17 @@ namespace LafnyaToolkit.Tests.Snapshots
                     string debugPath = System.IO.Path.Combine(
                         AppDomain.CurrentDomain.BaseDirectory,
                         language + "-" + name + ".diff.txt");
+
                     System.IO.File.WriteAllText(debugPath,
                         "=== " + language + " " + name + " DIFF ===\n" +
                         "--- INPUT ---\n" + input +
                         "\n--- EXPECTED ---\n" + expected +
                         "\n--- ACTUAL ---\n" + actual + "\n" +
                         "--- EXPECTED HEX ---\n" + BitConverter.ToString(
-                            System.Text.Encoding.UTF8.GetBytes(expected)) + "\n" +
+                        System.Text.Encoding.UTF8.GetBytes(expected)) + "\n" +
                         "--- ACTUAL HEX ---\n" + BitConverter.ToString(
-                            System.Text.Encoding.UTF8.GetBytes(actual)) + "\n");
+                        System.Text.Encoding.UTF8.GetBytes(actual)) + "\n");
+
                     Console.Error.WriteLine("DIFF WRITTEN TO: " + debugPath);
                     throw;
                 }

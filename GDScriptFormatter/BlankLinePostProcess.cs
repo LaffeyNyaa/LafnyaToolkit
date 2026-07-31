@@ -238,6 +238,7 @@ namespace GDScriptFormatter
 
             int curIndent =
                 IndentationProcessor.Instance.LineIndentLevel(lines[i]);
+
             int nextIndent =
                 IndentationProcessor.Instance.LineIndentLevel(lines[nextIdx]);
 
@@ -294,6 +295,7 @@ namespace GDScriptFormatter
 
             int curIndent =
                 IndentationProcessor.Instance.LineIndentLevel(lines[i]);
+
             int prevIndent =
                 IndentationProcessor.Instance.LineIndentLevel(lines[prevIdx]);
 

@@ -47,6 +47,7 @@ namespace PythonFormatter
             // function's docstring. A function docstring is a
             // docstring at indent > 0 that immediately follows a
             // `def` line at a strictly smaller indent.
+
             if (prevEntry.HasValue && IsFunctionDocstringFollowup(
                 prevEntry.Value, entry))
             {
@@ -87,6 +88,7 @@ namespace PythonFormatter
             // indent > 0 (the def line itself is at a smaller indent
             // and would not be `prevEntry` — the docstring IS
             // `prevEntry`).
+
             if (prevEntry.Indent <= 0)
             {
                 return false;
@@ -97,6 +99,7 @@ namespace PythonFormatter
             // body). If the current line dedents out, the docstring
             // was the last statement and there's no following
             // statement to suppress.
+
             if (entry.Indent < prevEntry.Indent)
             {
                 return false;

@@ -17,7 +17,6 @@ namespace PythonFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly PythonTokenizer Instance = new PythonTokenizer();
-
         private PythonTokenizer()
         {
         }
@@ -81,10 +80,12 @@ namespace PythonFormatter
                     source[position + prefixLen + 1] == quote &&
                     source[position + prefixLen + 2] == quote)
                 {
-                    return ScanTripleQuoted(source, position, prefixLen, out token);
+                    return ScanTripleQuoted(source, position, prefixLen,
+                        out token);
                 }
 
-                return ScanSingleLineString(source, position, prefixLen, out token);
+                return ScanSingleLineString(source, position, prefixLen,
+                    out token);
             }
 
             return 0;
@@ -183,8 +184,10 @@ namespace PythonFormatter
                     source[i + 1] == quote && source[i + 2] == quote)
                 {
                     i += 3;
+
                     token = new Token(TokenKind.VerbatimString,
                         source.Substring(start, i - start), start);
+
                     return i - start;
                 }
 
@@ -193,6 +196,7 @@ namespace PythonFormatter
 
             token = new Token(TokenKind.VerbatimString,
                 source.Substring(start, n - start), start);
+
             return n - start;
         }
 
@@ -232,8 +236,10 @@ namespace PythonFormatter
                 if (source[i] == quote)
                 {
                     i++;
+
                     token = new Token(TokenKind.String,
                         source.Substring(start, i - start), start);
+
                     return i - start;
                 }
 
@@ -242,6 +248,7 @@ namespace PythonFormatter
 
             token = new Token(TokenKind.String,
                 source.Substring(start, i - start), start);
+
             return i - start;
         }
     }

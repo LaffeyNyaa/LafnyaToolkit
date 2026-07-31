@@ -240,7 +240,7 @@ namespace GDScriptFormatter
             }
 
             int contentEnd = matchingCloseParen >= 0 ? matchingCloseParen :
-                line.Length;
+            line.Length;
 
             string prefix = line.Substring(0, outerOpenParen + 1).TrimEnd();
 

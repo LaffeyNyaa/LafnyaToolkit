@@ -49,6 +49,7 @@ namespace PythonFormatter
             // PEP 8: top-level definitions following a module
             // docstring are still separated by two blank lines, even
             // though the docstring is not itself a def/class.
+
             if (prevEntry.Indent == 0 &&
                 LineClassifier.Instance.IsDocstringLine(prevTrimmed))
             {

@@ -17,15 +17,15 @@ namespace PythonFormatter
         public static readonly LineClassifier Instance = new LineClassifier();
 
         private static readonly string[] BlockStartKeywords =
-        {
+            {
             "def", "class", "if", "elif", "else", "for", "while", "try",
-            "except", "finally", "with", "match", "case", "async"
-        };
+                "except", "finally", "with", "match", "case", "async"
+            };
 
         private static readonly string[] BlockContinuationKeywords =
-        {
+            {
             "else", "elif", "except", "finally", "case"
-        };
+            };
 
         private LineClassifier()
         {
@@ -115,6 +115,7 @@ namespace PythonFormatter
                 {
                     string afterAsync = trimmed.Substring(after,
                         space - after).Trim();
+
                     return afterAsync == "def" || afterAsync == "class";
                 }
             }

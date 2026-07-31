@@ -17,7 +17,6 @@ namespace PythonFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly PythonTextUtils Instance = new PythonTextUtils();
-
         private PythonTextUtils()
         {
         }
@@ -219,8 +218,9 @@ namespace PythonFormatter
             {
                 string line;
 
-                if (lineEndsInsideToken != null && i < lineEndsInsideToken.Length
-                    && lineEndsInsideToken[i])
+                if (lineEndsInsideToken != null && i <
+                    lineEndsInsideToken.Length
+                && lineEndsInsideToken[i])
                 {
                     line = lines[i];
                 }

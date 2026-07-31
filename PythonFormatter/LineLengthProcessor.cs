@@ -99,7 +99,10 @@ namespace PythonFormatter
             }
 
             var tokens = PythonTokenizer.Instance.Tokenize(line);
-            bool[] isCode = PythonTokenizer.Instance.BuildCodeMask(line, tokens);
+
+            bool[] isCode = PythonTokenizer.Instance.BuildCodeMask(line,
+                tokens);
+
             int breakAt = FindSafeBreakPoint(line, isCode, indentLen);
 
             if (breakAt < 0 || breakAt >= line.Length)
@@ -279,6 +282,7 @@ namespace PythonFormatter
             }
 
             char pc = line[prev];
+
             return pc == ')' || pc == ']' || TextUtils.IsWordChar(pc) ||
                 pc == '"' || pc == '\'';
         }

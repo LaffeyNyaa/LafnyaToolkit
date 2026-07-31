@@ -63,6 +63,7 @@ namespace PythonFormatter
 
                 entries.Add(new PythonNonBlankEntry(hadBlankAbove, line, i,
                     indent, lastIndent, currentDefIndent));
+
                 lastIndent = indent;
                 prevWasBlank = false;
                 isFirst = false;
@@ -92,8 +93,12 @@ namespace PythonFormatter
 
             var text = string.Join("\n", lines);
             var tokens = PythonTokenizer.Instance.Tokenize(text);
-            bool[] isCode = PythonTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = PythonTokenizer.Instance.BuildCodeMask(text,
+                tokens);
+
             var lineStarts = PythonTextUtils.Instance.ComputeLineStarts(lines);
+
             var lineEndDepths = PythonTextUtils.Instance.ComputeLineEndDepths(
                 lines, isCode, lineStarts);
 
@@ -104,12 +109,11 @@ namespace PythonFormatter
             {
                 var entry = entries[i];
                 var prevEntry = i > 0
-                    ? (PythonNonBlankEntry?)entries[i - 1]
-                    : null;
+                ? (PythonNonBlankEntry?)entries[i - 1]
+                : null;
                 PythonNonBlankEntry? nextEntry = i + 1 < entries.Count
-                    ? (PythonNonBlankEntry?)entries[i + 1]
-                    : null;
-
+                ? (PythonNonBlankEntry?)entries[i + 1]
+                : null;
                 // Default: preserve the input's existing blank line (if any).
                 // This makes the pipeline idempotent: blank lines placed by
                 // earlier stages (e.g. the import sorter, or the previous
@@ -119,7 +123,8 @@ namespace PythonFormatter
 
                 if (prevEntry.HasValue)
                 {
-                    if (ApplyTopLevelDefClassBlankRule(entry, prevEntry.Value) ==
+                    if (ApplyTopLevelDefClassBlankRule(entry,
+                        prevEntry.Value) ==
                         BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
@@ -182,7 +187,8 @@ namespace PythonFormatter
                         blankCount = 1;
                     }
 
-                    if (wantBlankAbove && BlankLineHelpers.IsAtTopOfIndentLevel(entry))
+                    if (wantBlankAbove &&
+                        BlankLineHelpers.IsAtTopOfIndentLevel(entry))
                     {
                         wantBlankAbove = false;
                         blankCount = 0;

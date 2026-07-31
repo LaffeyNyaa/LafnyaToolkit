@@ -38,7 +38,10 @@ namespace PythonFormatter
         public List<string> Reindent(List<string> lines, string text)
         {
             var tokens = PythonTokenizer.Instance.Tokenize(text);
-            bool[] isCode = PythonTokenizer.Instance.BuildCodeMask(text, tokens);
+
+            bool[] isCode = PythonTokenizer.Instance.BuildCodeMask(text,
+                tokens);
+
             var lineStarts = PythonTextUtils.Instance.ComputeLineStarts(lines);
             var preserveIndent = ComputePreserveIndent(lines, tokens, isCode);
             var result = new List<string>(lines.Count);

@@ -29,14 +29,15 @@ namespace LafnyaToolkit.Tests.Snapshots
 
             TestHarness.AssertTrue(prop != null,
                 "PythonFormatter.Program must declare a protected ExcludedDirectoryNames property");
-
             object value = prop.GetValue(Program.Instance);
             var list = (IReadOnlyList<string>)value;
             bool hasVenv = false;
             bool hasDotVenv = false;
+
             foreach (var name in list)
             {
-                if (string.Equals(name, "venv", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(name, "venv",
+                    StringComparison.OrdinalIgnoreCase))
                 {
                     hasVenv = true;
                 }
@@ -49,6 +50,7 @@ namespace LafnyaToolkit.Tests.Snapshots
 
             TestHarness.AssertTrue(hasVenv,
                 "PythonFormatter.Program.ExcludedDirectoryNames must contain 'venv'");
+
             TestHarness.AssertTrue(hasDotVenv,
                 "PythonFormatter.Program.ExcludedDirectoryNames must contain '.venv'");
         }
@@ -70,7 +72,9 @@ namespace LafnyaToolkit.Tests.Snapshots
             string regularDir = Path.Combine(root, "src");
             string nonVenvFile = Path.Combine(regularDir, "main.py");
             string inVenvFile = Path.Combine(venvDir, "package", "mod.py");
-            string inDotVenvFile = Path.Combine(dotVenvDir, "package", "mod.py");
+
+            string inDotVenvFile = Path.Combine(dotVenvDir, "package",
+                "mod.py");
 
             try
             {
@@ -98,13 +102,17 @@ namespace LafnyaToolkit.Tests.Snapshots
                 string output = sw.ToString();
 
                 TestHarness.AssertTrue(
-                    output.Contains("Formatting: " + Path.Combine("src", "main.py")) ||
-                    output.Contains("Skipped: " + Path.Combine("src", "main.py")),
+                    output.Contains("Formatting: " + Path.Combine("src",
+                    "main.py")) ||
+                    output.Contains("Skipped: " + Path.Combine("src",
+                    "main.py")),
                     "Expected the regular out-of-venv file to be discovered. Output was:\n" +
                     output);
 
                 string venvRelative = Path.Combine("venv", "package", "mod.py");
-                string dotVenvRelative = Path.Combine(".venv", "package", "mod.py");
+
+                string dotVenvRelative = Path.Combine(".venv", "package",
+                    "mod.py");
 
                 TestHarness.AssertTrue(!output.Contains(venvRelative),
                     "Files under venv/ must be skipped entirely. Output was:\n" +

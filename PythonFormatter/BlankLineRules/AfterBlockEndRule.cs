@@ -42,6 +42,7 @@ namespace PythonFormatter
             // The current line must be at a shallower indent than the
             // previous line (a dedent out of a block). Skip top-level
             // dedents so we don't fight the top-level def/class rule.
+
             if (entry.Indent >= prevEntry.Indent)
             {
                 return BlankLineRuleResult.None;

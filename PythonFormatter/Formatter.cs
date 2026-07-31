@@ -15,7 +15,6 @@ namespace PythonFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
-
         private Formatter()
         {
         }
@@ -67,14 +66,14 @@ namespace PythonFormatter
             lines = BlankLineProcessor.Instance.ApplyBlankLineRules(lines);
             lines = BlankLineProcessor.Instance.CollapseBlankLines(lines);
             text = PythonTextUtils.Instance.JoinLines(lines);
-
             var lineEndsInsideToken = PythonTextUtils.Instance
-                .BuildLineEndsInsideToken(text);
+            .BuildLineEndsInsideToken(text);
+
             text = PythonTextUtils.Instance.TrimTrailingWhitespace(text,
                 lineEndsInsideToken);
 
             return LafnyaToolkit.Core.Text.TextUtils
-                .EnsureSingleTrailingNewline(text);
+            .EnsureSingleTrailingNewline(text);
         }
     }
 }

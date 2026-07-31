@@ -11,11 +11,11 @@ namespace PythonFormatter
     {
         /// <summary>Run order: add-blank rules first, suppress rules last.</summary>
         public static readonly string[] RunOrder =
-        {
+            {
             "TopLevelDefClass", "Method", "FirstMethodInClass",
-            "MultiLineStatement", "BlockStart", "BlockEnd",
-            "ImportAfterCode", "CodeAfterImport", "PreserveAuthor",
-            "SuppressBlankAbove"
+                "MultiLineStatement", "BlockStart", "BlockEnd",
+                "ImportAfterCode", "CodeAfterImport", "PreserveAuthor",
+                "SuppressBlankAbove"
         };
     }
 }

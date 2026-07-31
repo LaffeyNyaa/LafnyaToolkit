@@ -20,12 +20,12 @@ namespace PythonFormatter
             new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "numpy", "pandas", "requests", "flask", "django", "torch",
-            "tensorflow", "scipy", "matplotlib", "pytest", "yaml", "PIL",
-            "cv2", "sklearn", "sqlalchemy", "pydantic", "fastapi", "click",
-            "attrs", "httpx", "boto3", "loguru", "rich", "attrs", "mypy",
-            "black", "isort", "sphinx", "pytest", "tox", "celery", "redis",
-            "pymongo", "aiohttp", "uvicorn", "gunicorn", "Pillow"
-        };
+                "tensorflow", "scipy", "matplotlib", "pytest", "yaml", "PIL",
+                "cv2", "sklearn", "sqlalchemy", "pydantic", "fastapi", "click",
+                "attrs", "httpx", "boto3", "loguru", "rich", "attrs", "mypy",
+                "black", "isort", "sphinx", "pytest", "tox", "celery", "redis",
+                "pymongo", "aiohttp", "uvicorn", "gunicorn", "Pillow"
+            };
 
         private ImportSorter()
         {
@@ -118,12 +118,16 @@ namespace PythonFormatter
                 }
                 else if (trimmed.StartsWith("#", StringComparison.Ordinal))
                 {
-                    FlushSegment(newBlock, currentSegment, currentSegmentComments);
+                    FlushSegment(newBlock, currentSegment,
+                        currentSegmentComments);
+
                     currentSegmentComments.Add(trimmed);
                 }
                 else if (string.IsNullOrEmpty(trimmed))
                 {
-                    FlushSegment(newBlock, currentSegment, currentSegmentComments);
+                    FlushSegment(newBlock, currentSegment,
+                        currentSegmentComments);
+
                     newBlock.Add(string.Empty);
                 }
             }
@@ -165,7 +169,8 @@ namespace PythonFormatter
 
             int after = lastImport + 1;
 
-            while (after < lines.Length && string.IsNullOrEmpty(lines[after].Trim()))
+            while (after < lines.Length &&
+                string.IsNullOrEmpty(lines[after].Trim()))
             {
                 after++;
             }
@@ -224,11 +229,13 @@ namespace PythonFormatter
             foreach (var imp in segment)
             {
                 ImportGroup group = Classify(imp);
+
                 switch (group)
                 {
                     case ImportGroup.Future: futureGroup.Add(imp); break;
                     case ImportGroup.Stdlib: stdlibGroup.Add(imp); break;
-                    case ImportGroup.ThirdParty: thirdPartyGroup.Add(imp); break;
+                    case ImportGroup.ThirdParty:
+                        thirdPartyGroup.Add(imp); break;
                     case ImportGroup.Local: localGroup.Add(imp); break;
                 }
             }
@@ -247,7 +254,8 @@ namespace PythonFormatter
             newBlock.AddRange(comments);
             comments.Clear();
 
-            if (newBlock.Count > 0 && newBlock[newBlock.Count - 1] != string.Empty)
+            if (newBlock.Count > 0 && newBlock[newBlock.Count - 1] !=
+                string.Empty)
             {
                 newBlock.Add(string.Empty);
             }
@@ -348,6 +356,7 @@ namespace PythonFormatter
                 if (c == ',' && depth == 0)
                 {
                     string part = body.Substring(start, i - start).Trim();
+
                     if (part.Length > 0)
                     {
                         parts.Add("import " + part);
@@ -358,6 +367,7 @@ namespace PythonFormatter
             }
 
             string last = body.Substring(start).Trim();
+
             if (last.Length > 0)
             {
                 parts.Add("import " + last);
@@ -382,10 +392,10 @@ namespace PythonFormatter
         internal static ImportGroup Classify(string importLine)
         {
             string top = ExtractTopLevelModule(importLine);
-
             // PEP 8: `from __future__ import ...` statements must come
             // before any other import statement in the file. They are
             // a special category and get their own group at the top.
+
             if (top == "__future__")
             {
                 return ImportGroup.Future;

@@ -263,7 +263,8 @@ namespace CSharpFormatter
                 line[i + 3] == 'e' &&
                 (i + 4 == line.Length || !TextUtils.IsWordChar(line[i + 4]));
 
-            bool isDefault = !isCase && i + 7 <= line.Length && line[i] == 'd' &&
+            bool isDefault = !isCase && i + 7 <= line.Length && line[i] ==
+                'd' &&
                 line[i + 1] == 'e' && line[i + 2] == 'f' &&
                 line[i + 3] == 'a' && line[i + 4] == 'u' &&
                 line[i + 5] == 'l' && line[i + 6] == 't' &&

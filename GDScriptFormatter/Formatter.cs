@@ -187,6 +187,7 @@ namespace GDScriptFormatter
                     body.Length >= 40)
                 {
                     string inner = body.Substring(1);
+
                     string contIndent = line.Substring(0, indentLen) +
                         new string(' ', indentSize);
 
@@ -280,8 +281,10 @@ namespace GDScriptFormatter
                 }
 
                 string baseIndent = line.Substring(0, indentLen);
+
                 string innerIndent = baseIndent + new string(' ',
                     indentSize);
+
                 string firstRun = new string(')', runEnd - 1);
                 string tail = body.Substring(runEnd - 1);
 
@@ -322,7 +325,7 @@ namespace GDScriptFormatter
                     int targetIdx = result.Count - 1;
 
                     while (targetIdx >= 0 && result[targetIdx].Trim().Length
-                        == 0)
+                    == 0)
                     {
                         result.RemoveAt(targetIdx);
                         targetIdx--;

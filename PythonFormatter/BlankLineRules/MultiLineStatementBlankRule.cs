@@ -66,6 +66,7 @@ namespace PythonFormatter
             // a continuation of the previous line. Do NOT add a
             // blank line above a continuation (it would break the
             // multi-line statement).
+
             if (prevTrimmed.EndsWith("\\"))
             {
                 return BlankLineRuleResult.None;
@@ -83,6 +84,7 @@ namespace PythonFormatter
             // "indented more than the previous line" but the
             // closing line is the natural end of the multi-line
             // statement and SHOULD be followed by a blank line.
+
             if (ClosesMultiLineStatement(prevEntry, lineEndDepths, entries,
                 currentIndex))
             {
@@ -98,6 +100,7 @@ namespace PythonFormatter
             // line's multi-line statement is still "in progress"
             // from a visual standpoint, so we should not separate
             // it from the next statement with a blank line.
+
             if (currentIndex >= 2 &&
                 IsContinuationOfPreviousMultilineStatement(entries,
                 currentIndex))
@@ -112,6 +115,7 @@ namespace PythonFormatter
             // line is added above such lines so that a single
             // statement split across multiple lines is visually
             // grouped.
+
             if (IsStartOfMultiLineStatement(entry, lineEndDepths))
             {
                 return BlankLineRuleResult.Decided;
@@ -137,16 +141,17 @@ namespace PythonFormatter
             List<PythonNonBlankEntry> entries, int currentIndex)
         {
             int prevDepth = GetLineEndDepth(prevEntry, lineEndDepths);
-
             // The previous line must end with brackets balanced (or
             // net-closing, which shouldn't happen for a well-formed
             // statement but we accept it).
+
             if (prevDepth > 0)
             {
                 return false;
             }
 
             // Find the second-to-previous non-blank entry.
+
             if (currentIndex < 2)
             {
                 return false;
@@ -154,7 +159,6 @@ namespace PythonFormatter
 
             var prevPrevEntry = entries[currentIndex - 2];
             int prevPrevDepth = GetLineEndDepth(prevPrevEntry, lineEndDepths);
-
             // The earlier line must have ended with at least one
             // unclosed opening bracket, and the gap between the two
             // lines must be a single step (currentIndex - 1 == prevPrev
@@ -219,8 +223,8 @@ namespace PythonFormatter
             // the start of this line (the end-of-line depth of the
             // previous line) must be zero.
             int startDepth = origIdx > 0
-                ? lineEndDepths[origIdx - 1]
-                : 0;
+            ? lineEndDepths[origIdx - 1]
+            : 0;
 
             return startDepth == 0;
         }
@@ -254,10 +258,10 @@ namespace PythonFormatter
 
             var prevEntry = entries[currentIndex - 1];
             var prevPrevEntry = entries[currentIndex - 2];
-
             // If the previous line is indented more than the
             // second-to-previous line, it is a continuation
             // (a wrapped line from a long statement).
+
             if (prevEntry.Indent > prevPrevEntry.Indent)
             {
                 return true;
