@@ -29,7 +29,7 @@ namespace CppFormatter
         private static readonly string[] TwoCharBreakOps =
             {
             "==", "!=", "<=", ">=", "=>", "+=", "-=", "&&", "||"
-            };
+        };
 
         private OperatorBreakPolicy()
         {

@@ -19,9 +19,9 @@ namespace JavaFormatter
         private static readonly string[] BlockStartKeywords =
             {
             "package", "interface", "synchronized", "finally", "abstract",
-                "implements", "extends", "throws", "class", "switch", "catch",
-                "enum", "while", "else", "for", "try", "do", "if"
-            };
+            "implements", "extends", "throws", "class", "switch", "catch",
+            "enum", "while", "else", "for", "try", "do", "if"
+        };
 
         private LineClassifier()
         {

@@ -70,10 +70,10 @@ namespace CSharpFormatter
             string[] keywords =
                 {
                 "namespace", "interface", "unchecked", "finally",
-                    "foreach", "checked", "struct", "switch", "catch",
-                    "class", "while", "unsafe", "using", "enum", "else",
-                    "for", "try", "do", "if", "lock", "fixed"
-                };
+                "foreach", "checked", "struct", "switch", "catch",
+                "class", "while", "unsafe", "using", "enum", "else",
+                "for", "try", "do", "if", "lock", "fixed"
+            };
 
             foreach (var kw in keywords)
             {

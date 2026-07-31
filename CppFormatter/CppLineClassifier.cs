@@ -25,8 +25,8 @@ namespace CppFormatter
         private static readonly string[] CppBlockStartKeywords =
             {
             "namespace", "struct", "switch", "catch", "class", "while",
-                "union", "enum", "else", "for", "try", "do", "if"
-            };
+            "union", "enum", "else", "for", "try", "do", "if"
+        };
 
         private CppLineClassifier()
         {

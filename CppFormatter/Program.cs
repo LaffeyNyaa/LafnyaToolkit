@@ -16,7 +16,7 @@ namespace CppFormatter
         private static readonly string[] CppExtensions =
             {
             ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h"
-            };
+        };
 
         /// <inheritdoc />
         protected override IReadOnlyList<string> FileExtensions =>

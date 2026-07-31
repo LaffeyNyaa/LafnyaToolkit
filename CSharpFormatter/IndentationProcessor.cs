@@ -471,8 +471,8 @@ namespace CSharpFormatter
                 }
 
                 int firstCodePos = lineStarts[i] + firstNonWs;
-
                 // The first code character must be `{`
+
                 if (firstCodePos >= isCode.Length ||
                     !isCode[firstCodePos] ||
                     text[firstCodePos] != '{')
@@ -527,6 +527,7 @@ namespace CSharpFormatter
 
                 // Mark all lines between the opening `{` and
                 // matching `}` as inside an initializer block
+
                 for (int j = 0; j < lines.Count; j++)
                 {
                     if (lineStarts[j] > firstCodePos &&

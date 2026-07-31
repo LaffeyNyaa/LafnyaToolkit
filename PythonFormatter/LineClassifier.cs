@@ -19,13 +19,13 @@ namespace PythonFormatter
         private static readonly string[] BlockStartKeywords =
             {
             "def", "class", "if", "elif", "else", "for", "while", "try",
-                "except", "finally", "with", "match", "case", "async"
-            };
+            "except", "finally", "with", "match", "case", "async"
+        };
 
         private static readonly string[] BlockContinuationKeywords =
             {
             "else", "elif", "except", "finally", "case"
-            };
+        };
 
         private LineClassifier()
         {

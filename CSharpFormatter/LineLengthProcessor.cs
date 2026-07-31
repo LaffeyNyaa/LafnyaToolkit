@@ -37,6 +37,9 @@ namespace CSharpFormatter
         {
             var result = new List<string>(lines.Count);
 
+            bool[] inInitializer = ComputeInitializerLines(lines,
+                lineContinuesNext);
+
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
@@ -70,7 +73,11 @@ namespace CSharpFormatter
                     fixedContIndent = null;
                 }
 
-                var split = SplitLongLine(line, fixedContIndent);
+                bool lineInInitializer = inInitializer != null &&
+                    i < inInitializer.Length && inInitializer[i];
+
+                var split = SplitLongLine(line, fixedContIndent,
+                    lineInInitializer);
                 result.AddRange(split);
             }
 
@@ -84,13 +91,17 @@ namespace CSharpFormatter
         /// fixed continuation indent reused across all continuation
         /// segments so that 3+ segment splits do not cascade; pass
         /// null on the first call to trigger computation from the
-        /// original line's indent.
+        /// original line's indent. <paramref name="inInitializer"/>
+        /// indicates whether the line is inside an array/collection/
+        /// object initializer block; when true and the line is too
+        /// long, it is split per-element at top-level commas.
         /// </summary>
         /// <param name="line">The line to split.</param>
         /// <param name="fixedContIndent">The fixed continuation indent (or null on the first call).</param>
+        /// <param name="inInitializer">True if the line is inside an initializer block.</param>
         /// <returns>The list of split segments.</returns>
         private static List<string> SplitLongLine(string line,
-            string fixedContIndent)
+            string fixedContIndent, bool inInitializer)
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -110,6 +121,21 @@ namespace CSharpFormatter
             }
 
             string indent = line.Substring(0, indentLen);
+
+            // Per-element wrapping for initializer content.
+            // Must happen after indent computation since initializer
+            // elements use the line's own indent level, not the
+            // continuation indent.
+            if (inInitializer)
+            {
+                var initializerResult = TrySplitInitializerLine(line,
+                    indent);
+
+                if (initializerResult != null)
+                {
+                    return initializerResult;
+                }
+            }
 
             if (fixedContIndent == null)
             {
@@ -132,13 +158,16 @@ namespace CSharpFormatter
             // Two-phase parameter list strategy:
             // when the break point is right after '(',
             // try all parameters on one continuation line first.
+
             if (IsAfterOpenParen(line, isCode, breakAt))
             {
                 string baseIndent = line.Substring(0, indentLen);
+
                 string paramIndent = baseIndent +
                     new string(' ', TextUtils.IndentSize);
 
                 string afterParen = line.Substring(breakAt);
+
                 string singleContinuation = paramIndent +
                     afterParen.TrimStart();
 
@@ -147,8 +176,10 @@ namespace CSharpFormatter
                     // Phase 1: single continuation line
                     string firstPart = line.Substring(0, breakAt).TrimEnd();
                     var phase1Result = new List<string> { firstPart };
+
                     phase1Result.AddRange(SplitLongLine(singleContinuation,
-                        paramIndent));
+                        paramIndent, false));
+
                     return phase1Result;
                 }
                 else
@@ -177,8 +208,197 @@ namespace CSharpFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest, fixedContIndent));
+            result.AddRange(SplitLongLine(rest, fixedContIndent, false));
             return result;
+        }
+
+        /// <summary>
+        /// Attempts to split an initializer line by placing each
+        /// top-level comma-separated element onto its own continuation
+        /// line. Returns null if the line has no top-level commas
+        /// (fall through to regular splitting).
+        /// </summary>
+        /// <param name="line">The line to split.</param>
+        /// <param name="elementIndent">The indent for each element line (same as the line's own indent).</param>
+        /// <returns>The split segments, or null if no commas found.</returns>
+        private static List<string> TrySplitInitializerLine(string line,
+            string elementIndent)
+        {
+            var tokens = CSharpTokenizer.Instance.Tokenize(line);
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line,
+                tokens);
+
+            // Find top-level comma positions
+            var commaPositions = new List<int>();
+            int depth = 0;
+
+            for (int j = 0; j < line.Length; j++)
+            {
+                if (!isCode[j])
+                {
+                    continue;
+                }
+
+                char ch = line[j];
+
+                if (ch == '(' || ch == '[' || ch == '{')
+                {
+                    depth++;
+                }
+                else if (ch == ')' || ch == ']' || ch == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+                else if (ch == ',' && depth == 0)
+                {
+                    commaPositions.Add(j);
+                }
+            }
+
+            if (commaPositions.Count == 0)
+            {
+                return null;
+            }
+
+            // Continuation indent for recursive splits of long elements
+            string elementContIndent = elementIndent +
+                new string(' ', TextUtils.IndentSize);
+
+            var result = new List<string>(commaPositions.Count + 1);
+            int start = 0;
+
+            foreach (int commaPos in commaPositions)
+            {
+                string element = line.Substring(start,
+                    commaPos - start).Trim();
+
+                if (element.Length > 0)
+                {
+                    string elementLine = elementIndent + element + ",";
+                    result.AddRange(SplitLongLine(elementLine,
+                        elementContIndent, false));
+                }
+
+                start = commaPos + 1;
+            }
+
+            // Handle the last element after the last comma
+            string lastElement = line.Substring(start).Trim();
+
+            if (lastElement.Length > 0)
+            {
+                string lastElementLine = elementIndent + lastElement;
+                result.AddRange(SplitLongLine(lastElementLine,
+                    elementContIndent, false));
+            }
+
+            return result.Count > 0 ? result : null;
+        }
+
+        /// <summary>
+        /// Computes which lines are inside array/collection/object
+        /// initializer blocks (between { and } where { follows a
+        /// continuation indicator).
+        /// </summary>
+        /// <param name="lines">The line list.</param>
+        /// <param name="lineContinuesNext">Per-line continuation flags; entry i corresponds to line i.</param>
+        /// <returns>A boolean array; true means the line is inside an initializer block.</returns>
+        private static bool[] ComputeInitializerLines(List<string> lines,
+            bool[] lineContinuesNext)
+        {
+            var inInitializer = new bool[lines.Count];
+
+            if (lineContinuesNext == null)
+            {
+                return inInitializer;
+            }
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (inInitializer[i])
+                {
+                    continue;
+                }
+
+                // Find the first non-whitespace character of the line
+                int firstNonWs = 0;
+
+                while (firstNonWs < lines[i].Length &&
+                    (lines[i][firstNonWs] == ' ' ||
+                    lines[i][firstNonWs] == '\t'))
+                {
+                    firstNonWs++;
+                }
+
+                if (firstNonWs >= lines[i].Length)
+                {
+                    continue;
+                }
+
+                // The first code character must be `{`
+                if (lines[i][firstNonWs] != '{')
+                {
+                    continue;
+                }
+
+                // The previous non-blank line must be a continuation
+                int prev = i - 1;
+
+                while (prev >= 0 && lines[prev].Trim().Length == 0)
+                {
+                    prev--;
+                }
+
+                if (prev < 0 || prev >= lineContinuesNext.Length ||
+                    !lineContinuesNext[prev])
+                {
+                    continue;
+                }
+
+                // Find the matching `}` for this `{`
+                int depth = 1;
+                int endLine = -1;
+
+                for (int j = i + 1; j < lines.Count && depth > 0; j++)
+                {
+                    string lineContent = lines[j];
+
+                    for (int k = 0; k < lineContent.Length; k++)
+                    {
+                        if (lineContent[k] == '{')
+                        {
+                            depth++;
+                        }
+                        else if (lineContent[k] == '}')
+                        {
+                            depth--;
+
+                            if (depth == 0)
+                            {
+                                endLine = j;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (endLine < 0)
+                {
+                    continue;
+                }
+
+                // Mark all lines between the opening `{` and
+                // matching `}` as inside initializer
+                for (int j = i + 1; j < endLine; j++)
+                {
+                    inInitializer[j] = true;
+                }
+            }
+
+            return inInitializer;
         }
 
         /// <summary>
@@ -229,6 +449,24 @@ namespace CSharpFormatter
                 if ((c == '+' || c == '-') && i + 1 < line.Length &&
                     line[i + 1] == c)
                 {
+                    i += 2;
+                    continue;
+                }
+
+                if ((c == '&' || c == '|') && i + 1 < line.Length &&
+                    line[i + 1] == c)
+                {
+                    int bpOp = i;
+
+                    if (bpOp <= TextUtils.MaxLineLength)
+                    {
+                        bestInRange = bpOp;
+                    }
+                    else if (firstOutOfRange < 0)
+                    {
+                        firstOutOfRange = bpOp;
+                    }
+
                     i += 2;
                     continue;
                 }
@@ -464,6 +702,7 @@ namespace CSharpFormatter
                     {
                         string lastParam = afterParen.Substring(paramStart,
                             i - paramStart).Trim();
+
                         parameters.Add(lastParam + ")");
                         paramStart = i + 1;
                         break;
@@ -473,6 +712,7 @@ namespace CSharpFormatter
                 {
                     parameters.Add(afterParen.Substring(paramStart,
                         i - paramStart).Trim());
+
                     paramStart = i + 1;
                 }
             }
@@ -501,7 +741,20 @@ namespace CSharpFormatter
 
             foreach (var param in parameters)
             {
-                result.Add(paramIndent + param);
+                string paramLine = paramIndent + param;
+
+                if (paramLine.Length > TextUtils.MaxLineLength)
+                {
+                    string deepIndent = paramIndent +
+                        new string(' ', TextUtils.IndentSize);
+
+                    result.AddRange(SplitLongLine(paramLine, deepIndent,
+                        false));
+                }
+                else
+                {
+                    result.Add(paramLine);
+                }
             }
 
             return result;

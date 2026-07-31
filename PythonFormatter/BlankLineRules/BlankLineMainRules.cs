@@ -13,9 +13,9 @@ namespace PythonFormatter
         public static readonly string[] RunOrder =
             {
             "TopLevelDefClass", "Method", "FirstMethodInClass",
-                "MultiLineStatement", "BlockStart", "BlockEnd",
-                "ImportAfterCode", "CodeAfterImport", "PreserveAuthor",
-                "SuppressBlankAbove"
+            "MultiLineStatement", "BlockStart", "BlockEnd",
+            "ImportAfterCode", "CodeAfterImport", "PreserveAuthor",
+            "SuppressBlankAbove"
         };
     }
 }

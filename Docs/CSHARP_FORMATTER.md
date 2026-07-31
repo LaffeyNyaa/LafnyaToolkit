@@ -149,6 +149,8 @@
 - **安全断点**：行拆分在以下安全断点处进行：`,`、`;`、`=`、`==`、`!=`、`<`、`<=`、`>`、`>=`、`+`、`-`、`*`、`/`、`%`、`&&`、`||` 以及复合赋值运算符（`+=`、`-=` 等）。
 - **续行缩进**：续行比语句基础缩进多一级。
 - **续行之续行**：如果续行本身因超长再次被拆分，其所有段的缩进保持与该续行相同（不会进一步级联加深）。
+- **逻辑运算符前缀**：在 `&&` 或 `||` 处断行时，运算符放在续行开头，不在上一行末尾。同一表达式中多个 `&&`/`||` 运算符严格列对齐（详见 [逻辑运算符前缀](#逻辑运算符前缀)）。
+- **初始化器每元素一行**：数组/集合/对象初始化器超长时，每个元素独占一行。超长元素递归拆分（详见 [初始化器元素换行](#初始化器元素换行)）。
 - **长 case 标签**：行长度限制器在拆分长 `case` 标签时优先选择 case 标签冒号 `:` 之后的位置作为断点（详见 [长 case 标签的拆分](#长-case-标签的拆分)）。
 
 #### `++` 和 `--` 运算符保护
@@ -170,9 +172,60 @@
       new Dictionary<string, IBraceEnforcerRule>(StringComparer.Ordinal)
   ```
 
+#### 逻辑运算符前缀
+
+当行在 `&&` 或 `||` 处断行时，运算符放在续行开头，不在上一行末尾。同一表达式中多个 `&&`/`||` 运算符使用相同的续行缩进，实现严格列对齐。
+
+- **错误示例**：
+  ```csharp
+  bool isContinuation = lineContinuesNext != null &&
+      i > 0 && i - 1 < lineContinuesNext.Length &&
+      lineContinuesNext[i - 1];
+  ```
+- **正确示例**：
+  ```csharp
+  bool isContinuation =
+      lineContinuesNext != null
+      && i > 0
+      && i - 1 < lineContinuesNext.Length
+      && lineContinuesNext[i - 1];
+  ```
+
+#### 初始化器元素换行
+
+当数组、集合或对象初始化器中的行超长时，每个元素独占一行。超长元素会递归拆分。
+
+- **错误示例**：
+  ```csharp
+  private static readonly string[] BlockStartKeywords =
+  {
+      "namespace", "struct", "switch", "catch", "class", "while",
+      "union", "enum", "else", "for", "try", "do", "if"
+  };
+  ```
+- **正确示例**：
+  ```csharp
+  private static readonly string[] BlockStartKeywords =
+  {
+      "namespace",
+      "struct",
+      "switch",
+      "catch",
+      "class",
+      "while",
+      "union",
+      "enum",
+      "else",
+      "for",
+      "try",
+      "do",
+      "if",
+  };
+  ```
+
 #### 方法参数换行
 
-当方法签名或构造调用的参数列表超长，且断点在 `(` 之后时，采用两阶段策略：
+当方法签名或构造调用的参数列表超长，且断点在 `(` 之后时，采用多阶段策略：
 
 ##### 阶段一：单行参数续行
 
@@ -197,6 +250,23 @@
       bool[] isCodeLine,
       bool[] lineContinuesNext,
       bool[] lineEndsStatement)
+  {
+  }
+  ```
+
+##### 阶段三：深度换行
+
+如果单个参数行仍超过 80 字符，则该参数行递归拆分，续行相对于参数起始位置再缩进一级。
+
+- **正确示例**：
+  ```csharp
+  public List<string> Reindent(List<string> lines,
+                               string text,
+                               List<LafnyaToolkit
+                                   .Core
+                                   .Tokenization
+                                   .Token> tokens,
+                               bool[] isCode)
   {
   }
   ```
