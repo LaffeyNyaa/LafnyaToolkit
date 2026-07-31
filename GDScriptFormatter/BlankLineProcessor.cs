@@ -231,8 +231,8 @@ namespace GDScriptFormatter
 
             if (want == 0)
             {
-                want = ApplyPreserveAuthorBlankRule(hadBlankAbove, curIdx,
-                    prevTrimmed, curTrimmed);
+                want = ApplyPreserveAuthorBlankRule(hadBlankAbove, contList,
+                    curIdx, prevTrimmed, curTrimmed);
             }
 
             if (want == 0)

@@ -12,16 +12,22 @@ namespace GDScriptFormatter
     {
         private static int ApplyPreserveAuthorBlankRule(List<bool>
             hadBlankAbove,
-            int curIdx, string prevTrimmed, string curTrimmed)
+            List<bool> contList, int curIdx, string prevTrimmed,
+            string curTrimmed)
         {
-            if (hadBlankAbove[curIdx] &&
-                IsPlainSingleLineStatement(prevTrimmed) &&
-                IsPlainSingleLineStatement(curTrimmed))
+            if (!hadBlankAbove[curIdx] ||
+                !IsPlainSingleLineStatement(prevTrimmed) ||
+                !IsPlainSingleLineStatement(curTrimmed))
             {
-                return 1;
+                return 0;
             }
 
-            return 0;
+            if (curIdx > 0 && contList[curIdx] && contList[curIdx - 1])
+            {
+                return 0;
+            }
+
+            return 1;
         }
     }
 }

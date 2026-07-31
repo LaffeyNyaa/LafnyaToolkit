@@ -38,6 +38,9 @@ namespace LafnyaToolkit.Tests.Snapshots
         public void TestJsonSnapshots(bool updateSnapshots) =>
             RunJson(updateSnapshots);
 
+        public void TestPythonSnapshots(bool updateSnapshots) =>
+            RunPython(updateSnapshots);
+
         private static void RunCpp(bool updateSnapshots)
         {
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
@@ -83,6 +86,15 @@ namespace LafnyaToolkit.Tests.Snapshots
                 JsonFormatter.JsonFormatter.Instance.Format(input));
         }
 
+        private static void RunPython(bool updateSnapshots)
+        {
+            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                "Snapshots", "Python");
+
+            RunCases(dir, "Python", updateSnapshots, input =>
+                PythonFormatter.Formatter.Instance.Format(input));
+        }
+
         private static void RunCases(string dir, string language,
             bool updateSnapshots, Func<string, string> format)
         {
@@ -105,7 +117,17 @@ namespace LafnyaToolkit.Tests.Snapshots
                 string name = Path.GetFileNameWithoutExtension(inFile);
                 string expectedFile = Path.Combine(dir, name + ".expected");
                 string input = File.ReadAllText(inFile);
-                string actual = format(input);
+                string actual;
+                try
+                {
+                    actual = format(input);
+                }
+                catch (Exception e)
+                {
+                    throw new TestFailureException(language + " " + name +
+                        " format failed: " + e.GetType().Name + ": " +
+                        e.Message + "\n" + e.StackTrace);
+                }
 
                 if (updateSnapshots)
                 {
@@ -121,7 +143,27 @@ namespace LafnyaToolkit.Tests.Snapshots
                 }
 
                 string expected = File.ReadAllText(expectedFile);
-                TestHarness.AssertEqual(expected, actual);
+                try
+                {
+                    TestHarness.AssertEqual(expected, actual);
+                }
+                catch (TestFailureException)
+                {
+                    string debugPath = System.IO.Path.Combine(
+                        AppDomain.CurrentDomain.BaseDirectory,
+                        language + "-" + name + ".diff.txt");
+                    System.IO.File.WriteAllText(debugPath,
+                        "=== " + language + " " + name + " DIFF ===\n" +
+                        "--- INPUT ---\n" + input +
+                        "\n--- EXPECTED ---\n" + expected +
+                        "\n--- ACTUAL ---\n" + actual + "\n" +
+                        "--- EXPECTED HEX ---\n" + BitConverter.ToString(
+                            System.Text.Encoding.UTF8.GetBytes(expected)) + "\n" +
+                        "--- ACTUAL HEX ---\n" + BitConverter.ToString(
+                            System.Text.Encoding.UTF8.GetBytes(actual)) + "\n");
+                    Console.Error.WriteLine("DIFF WRITTEN TO: " + debugPath);
+                    throw;
+                }
             }
         }
     }

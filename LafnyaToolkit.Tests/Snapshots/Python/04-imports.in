@@ -1,0 +1,21 @@
+"""Mixed import block: stdlib, third-party, local; combined imports; comments."""
+
+
+import requests
+import os
+from myproject.utils import helper
+from collections import OrderedDict, defaultdict
+import json
+
+
+# Standard library
+import sys
+
+
+# Third-party
+import numpy as np
+import pandas
+
+
+def main():
+    return helper()

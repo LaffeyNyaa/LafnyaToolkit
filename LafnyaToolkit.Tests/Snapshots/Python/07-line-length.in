@@ -1,0 +1,11 @@
+"""Long lines that exceed 80 characters and need wrapping."""
+
+
+def long_function_call():
+    result = some_function_with_a_very_long_name(argument_one, argument_two, argument_three, argument_four)
+    return result
+
+
+def long_expression():
+    value = first_thing + second_thing + third_thing + fourth_thing + fifth_thing + sixth_thing
+    return value

@@ -1,0 +1,45 @@
+"""Control flow constructs: if/elif/else, for, while, try/except/finally, with, match/case."""
+
+
+def describe(value):
+    if value < 0:
+        return "negative"
+    elif value == 0:
+        return "zero"
+    else:
+        return "positive"
+
+
+def count_down(n):
+    while n > 0:
+        print(n)
+        n -= 1
+
+
+def iterate(values):
+    for v in values:
+        print(v)
+
+
+def safe_parse(text):
+    try:
+        return int(text)
+    except ValueError:
+        return None
+    finally:
+        print("done")
+
+
+def read_file(path):
+    with open(path, "r") as f:
+        return f.read()
+
+
+def match_value(value):
+    match value:
+        case 1:
+            return "one"
+        case 2:
+            return "two"
+        case _:
+            return "other"

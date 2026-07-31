@@ -1,0 +1,14 @@
+"""Basic Python module with top-level imports and functions."""
+
+
+import os
+import sys
+from pathlib import Path
+
+
+def foo():
+    return 1
+
+
+def bar():
+    return 2

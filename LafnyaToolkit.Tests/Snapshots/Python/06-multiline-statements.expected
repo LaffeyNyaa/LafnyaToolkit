@@ -1,0 +1,30 @@
+"""Multi-line statements: split argument lists, collection literals, backslash continuation."""
+
+
+def complex_call():
+    some_function(
+        first_argument,
+        second_argument,
+        third_argument,
+        fourth_argument,
+        fifth_argument,
+        sixth_argument,
+    )
+
+    a_long_variable_name = first_value + second_value + third_value + \
+        fourth_value + fifth_value
+    a_list = [
+        1,
+        2,
+        3,
+        4,
+        5,
+    ]
+    a_dict = {
+        "key_one": 1,
+        "key_two": 2,
+        "key_three": 3,
+    }
+
+    def nested():
+        return 0

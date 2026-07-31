@@ -56,6 +56,33 @@ namespace LafnyaToolkit.Tests.Idempotency
             RunCase("nested func",
                 "func outer()->void:\n    func inner()->void:\n        pass\n");
             RunCase("trailing whitespace", "var x:int=1   \nvar y:int=2\t\n");
+
+            RunCase("arg list splitting",
+                "class_name Foo\nextends Node\n" +
+                "func _apply_compositions_recursive(active_compositions, states, compositions, layers_info):\n" +
+                "    pass\n");
+
+            RunCase("operator chain",
+                "class_name Foo\nextends Node\n" +
+                "func _ready() -> void:\n" +
+                "    avatars_container = Node.new()\n" +
+                "    if (\n" +
+                "        avatars_container\n\n" +
+                "        and not avatars_container.goto_sub_location_requested.is_connected(\n" +
+                "            _on_goto_sub_location_requested\n" +
+                "        )\n\n" +
+                "    ):\n" +
+                "        avatars_container.goto_sub_location_requested.connect(_on_goto_sub_location_requested)\n");
+
+            RunCase("top level equals wrap",
+                "class_name Foo\nextends Node\n" +
+                "func _create_player() -> void:\n" +
+                "    player_view = (\n" +
+                "        (await AsyncResourceLoader.load_resource_async(\n" +
+                "                \"res://gameplay/player/player_view/player_view.tscn\"\n" +
+                "    ))\n\n" +
+                "        . instantiate()\n" +
+                "    )\n");
         }
 
         private static void RunCase(string name, string input)

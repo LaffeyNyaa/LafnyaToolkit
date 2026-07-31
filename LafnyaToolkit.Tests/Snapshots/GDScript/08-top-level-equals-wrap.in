@@ -1,0 +1,11 @@
+class_name Foo
+extends Node
+
+func _create_player() -> void:
+    player_view = (
+        (await AsyncResourceLoader.load_resource_async(
+                "res://gameplay/player/player_view/player_view.tscn"
+    ))
+
+        . instantiate()
+    )

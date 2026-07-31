@@ -42,6 +42,7 @@
     <ProjectReference Include="..\GDScriptFormatter\GDScriptFormatter.csproj" />
     <ProjectReference Include="..\JavaFormatter\JavaFormatter.csproj" />
     <ProjectReference Include="..\JsonFormatter\JsonFormatter.csproj" />
+    <ProjectReference Include="..\PythonFormatter\PythonFormatter.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TestRunner.cs" />
@@ -51,7 +52,10 @@
     <Compile Include="Idempotency\GDScriptIdempotencyTests.cs" />
     <Compile Include="Idempotency\JavaIdempotencyTests.cs" />
     <Compile Include="Idempotency\JsonIdempotencyTests.cs" />
+    <Compile Include="Idempotency\PythonIdempotencyTests.cs" />
     <Compile Include="Snapshots\SnapshotTests.cs" />
+    <Compile Include="Snapshots\PythonExcludedDirectoryTests.cs" />
+    <Compile Include="ManualFormatterHarness.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

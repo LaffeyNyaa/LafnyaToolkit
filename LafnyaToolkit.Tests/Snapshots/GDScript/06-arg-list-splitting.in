@@ -1,0 +1,5 @@
+class_name Foo
+extends Node
+
+func _apply_compositions_recursive(active_compositions, states, compositions, layers_info):
+    pass

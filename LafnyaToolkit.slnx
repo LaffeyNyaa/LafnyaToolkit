@@ -4,6 +4,7 @@
   <Project Path="GDScriptFormatter/GDScriptFormatter.csproj" Id="5e1c4d3b-2a1f-4e0d-9c8b-7a6f5e4d3c2b" />
   <Project Path="JavaFormatter/JavaFormatter.csproj" Id="2658cc25-d5b2-4fbc-b83c-021afa28f076" />
   <Project Path="JsonFormatter/JsonFormatter.csproj" Id="5b354e29-a882-431a-bc5d-657c219bb856" />
+  <Project Path="PythonFormatter/PythonFormatter.csproj" Id="a1b2c3d4-e5f6-4789-9abc-def012345678" />
   <Project Path="LafnyaToolkit.Core/LafnyaToolkit.Core.csproj" Id="b1a2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" />
   <Project Path="LafnyaToolkit.Tests/LafnyaToolkit.Tests.csproj" Id="c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f" />
 </Solution>

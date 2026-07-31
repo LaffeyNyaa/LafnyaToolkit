@@ -1,0 +1,14 @@
+class_name Foo
+extends Node
+
+
+func _ready() -> void:
+    avatars_container = Node.new()
+
+    if (
+        avatars_container
+        and not avatars_container.goto_sub_location_requested.is_connected(
+            _on_goto_sub_location_requested
+        )
+    ):
+        avatars_container.goto_sub_location_requested.connect(_on_goto_sub_location_requested)

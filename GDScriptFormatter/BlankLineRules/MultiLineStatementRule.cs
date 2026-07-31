@@ -73,18 +73,54 @@ namespace GDScriptFormatter
             {
                 string curTrimmed = nonBlank[curIdx].Line.Trim();
 
-                if (curTrimmed.EndsWith("(") ||
+                if (!StartsWithBooleanOperator(curTrimmed) &&
+                    (curTrimmed.EndsWith("(") ||
                     curTrimmed.EndsWith("{") ||
                     (curTrimmed.EndsWith("[") &&
                     !(curIdx > 0 &&
                     contList[curIdx - 1] &&
-                    curTrimmed.StartsWith("%"))))
+                    curTrimmed.StartsWith("%")))))
                 {
                     return 1;
                 }
             }
 
             return 0;
+        }
+
+        /// <summary>
+        /// Detects whether a trimmed line begins with a GDScript
+        /// boolean/arithmetic operator token that continues the
+        /// previous expression. Used to suppress the "current line
+        /// ends with <c>(</c>" rule when the current line is the
+        /// operand of a chained call rather than the first line of a
+        /// new function-call expression.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>True when the line starts with a boolean/operator token.</returns>
+        private static bool StartsWithBooleanOperator(string trimmed)
+        {
+            if (trimmed.StartsWith("and "))
+            {
+                return true;
+            }
+
+            if (trimmed.StartsWith("or "))
+            {
+                return true;
+            }
+
+            if (trimmed.StartsWith("not "))
+            {
+                return true;
+            }
+
+            if (trimmed.StartsWith("&& ") || trimmed.StartsWith("|| "))
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -147,7 +147,15 @@ namespace GDScriptFormatter
             bool[] isCode = GDScriptTokenizer.Instance.BuildCodeMask(line,
                 tokens);
 
-            var result = TryUnclosedBracketSplit(line, contIndent, isCode,
+            var result = TryArgumentPerLineSplit(line, contIndent, isCode,
+                indentLen);
+
+            if (result != null)
+            {
+                return result;
+            }
+
+            result = TryUnclosedBracketSplit(line, contIndent, isCode,
                 indentLen);
 
             if (result != null)
@@ -179,6 +187,272 @@ namespace GDScriptFormatter
             }
 
             return new List<string> { line };
+        }
+
+        /// <summary>
+        /// Attempts to split a line by placing each top-level
+        /// comma-separated argument of a function/method call onto
+        /// its own continuation line. The closing <c>)</c> is placed
+        /// on its own line at the original indent. Applies to any
+        /// comma-separated argument list opened by an outermost
+        /// unclosed or just-closed <c>(</c>, including <c>func</c>
+        /// declarations, regular method calls, and nested calls.
+        /// Returns the split segments, or null if this strategy does
+        /// not apply (e.g. the first argument is itself too long).
+        /// </summary>
+        /// <param name="line">The line to split.</param>
+        /// <param name="contIndent">The continuation indent.</param>
+        /// <param name="isCode">The code mask of the line.</param>
+        /// <param name="indentLen">The leading-space count.</param>
+        /// <returns>The split segments or null.</returns>
+        private List<string> TryArgumentPerLineSplit(string line,
+            string contIndent, bool[] isCode, int indentLen)
+        {
+            int bracketDepth =
+                BracketDepthTracker.Instance.FindBracketDepth(line,
+                isCode, indentLen);
+
+            if (bracketDepth <= 0 &&
+                !IsConservativeArgumentListLine(line, isCode, indentLen))
+            {
+                return null;
+            }
+
+            if (FindTopLevelEquals(line, isCode, indentLen) >= 0)
+            {
+                return null;
+            }
+
+            int outerOpenParen = FindOuterOpenParenAtDepth0(line, isCode,
+                indentLen);
+
+            if (outerOpenParen < 0)
+            {
+                return null;
+            }
+
+            int matchingCloseParen = FindMatchingCloseForParen(line, isCode,
+                outerOpenParen);
+
+            if (bracketDepth == 0 && matchingCloseParen < 0)
+            {
+                return null;
+            }
+
+            int contentEnd = matchingCloseParen >= 0 ? matchingCloseParen :
+                line.Length;
+
+            string prefix = line.Substring(0, outerOpenParen + 1).TrimEnd();
+
+            if (prefix.Length <= 0)
+            {
+                return null;
+            }
+
+            string argsText = line.Substring(outerOpenParen + 1,
+                contentEnd - outerOpenParen - 1);
+
+            var items = SplitByTopLevelCommas(argsText, isCode,
+                outerOpenParen + 1);
+
+            if (items.Count <= 1)
+            {
+                return null;
+            }
+
+            int firstItemLen = contIndent.Length +
+                items[0].TrimStart().Length;
+
+            if (firstItemLen > GDScriptTextUtils.MaxLineLength)
+            {
+                return null;
+            }
+
+            string closeSuffix;
+
+            if (matchingCloseParen >= 0)
+            {
+                closeSuffix = line.Substring(matchingCloseParen).TrimEnd();
+            }
+            else
+            {
+                closeSuffix = ")";
+            }
+
+            string indent = line.Substring(0, indentLen);
+            var built = new List<string>(items.Count + 2) { prefix };
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                string item = items[i].Trim();
+
+                if (item.Length == 0)
+                {
+                    continue;
+                }
+
+                bool isLast = i == items.Count - 1;
+                built.Add(contIndent + item + (isLast ? string.Empty : ","));
+            }
+
+            built.Add(indent + closeSuffix);
+
+            var finalResult = new List<string>(built.Count);
+
+            foreach (var segment in built)
+            {
+                if (segment.Length <= GDScriptTextUtils.MaxLineLength)
+                {
+                    finalResult.Add(segment);
+                }
+                else
+                {
+                    finalResult.AddRange(SplitLongLine(segment, contIndent));
+                }
+            }
+
+            return finalResult;
+        }
+
+        /// <summary>
+        /// Detects a function/method-call argument list using a
+        /// conservative rule: a line qualifies when its content after
+        /// the leading indent begins with <c>func </c>, or when it has
+        /// an outermost <c>(</c> at bracket depth 0 followed by at
+        /// least one code character. Used to broaden detection to
+        /// <c>func</c> declarations and closed-on-same-line calls
+        /// where the strict unclosed-bracket rule does not apply.
+        /// </summary>
+        /// <param name="line">The line to check.</param>
+        /// <param name="isCode">The code mask of the line.</param>
+        /// <param name="indentLen">The leading-space count.</param>
+        /// <returns>True if the line looks like a function/method argument list.</returns>
+        private static bool IsConservativeArgumentListLine(string line,
+            bool[] isCode, int indentLen)
+        {
+            string content = line.Substring(indentLen).TrimStart();
+
+            if (content.StartsWith("func "))
+            {
+                return true;
+            }
+
+            int firstParen = FindOuterOpenParenAtDepth0(line, isCode,
+                indentLen);
+
+            if (firstParen < 0)
+            {
+                return false;
+            }
+
+            for (int i = firstParen + 1; i < line.Length; i++)
+            {
+                if (i < isCode.Length && !isCode[i])
+                {
+                    continue;
+                }
+
+                if (line[i] == ')' || line[i] == ']' || line[i] == '}')
+                {
+                    break;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Finds the index of the first <c>(</c> at bracket depth 0
+        /// in the line, scanning only Code-region characters. Returns
+        /// -1 if no such <c>(</c> exists.
+        /// </summary>
+        /// <param name="line">The line to scan.</param>
+        /// <param name="isCode">The code mask of the line.</param>
+        /// <param name="startIdx">The starting index (typically the indent length).</param>
+        /// <returns>The position of the first depth-0 <c>(</c>, or -1.</returns>
+        private static int FindOuterOpenParenAtDepth0(string line,
+            bool[] isCode, int startIdx)
+        {
+            int depth = 0;
+
+            for (int i = startIdx; i < line.Length; i++)
+            {
+                if (i < isCode.Length && !isCode[i])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if (c == '(')
+                {
+                    if (depth == 0)
+                    {
+                        return i;
+                    }
+
+                    depth++;
+                }
+                else if (c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Finds the matching closing <c>)</c> for the open <c>(</c>
+        /// at <paramref name="openParenIdx"/>, scanning forward.
+        /// Returns -1 if no matching close exists on the line.
+        /// </summary>
+        /// <param name="line">The line to scan.</param>
+        /// <param name="isCode">The code mask of the line.</param>
+        /// <param name="openParenIdx">The index of the opening <c>(</c>.</param>
+        /// <returns>The position of the matching <c>)</c>, or -1.</returns>
+        private static int FindMatchingCloseForParen(string line,
+            bool[] isCode, int openParenIdx)
+        {
+            int depth = 1;
+
+            for (int i = openParenIdx + 1; i < line.Length; i++)
+            {
+                if (i < isCode.Length && !isCode[i])
+                {
+                    continue;
+                }
+
+                char c = line[i];
+
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+
+                    if (depth == 0)
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return -1;
         }
 
         /// <summary>
@@ -319,7 +593,7 @@ namespace GDScriptFormatter
                 var res2 = new List<string> { firstLine };
                 res2.AddRange(rhsSplit);
                 res2.Add(closeLine);
-                return res2;
+                return CleanupEqualsWrap(res2);
             }
 
             if (afterEq.StartsWith("("))
@@ -338,12 +612,62 @@ namespace GDScriptFormatter
                     {
                         var res3 = new List<string> { first2 };
                         res3.AddRange(SplitLongLine(rest2, contIndent));
-                        return res3;
+                        return CleanupEqualsWrap(res3);
                     }
                 }
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Post-processes the segments produced by the
+        /// <c>=</c> wrap+split pass. Removes blank segments,
+        /// glues <c>. method(</c> / <c>. method</c> onto the
+        /// preceding segment as <c>.method(</c> / <c>.method</c>,
+        /// and merges a chain such as <c>)</c> followed by
+        /// <c>.method(...)</c> when the combined line still fits
+        /// in 80 characters. When the chain does not fit, the
+        /// <c>.method(...)</c> segment is kept on its own line at
+        /// the same indent so the chain flows visually.
+        /// </summary>
+        /// <param name="segments">The wrap+split segments.</param>
+        /// <returns>The cleaned segments.</returns>
+        private static List<string> CleanupEqualsWrap(List<string> segments)
+        {
+            var result = new List<string>(segments.Count);
+
+            foreach (var segment in segments)
+            {
+                if (string.IsNullOrWhiteSpace(segment))
+                {
+                    continue;
+                }
+
+                if (result.Count > 0)
+                {
+                    string prev = result[result.Count - 1];
+                    string prevTrimEnd = prev.TrimEnd();
+
+                    if (segment.StartsWith(".") &&
+                        prevTrimEnd.EndsWith(")"))
+                    {
+                        string curTrimmed = segment.TrimStart();
+                        string merged = prevTrimEnd + curTrimmed;
+                        merged = merged.Replace(". ", ".");
+
+                        if (merged.Length <= GDScriptTextUtils.MaxLineLength)
+                        {
+                            result[result.Count - 1] = merged;
+                            continue;
+                        }
+                    }
+                }
+
+                result.Add(segment);
+            }
+
+            return result;
         }
 
         /// <summary>

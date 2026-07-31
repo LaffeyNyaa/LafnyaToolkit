@@ -315,12 +315,95 @@ Backslashes inside comments or string literals do **not** trigger continuation. 
 ### Line Length Splitting
 
 Lines exceeding 80 characters are split, in priority order, by attempting:
-1. **Unclosed-bracket comma split**: if brackets are still open at the end of the line, split after the last comma inside brackets such that the first segment is ≤ 80 characters.
-2. **Closed-bracket comma split**: even when all brackets on the line are balanced, if a comma exists inside brackets, split after the last such comma that keeps the first segment ≤ 80 characters.
-3. **Top-level `=` wrap**: if a top-level `=` exists (excluding `==`, `!=`, `<=`, `>=`, `+=`, `-=`, `*=`, `/=`, `:=`) and the right-hand side is not already parenthesized, wrap the RHS in `(...)` and recursively split.
-4. **No safe split**: if none of the above applies safely (e.g., a single over-long string literal), the line is left unchanged rather than emit invalid GDScript.
+1. **One-argument-per-line split**: when the line opens a top-level function/method call (including `func` declarations, regular calls, and chained `.method(...)` calls) and has at least two top-level comma-separated arguments, each argument is placed on its own continuation line, with the closing `)` on its own line at the original indent.
+2. **Unclosed-bracket comma split**: if brackets are still open at the end of the line, split after the last comma inside brackets such that the first segment is ≤ 80 characters.
+3. **Closed-bracket comma split**: even when all brackets on the line are balanced, if a comma exists inside brackets, split after the last such comma that keeps the first segment ≤ 80 characters.
+4. **Brace-align split** (for `{}` and `[]` literals): align elements to the first-element column, e.g. `arr = [\n    elem1,\n    elem2,\n]`.
+5. **Top-level `=` wrap**: if a top-level `=` exists (excluding `==`, `!=`, `<=`, `>=`, `+=`, `-=`, `*=`, `/=`, `:=`) and the right-hand side is not already parenthesized, wrap the RHS in `(...)` and recursively split. After splitting, a cleanup pass removes spurious blank lines that arose from re-wrapping, glues `. method()` chains back to `.method()`, and re-indents the segments to a clean column layout.
+6. **No safe split**: if none of the above applies safely (e.g., a single over-long string literal), the line is left unchanged rather than emit invalid GDScript.
 
 Split continuation lines are indented one additional level, and splitting recurses until all segments are ≤ 80 characters or no safe split point remains.
+
+#### One-Argument-Per-Line Splitting
+
+The one-argument-per-line rule is the **highest priority** line-length strategy. It is the preferred layout for any function/method call whose first argument does not itself exceed 80 characters, because it makes each argument easy to spot, edit, and re-order.
+
+**When it applies**:
+- The line opens a top-level function/method call (an outermost unclosed `(` with at least one argument, or a `func` declaration), **or** it has an outermost `(` at bracket depth 0 followed by at least one code character before the matching `)`.
+- The line has at least two top-level comma-separated arguments (commas at bracket depth 0, ignoring commas inside `(...)`, `[...]`, or `{...}`).
+- The line does not contain a top-level `=` (i.e., it is not an assignment); assignment RHS is handled by the top-level `=` wrap strategy.
+- The first argument (after trimming leading whitespace) would fit on its own continuation line at `contIndent + firstArg`.
+
+**Layout produced**:
+```
+func long_function_name(
+    first_arg,
+    second_arg,
+    third_arg
+):
+```
+
+The opening `(` stays on the same line as the function/method name. The closing `)` is placed on its own line, indented to the original line's indent (one level shallower than the continuation indent). The last argument is **not** followed by a trailing comma — the trailing comma rule is reserved for `{}`/`[]` literals (see [Enum Formatting](#enum-formatting)).
+
+**Example** — `func` declaration:
+```gdscript
+# Before:
+func _apply_compositions_recursive(active_compositions, states, compositions, layers_info):
+    pass
+
+# After:
+func _apply_compositions_recursive(
+    active_compositions,
+    states,
+    compositions,
+    layers_info
+):
+    pass
+```
+
+**Example** — method call with a long argument list:
+```gdscript
+# Before:
+await self.some_method(first_arg, second_arg, third_arg_that_is_quite_long, fourth_arg)
+
+# After:
+await self.some_method(
+    first_arg,
+    second_arg,
+    third_arg_that_is_quite_long,
+    fourth_arg
+)
+```
+
+**Nested call handling**: when an argument itself contains a long call (e.g., the third argument is itself an 80+ character function call), the outer split places it on its own line; the inner call is then recursively split on the next pass. The result is a clean "one-argument-per-line" outer structure with each long argument internally split as needed.
+
+#### Top-Level `=` Wrap Cleanup
+
+When the top-level `=` wrap strategy wraps a long RHS in `(...)` and then recursively splits the wrapped RHS, the resulting segments may include spurious blank lines and broken chain calls (e.g., a chain broken across lines as `. instantiate()`). After the recursive split, a cleanup pass:
+
+1. **Removes spurious blank segments** that arose from the re-wrapping. This is the same blanket rule that suppresses blank lines inside any multi-line statement continuation, so it does not need to be limited to `=` wraps.
+2. **Glues `. method(...)` chains back to `.method(...)`**: when a continuation segment starts with `.` and the previous segment ends with `)`, the two are merged into one line, with any leading space after the `.` removed (so `. instantiate()` becomes `.instantiate()`). If the merged line would still exceed 80 characters, the merge is skipped and the segments remain split.
+3. **Re-indents continuation segments** to a clean column layout so that nested calls under the wrapped RHS are not over-indented.
+
+This is what makes an `await`-heavy RHS like:
+```gdscript
+player_view = (
+    (await AsyncResourceLoader.load_resource_async(
+        "res://gameplay/player/player_view/player_view.tscn"
+    )).instantiate()
+)
+```
+collapse into a clean, readable block instead of a doubly-wrapped, blank-line-padded mess.
+
+#### Continuation Blank Line Suppression
+
+A line is treated as a continuation of a multi-line statement when it sits inside an unclosed bracket (parentheses or square brackets) of the previous line. By the standard blank-line rules, two adjacent continuation lines never have a blank line between them — that has not changed. What has changed is the **multi-line-statement rule** that also fires between *non-continuation* lines of a logical statement (e.g., between the lines of a chained `and` / `or` / `not` boolean, or between a `.method()` chain link and the next link).
+
+The rule is tightened as follows:
+- A blank line **is** inserted between two adjacent non-blank, same-indent, multi-line-statement lines when the previous line ends with an opening bracket (`(`, `[`, `{`) or with an operator that invites the next operand, **except** when the next line starts with a boolean operator (`and`, `or`, `not`, `&&`, `||`).
+- A blank line is **not** inserted before a `)` line that is followed (possibly after blank lines) by a colon-terminated line at the same or shallower indent — this removes the spurious blank line that would otherwise appear between the closing `)` of a parenthesised condition and the `):` that closes the wrapping `if (...)` block.
+
+The combined effect is that chained boolean expressions and chained method calls inside parenthesised expressions are emitted as compact, no-blank-line blocks rather than as a sequence of separated statements.
 
 ### Top-Level Member Classification
 

@@ -1,0 +1,26 @@
+"""Module with docstrings, comments, and various statement forms."""
+
+
+def single_line_doc():
+    """Return 42."""
+    return 42
+
+
+def multi_line_doc():
+    """
+    Multi-line docstring.
+    Has internal blank lines and indentation.
+    """
+    return 0
+
+
+# A standalone comment
+
+
+def another():
+    # A function-internal comment
+    x = 1
+
+    y = 2
+
+    return x + y

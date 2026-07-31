@@ -109,12 +109,27 @@ namespace GDScriptFormatter
 
         /// <summary>
         /// Removes blank lines that immediately precede a closing
-        /// brace '}' or ']' at the same or lower indent level. This
-        /// cleans up trailing blank lines inside dictionary/array
-        /// literals and similar constructs. Closing parentheses are
-        /// excluded because they may close continuation contexts
-        /// (e.g., lambda arguments) where blank lines should be
-        /// preserved.
+        /// brace <c>}</c> or <c>]</c> at the same or lower indent
+        /// level, a closing parenthesis <c>)</c> that is
+        /// immediately followed by a colon-terminated
+        /// end-of-statement line (e.g. <c>):</c> closing an
+        /// <c>if (...)</c> block) at the same or shallower indent,
+        /// a <c>):</c> style end-of-statement line that closes
+        /// a parenthesized expression and starts with a close
+        /// bracket, or a <c>)</c> line whose immediately preceding
+        /// non-blank line is also a close-bracket line at the
+        /// same or deeper indent (so chained <c>)</c>
+        /// continuations such as <c>).instantiate()</c> stay
+        /// tight). This cleans up trailing blank lines inside
+        /// dictionary/array literals and similar constructs,
+        /// prevents spurious blank lines between an inner closing
+        /// parenthesis and the outer <c>):</c> end-of-statement
+        /// colon, and keeps chained close-paren continuations
+        /// visually grouped. Closing parentheses that are not
+        /// followed by an end-of-statement colon and not part of
+        /// a close-bracket chain are left alone because they may
+        /// close continuation contexts (e.g. lambda arguments)
+        /// where blank lines should be preserved.
         /// </summary>
         /// <param name="lines">The lines to process.</param>
         /// <returns>The lines with trailing blank lines before closing braces removed.</returns>
@@ -127,8 +142,22 @@ namespace GDScriptFormatter
             {
                 string trimmed = lines[i].Trim();
 
-                if (trimmed.Length > 0 && (trimmed[0] == '}' || trimmed[0] ==
-                    ']'))
+                bool isCloseBrace = trimmed.Length > 0 &&
+                    (trimmed[0] == '}' || trimmed[0] == ']');
+
+                bool isCloseParenBeforeEos = !isCloseBrace &&
+                    IsCloseParenBeforeEndOfStatement(lines, i);
+
+                bool isCloseParenEosLine = !isCloseBrace &&
+                    !isCloseParenBeforeEos &&
+                    IsCloseParenEndOfStatementLine(trimmed);
+
+                bool isCloseParenInChain = !isCloseBrace &&
+                    !isCloseParenBeforeEos && !isCloseParenEosLine &&
+                    IsCloseParenInCloseChain(lines, i);
+
+                if (isCloseBrace || isCloseParenBeforeEos ||
+                    isCloseParenEosLine || isCloseParenInChain)
                 {
                     while (result.Count > 0 && result[result.Count -
                         1].Trim().Length == 0)
@@ -141,6 +170,134 @@ namespace GDScriptFormatter
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Detects whether a trimmed line is an end-of-statement
+        /// line that begins with a closing parenthesis
+        /// (e.g. <c>):</c> closing a parenthesized block such as
+        /// <c>if (...)</c>). Used to treat such lines like a close
+        /// brace for the purpose of suppressing the blank line
+        /// between an inner close paren and this end-of-statement
+        /// line.
+        /// </summary>
+        /// <param name="trimmed">The trimmed line text.</param>
+        /// <returns>True if the line is a <c>):</c>-style end-of-statement line.</returns>
+        private static bool IsCloseParenEndOfStatementLine(string trimmed)
+        {
+            if (trimmed.Length < 2 || trimmed[0] != ')')
+            {
+                return false;
+            }
+
+            return trimmed[trimmed.Length - 1] == ':';
+        }
+
+        /// <summary>
+        /// Detects whether <paramref name="lines"/> at index
+        /// <paramref name="i"/> is a <c>)</c> line whose next
+        /// non-blank line ends with a colon and is at the same or
+        /// shallower indent (e.g. <c>):</c> closing an
+        /// <c>if (...)</c> guard). Used to suppress a trailing
+        /// blank line between the close paren and the
+        /// end-of-statement colon.
+        /// </summary>
+        /// <param name="lines">The lines to inspect.</param>
+        /// <param name="i">The index of the candidate <c>)</c> line.</param>
+        /// <returns>True if a blank line should be removed before this <c>)</c> line.</returns>
+        private static bool IsCloseParenBeforeEndOfStatement(List<string>
+            lines, int i)
+        {
+            string trimmed = lines[i].Trim();
+
+            if (trimmed.Length == 0 || trimmed[0] != ')')
+            {
+                return false;
+            }
+
+            int nextIdx = i + 1;
+
+            while (nextIdx < lines.Count &&
+                lines[nextIdx].Trim().Length == 0)
+            {
+                nextIdx++;
+            }
+
+            if (nextIdx >= lines.Count)
+            {
+                return false;
+            }
+
+            string nextTrimmed = lines[nextIdx].Trim();
+
+            if (nextTrimmed.Length == 0 ||
+                nextTrimmed[nextTrimmed.Length - 1] != ':')
+            {
+                return false;
+            }
+
+            int curIndent =
+                IndentationProcessor.Instance.LineIndentLevel(lines[i]);
+            int nextIndent =
+                IndentationProcessor.Instance.LineIndentLevel(lines[nextIdx]);
+
+            return nextIndent <= curIndent;
+        }
+
+        /// <summary>
+        /// Detects whether <paramref name="lines"/> at index
+        /// <paramref name="i"/> is a <c>)</c> line whose
+        /// immediately preceding non-blank line is also a close-
+        /// bracket line at the same or deeper indent. Used to
+        /// keep chained close-paren continuations such as
+        /// <c>).instantiate()</c> followed by the wrapping
+        /// <c>)</c> visually grouped.
+        /// </summary>
+        /// <param name="lines">The lines to inspect.</param>
+        /// <param name="i">The index of the candidate <c>)</c> line.</param>
+        /// <returns>True if a blank line should be removed before this <c>)</c> line.</returns>
+        private static bool IsCloseParenInCloseChain(List<string> lines,
+            int i)
+        {
+            string trimmed = lines[i].Trim();
+
+            if (trimmed.Length == 0 || trimmed[0] != ')')
+            {
+                return false;
+            }
+
+            int prevIdx = i - 1;
+
+            while (prevIdx >= 0 && lines[prevIdx].Trim().Length == 0)
+            {
+                prevIdx--;
+            }
+
+            if (prevIdx < 0)
+            {
+                return false;
+            }
+
+            string prevTrimmed = lines[prevIdx].Trim();
+
+            if (prevTrimmed.Length == 0)
+            {
+                return false;
+            }
+
+            char prevFirst = prevTrimmed[0];
+
+            if (prevFirst != ')' && prevFirst != '}' && prevFirst != ']')
+            {
+                return false;
+            }
+
+            int curIndent =
+                IndentationProcessor.Instance.LineIndentLevel(lines[i]);
+            int prevIndent =
+                IndentationProcessor.Instance.LineIndentLevel(lines[prevIdx]);
+
+            return prevIndent >= curIndent;
         }
 
         /// <summary>
