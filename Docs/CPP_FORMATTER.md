@@ -5,9 +5,9 @@
 - **Location**: The tool is located in the `CppFormatter` directory.
 - **Parameters**: Accepts a directory path as an argument and formats all C++ files within that directory and its subdirectories.
 - **Validation**: Outputs a prompt/warning if the specified directory does not exist or if no arguments are provided.
-- **Execution Output**: Displays real-time status indicating whether a file is currently being formatted or skipped.
-- **Skipping Logic**: A file is considered "skipped" if its content remains identical before and after the formatting process.
-- **Summary**: Upon completion, outputs a summary showing the total number of files found, the number of files formatted, and the number of files skipped.
+- **Execution Output**: Displays the relative path of each file that is being reformatted. Files whose content remains unchanged after formatting are not printed individually; only their total count appears in the summary line.
+- **Skipping Logic**: A file is considered "skipped" if its content remains identical before and after the formatting process. Skipped files do not produce a per-file log line.
+- **Summary**: Upon completion, outputs a single line: `Total: N, Formatted: M, Skipped: K, Failed: L`, showing the number of files found, reformatted, skipped, and failed.
 
 ## Formatting Rules
 

@@ -136,7 +136,6 @@ namespace LafnyaToolkit.Core.CLI
                     return ProcessFileResult.Formatted;
                 }
 
-                Console.WriteLine("Skipped: " + relative);
                 return ProcessFileResult.Skipped;
             }
             catch (Exception ex)

@@ -63,16 +63,6 @@ namespace PythonFormatter
 
                 if (trimmed.StartsWith("#", StringComparison.Ordinal))
                 {
-                    if (firstImport == -1)
-                    {
-                        continue;
-                    }
-
-                    if (lastImport < i - 1)
-                    {
-                        break;
-                    }
-
                     continue;
                 }
 
@@ -100,9 +90,8 @@ namespace PythonFormatter
                 return source;
             }
 
-            var newBlock = new List<string>();
-            var currentSegment = new List<string>();
-            var currentSegmentComments = new List<string>();
+            var allImports = new List<string>();
+            var nonImportLines = new List<string>();
 
             for (int i = firstImport; i <= lastImport; i++)
             {
@@ -113,40 +102,85 @@ namespace PythonFormatter
                 {
                     foreach (var split in SplitCombinedImport(trimmed))
                     {
-                        currentSegment.Add(split);
+                        allImports.Add(split);
                     }
                 }
-                else if (trimmed.StartsWith("#", StringComparison.Ordinal))
+                else
                 {
-                    FlushSegment(newBlock, currentSegment,
-                        currentSegmentComments);
-
-                    currentSegmentComments.Add(trimmed);
-                }
-                else if (string.IsNullOrEmpty(trimmed))
-                {
-                    FlushSegment(newBlock, currentSegment,
-                        currentSegmentComments);
-
-                    newBlock.Add(string.Empty);
+                    nonImportLines.Add(raw);
                 }
             }
 
-            FlushSegment(newBlock, currentSegment, currentSegmentComments);
+            var futureGroup = new List<string>();
+            var stdlibGroup = new List<string>();
+            var thirdPartyGroup = new List<string>();
+            var localGroup = new List<string>();
+
+            foreach (var imp in allImports)
+            {
+                ImportGroup group = Classify(imp);
+
+                switch (group)
+                {
+                    case ImportGroup.Future: futureGroup.Add(imp); break;
+                    case ImportGroup.Stdlib: stdlibGroup.Add(imp); break;
+                    case ImportGroup.ThirdParty:
+                        thirdPartyGroup.Add(imp); break;
+                    case ImportGroup.Local: localGroup.Add(imp); break;
+                }
+            }
+
+            futureGroup.Sort(CompareImports);
+            stdlibGroup.Sort(CompareImports);
+            thirdPartyGroup.Sort(CompareImports);
+            localGroup.Sort(CompareImports);
+
+            var newBlock = new List<string>();
+            newBlock.AddRange(futureGroup);
+
+            if (stdlibGroup.Count > 0)
+            {
+                if (newBlock.Count > 0)
+                {
+                    newBlock.Add(string.Empty);
+                }
+
+                newBlock.AddRange(stdlibGroup);
+            }
+
+            if (thirdPartyGroup.Count > 0)
+            {
+                if (newBlock.Count > 0)
+                {
+                    newBlock.Add(string.Empty);
+                }
+
+                newBlock.AddRange(thirdPartyGroup);
+            }
+
+            if (localGroup.Count > 0)
+            {
+                if (newBlock.Count > 0)
+                {
+                    newBlock.Add(string.Empty);
+                }
+
+                newBlock.AddRange(localGroup);
+            }
 
             var result = new StringBuilder();
 
-            int lastNonBlankBefore = -1;
+            int lastNonBlankHeader = -1;
 
             for (int i = 0; i < firstImport; i++)
             {
                 if (!string.IsNullOrEmpty(lines[i].Trim()))
                 {
-                    lastNonBlankBefore = i;
+                    lastNonBlankHeader = i;
                 }
             }
 
-            for (int i = 0; i <= lastNonBlankBefore; i++)
+            for (int i = 0; i <= lastNonBlankHeader; i++)
             {
                 if (result.Length > 0)
                 {
@@ -158,13 +192,28 @@ namespace PythonFormatter
 
             for (int i = 0; i < newBlock.Count; i++)
             {
-                if (i > 0 ||
-                    (i == 0 && result.Length > 0 && !EndsWithBlankLine(result)))
+                if (result.Length > 0)
                 {
                     result.Append('\n');
                 }
 
                 result.Append(newBlock[i]);
+            }
+
+            if (nonImportLines.Count > 0)
+            {
+                if (result.Length > 0 && !EndsWithBlankLine(result))
+                {
+                    result.Append('\n');
+                }
+
+                result.Append(string.Empty);
+
+                for (int i = 0; i < nonImportLines.Count; i++)
+                {
+                    result.Append('\n');
+                    result.Append(nonImportLines[i]);
+                }
             }
 
             int after = lastImport + 1;
@@ -185,16 +234,16 @@ namespace PythonFormatter
                 result.Append(string.Empty);
                 result.Append('\n');
                 result.Append(string.Empty);
-            }
 
-            for (int i = after; i < lines.Length; i++)
-            {
-                if (result.Length > 0)
+                for (int i = after; i < lines.Length; i++)
                 {
-                    result.Append('\n');
-                }
+                    if (result.Length > 0)
+                    {
+                        result.Append('\n');
+                    }
 
-                result.Append(lines[i]);
+                    result.Append(lines[i]);
+                }
             }
 
             return result.ToString();
@@ -380,12 +429,15 @@ namespace PythonFormatter
         }
 
         /// <summary>
-        /// Classifies an import statement into one of three groups:
-        /// standard library, third-party, or local. The classification
-        /// uses a conservative heuristic since the formatter does not
-        /// execute Python: any module name containing only lowercase
-        /// ASCII letters/digits/underscores and not in the
-        /// third-party allowlist is treated as stdlib.
+        /// Classifies an import statement into one of four groups:
+        /// future, standard library, third-party, or local. The
+        /// classification uses a conservative heuristic since the
+        /// formatter does not execute Python: an unknown module
+        /// name containing a dot is treated as a local package
+        /// (e.g. <c>myproject.utils</c>), and any single-name module
+        /// not in the third-party allowlist whose name consists only
+        /// of lowercase ASCII letters/digits/underscores is treated
+        /// as stdlib.
         /// </summary>
         /// <param name="importLine">The trimmed import line.</param>
         /// <returns>The import group.</returns>
@@ -406,28 +458,25 @@ namespace PythonFormatter
                 return ImportGroup.Local;
             }
 
-            if (ThirdPartyModules.Contains(top))
+            string topPackage = top;
+            int dotIdx = topPackage.IndexOf('.');
+
+            if (dotIdx > 0)
+            {
+                topPackage = topPackage.Substring(0, dotIdx);
+            }
+
+            if (ThirdPartyModules.Contains(topPackage))
             {
                 return ImportGroup.ThirdParty;
             }
 
-            bool hasDot = false;
-
-            foreach (char c in top)
+            if (top.IndexOf('.') >= 0)
             {
-                if (c == '.')
-                {
-                    hasDot = true;
-                    break;
-                }
+                return ImportGroup.Local;
             }
 
-            if (hasDot)
-            {
-                return ImportGroup.ThirdParty;
-            }
-
-            if (IsLikelyStdlib(top))
+            if (IsLikelyStdlib(topPackage))
             {
                 return ImportGroup.Stdlib;
             }

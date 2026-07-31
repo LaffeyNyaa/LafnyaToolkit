@@ -68,7 +68,7 @@
     </None>
   </ItemGroup>
   <PropertyGroup>
-    <StartupObject>FinalVerify.Program</StartupObject>
+    <StartupObject>LafnyaToolkit.Tests.TestRunner</StartupObject>
   </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

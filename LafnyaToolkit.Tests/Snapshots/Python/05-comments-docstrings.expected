@@ -13,9 +13,7 @@ def multi_line_doc():
     """
     return 0
 
-
 # A standalone comment
-
 
 def another():
     # A function-internal comment

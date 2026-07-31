@@ -13,9 +13,9 @@ The GDScript formatting tool is located in the `GDScriptFormatter` directory.
 
 ## Execution Logs
 
-- **Progress**: Displays messages indicating whether a file is currently being formatted or skipped.
-- **Skip Condition**: A file is considered "skipped" if its content remains identical before and after the formatting process.
-- **Summary**: Upon completion, the tool outputs a summary showing the total number of files found, the number of files formatted, and the number of files skipped.
+- **Progress**: Displays messages indicating whether a file is currently being formatted. Skipped files are not printed on a per-file basis; only their count appears in the summary.
+- **Skip Condition**: A file is considered "skipped" if its content remains identical before and after the formatting process. Skipped files do not produce a per-file log line.
+- **Summary**: Upon completion, the tool outputs a single summary line `Total: N, Formatted: F, Skipped: S`; when there are failures, `, Failed: W` is appended.
 
 ## Formatting Rules
 

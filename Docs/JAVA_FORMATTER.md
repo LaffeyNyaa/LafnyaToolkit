@@ -6,9 +6,9 @@
 - **Usage**: Accepts a directory path as an argument and formats all `.java` files within it, including all subdirectories.
 - **Error Handling**: Outputs a prompt if the specified directory does not exist or if no arguments are provided.
 - **Execution Output**:
-  - Displays real-time status indicating whether a file is being formatted or skipped.
-  - A file is considered "skipped" if the formatted content is identical to the original file.
-  - Upon completion, outputs a summary: total files found, number of files formatted, and number of files skipped.
+  - Displays the relative path of each file that is being reformatted. Files whose content remains unchanged after formatting are not printed individually; only their total count appears in the summary line.
+  - A file is considered "skipped" if the formatted content is identical to the original file. Skipped files do not produce a per-file log line.
+  - Upon completion, outputs a single summary line `Total: N, Formatted: M, Skipped: K, Failed: L`, showing the number of files found, reformatted, skipped, and failed.
 
 ## Formatting Rules
 

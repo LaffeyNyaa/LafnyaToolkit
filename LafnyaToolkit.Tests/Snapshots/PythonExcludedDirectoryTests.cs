@@ -102,11 +102,9 @@ namespace LafnyaToolkit.Tests.Snapshots
                 string output = sw.ToString();
 
                 TestHarness.AssertTrue(
-                    output.Contains("Formatting: " + Path.Combine("src",
-                    "main.py")) ||
-                    output.Contains("Skipped: " + Path.Combine("src",
-                    "main.py")),
-                    "Expected the regular out-of-venv file to be discovered. Output was:\n" +
+                    output.Contains("Total: 1") &&
+                    output.Contains("Skipped: 1"),
+                    "Expected the regular out-of-venv file to be discovered (Total: 1, Skipped: 1 in the summary). Output was:\n" +
                     output);
 
                 string venvRelative = Path.Combine("venv", "package", "mod.py");

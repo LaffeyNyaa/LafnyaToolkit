@@ -11,7 +11,7 @@ def complex_call():
         sixth_argument,
     )
 
-    a_long_variable_name = first_value + second_value + third_value + \
+    a_long_variable_name = first_value + second_value + third_value +
         fourth_value + fifth_value
     a_list = [
         1,
@@ -20,9 +20,12 @@ def complex_call():
         4,
         5,
     ]
+
     a_dict = {
         "key_one": 1,
+
         "key_two": 2,
+
         "key_three": 3,
     }
 
