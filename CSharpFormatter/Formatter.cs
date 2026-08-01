@@ -23,7 +23,10 @@ namespace CSharpFormatter
         /// <param name="source">The original source code string.</param>
         /// <param name="rootNamespace">The root namespace of the current module.</param>
         /// <returns>The formatted source code string.</returns>
-        public string Format(string source, string rootNamespace)
+        public string Format(
+            string source,
+            string rootNamespace
+        )
         {
             var tokens = CSharpTokenizer.Instance.Tokenize(source);
             tokens = BraceEnforcer.Instance.ApplyMandatoryBraces(tokens);

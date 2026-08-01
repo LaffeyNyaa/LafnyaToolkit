@@ -114,8 +114,11 @@ namespace CSharpFormatter
         /// <param name="originalIndex">The line's original index in the input list.</param>
         /// <param name="hadBlankAbove">Whether a blank line preceded this line in the input.</param>
         /// <param name="line">The line text.</param>
-        public NonBlankEntry(int originalIndex, bool hadBlankAbove,
-            string line)
+        public NonBlankEntry(
+            int originalIndex,
+            bool hadBlankAbove,
+            string line
+        )
         {
             OriginalIndex = originalIndex;
             HadBlankAbove = hadBlankAbove;
@@ -154,8 +157,12 @@ namespace CSharpFormatter
         /// <param name="isCodeLine">Per-line code-region flag array.</param>
         /// <param name="lineEndsStatement">Per-line statement-end flag array.</param>
         /// <returns>True if the line is a plain single-line statement.</returns>
-        public static bool IsPlainSingleLineStatement(string trimmed,
-            int origIdx, bool[] isCodeLine, bool[] lineEndsStatement)
+        public static bool IsPlainSingleLineStatement(
+            string trimmed,
+            int origIdx,
+            bool[] isCodeLine,
+            bool[] lineEndsStatement
+        )
         {
             if (origIdx < 0 || origIdx >= isCodeLine.Length ||
                 !isCodeLine[origIdx])

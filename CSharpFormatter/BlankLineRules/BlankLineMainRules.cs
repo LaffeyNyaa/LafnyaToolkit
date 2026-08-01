@@ -21,8 +21,10 @@ namespace CSharpFormatter
         /// <param name="p">Pre-computed predicates for the current line.</param>
         /// <param name="result">The result list being built (used to detect the first non-blank line).</param>
         /// <returns>True if a blank line should be added above the current line; false otherwise.</returns>
-        public static bool Dispatch(in BlankLinePredicates p,
-            List<string> result)
+        public static bool Dispatch(
+            in BlankLinePredicates p,
+            List<string> result
+        )
         {
             if (result.Count <= 0)
             {

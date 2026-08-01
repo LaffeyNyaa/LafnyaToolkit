@@ -93,6 +93,54 @@ namespace CSharpFormatter
                         result.Add(line);
                     }
                 }
+
+                // Handle "{ }" pattern: open brace followed by
+                // only whitespace and closing brace on the same
+                // line.
+
+                else if (trimmedEnd.EndsWith("}"))
+                {
+                    int openBraceIdx = trimmedEnd.LastIndexOf('{');
+
+                    if (openBraceIdx >= 0)
+                    {
+                        int bracePos = lineStart + openBraceIdx;
+
+                        if (bracePos < isCode.Length && isCode[bracePos])
+                        {
+                            // Verify that everything between '{'
+                            // and '}' is whitespace only.
+                            string between = trimmedEnd.Substring(
+                                openBraceIdx + 1,
+                                trimmedEnd.Length - openBraceIdx - 2);
+
+                            if (between.Trim().Length == 0)
+                            {
+                                string beforeBrace = trimmedEnd.Substring(
+                                    0, openBraceIdx).TrimEnd();
+
+                                string closeBrace = trimmedEnd.Substring(
+                                    openBraceIdx + 1).TrimStart();
+
+                                if (beforeBrace.Length > 0)
+                                {
+                                    result.Add(beforeBrace);
+                                    result.Add("{");
+                                    result.Add(closeBrace);
+                                }
+                                else
+                                {
+                                    result.Add(line);
+                                }
+
+                                lineStart += line.Length + 1;
+                                continue;
+                            }
+                        }
+                    }
+
+                    result.Add(line);
+                }
                 else
                 {
                     result.Add(line);
@@ -112,7 +160,11 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="start">The starting position.</param>
         /// <returns>The position of the brace, or -1 if not found.</returns>
-        public int FindOpenBrace(string text, bool[] isCode, int start)
+        public int FindOpenBrace(
+            string text,
+            bool[] isCode,
+            int start
+        )
         {
             int i = start;
 
@@ -142,7 +194,11 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="openPos">The position of the open brace.</param>
         /// <returns>The position of the matching close brace, or -1.</returns>
-        public int FindMatchingClose(string text, bool[] isCode, int openPos)
+        public int FindMatchingClose(
+            string text,
+            bool[] isCode,
+            int openPos
+        )
         {
             int depth = 1;
             int i = openPos + 1;

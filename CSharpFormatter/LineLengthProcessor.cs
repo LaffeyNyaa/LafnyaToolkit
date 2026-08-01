@@ -33,7 +33,9 @@ namespace CSharpFormatter
         /// <param name="lineContinuesNext">Per-line flags indicating whether the line ends with a continuation indicator; entry i corresponds to line i. May be null when continuation detection is not available.</param>
         /// <returns>The processed line list.</returns>
         public List<string> ApplyLineLengthLimit(
-            List<string> lines, bool[] lineContinuesNext)
+            List<string> lines,
+            bool[] lineContinuesNext
+        )
         {
             var result = new List<string>(lines.Count);
 
@@ -43,9 +45,21 @@ namespace CSharpFormatter
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
+                // Check for multi-parameter '(' layout regardless of
+                // line length. When a line has '(' with multiple
+                // comma-separated parameters, always apply the
+                // per-parameter layout with ')' on its own line.
+                // This catches both single-line declarations and
+                // already-broken parameter continuations.
 
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
+                    if (TryApplyMultiParamLayout(line, result, lines,
+                        ref i))
+                    {
+                        continue;
+                    }
+
                     result.Add(line);
                     continue;
                 }
@@ -78,10 +92,312 @@ namespace CSharpFormatter
 
                 var split = SplitLongLine(line, fixedContIndent,
                     lineInInitializer);
+
                 result.AddRange(split);
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Checks whether the line has '(' with multiple parameters
+        /// and, if so, applies the per-parameter layout with ')' on
+        /// its own line. Collects parameters from the current line
+        /// and any continuation lines that form the rest of the
+        /// parameter list. Returns true when the layout was applied.
+        /// </summary>
+        private static bool TryApplyMultiParamLayout(
+            string line,
+            List<string> result,
+            List<string> allLines,
+            ref int lineIndex
+        )
+        {
+            string trimmed = line.TrimStart();
+
+            if (trimmed.Length == 0 || trimmed[0] == '(')
+            {
+                return false;
+            }
+
+            int firstParen = trimmed.IndexOf('(');
+
+            if (firstParen < 0)
+            {
+                return false;
+            }
+
+            // Quick scan for comma in the parameter area
+            string afterParen = trimmed.Substring(firstParen + 1);
+            int depth = 0;
+            bool hasComma = false;
+            bool hasCloseParen = false;
+
+            for (int j = 0; j < afterParen.Length; j++)
+            {
+                char c = afterParen[j];
+
+                if (c == '(' || c == '[' || c == '{')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}')
+                {
+                    if (depth == 0)
+                    {
+                        hasCloseParen = true;
+                        break;
+                    }
+
+                    depth--;
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    hasComma = true;
+                    break;
+                }
+            }
+
+            if (!hasComma)
+            {
+                if (hasCloseParen)
+                {
+                    // Parameter list is complete with no commas — single
+                    // parameter, no multi-param layout needed.
+                    return false;
+                }
+
+                // No closing ')' on the same line — parameters continue
+                // on the next line. Check continuation lines for commas.
+                bool contHasComma = false;
+                int scanIdx = lineIndex;
+
+                while (scanIdx + 1 < allLines.Count)
+                {
+                    string next = allLines[scanIdx + 1];
+                    string nt = next.Trim();
+
+                    if (nt.Length == 0 || nt == "{")
+                    {
+                        break;
+                    }
+
+                    if (nt.Contains(","))
+                    {
+                        contHasComma = true;
+                        break;
+                    }
+
+                    if (nt.EndsWith(")"))
+                    {
+                        break;
+                    }
+
+                    scanIdx++;
+                }
+
+                if (!contHasComma)
+                {
+                    return false;
+                }
+            }
+
+            // Tokenize for proper code mask check
+            var tokens = CSharpTokenizer.Instance.Tokenize(line);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line,
+                tokens);
+
+            int parenBreakAt = FindMultiParamParenBreak(line, isCode, 0);
+
+            if (parenBreakAt <= 0)
+            {
+                // FindMultiParamParenBreak may return -1 when the '('
+                // is at the end of the line (no commas on the same
+                // line). Compute the position from firstParen.
+                int indentCount = 0;
+
+                while (indentCount < line.Length &&
+                    line[indentCount] == ' ')
+                {
+                    indentCount++;
+                }
+
+                parenBreakAt = indentCount + firstParen + 1;
+            }
+
+            // Verify this is a method declaration, not a method call.
+            string beforeParenRaw = line.Substring(0, parenBreakAt).
+            TrimEnd();
+            string beforeParenTrimmed = beforeParenRaw.TrimStart();
+
+            if (!IsMethodDeclarationLine(beforeParenTrimmed))
+            {
+                return false;
+            }
+
+            // Collect all parameters from the current line and any
+            // continuation lines
+            var allParams = new List<string>();
+            string beforeParen = line.Substring(0, parenBreakAt).TrimEnd();
+            string afterParenFull = line.Substring(parenBreakAt);
+
+            ExtractParameters(afterParenFull, allParams);
+            // Collect parameters from continuation lines
+
+            while (lineIndex + 1 < allLines.Count)
+            {
+                string next = allLines[lineIndex + 1];
+                string nt = next.Trim();
+
+                if (nt.Length == 0 || nt == "{" || nt == "}")
+                {
+                    break;
+                }
+
+                lineIndex++;
+                ExtractParameters(nt, allParams);
+            }
+
+            if (allParams.Count == 0)
+            {
+                return false;
+            }
+
+            // Merge parameters with unbalanced angle brackets.
+            // When a generic type parameter like "List<Insertion>" is
+            // split across lines, ExtractParameters may treat "List<"
+            // and "Insertion> insertions" as separate parameters.
+            // Merge them back into a single parameter.
+
+            for (int p = 0; p < allParams.Count - 1; p++)
+            {
+                int openAngles = TextUtils.CountChar(allParams[p], '<');
+                int closeAngles = TextUtils.CountChar(allParams[p], '>');
+
+                if (openAngles > closeAngles)
+                {
+                    allParams[p] = allParams[p] + allParams[p + 1];
+                    allParams.RemoveAt(p + 1);
+                    p--;
+                }
+            }
+
+            int indentLen = 0;
+
+            while (indentLen < line.Length &&
+                line[indentLen] == ' ')
+            {
+                indentLen++;
+            }
+
+            string baseIndent = line.Substring(0, indentLen);
+
+            string paramIndent = baseIndent +
+                new string(' ', TextUtils.IndentSize);
+
+            result.Add(beforeParen);
+
+            for (int p = 0; p < allParams.Count; p++)
+            {
+                string param = allParams[p];
+                bool isLast = p == allParams.Count - 1;
+
+                string paramLine = paramIndent + param +
+                    (isLast ? string.Empty : ",");
+
+                if (paramLine.Length > TextUtils.MaxLineLength)
+                {
+                    string deepIndent = paramIndent +
+                        new string(' ', TextUtils.IndentSize);
+
+                    result.AddRange(SplitLongLine(paramLine, deepIndent,
+                        false));
+                }
+                else
+                {
+                    result.Add(paramLine);
+                }
+            }
+
+            result.Add(baseIndent + ")");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Extracts comma-separated parameters from a parameter-list
+        /// string fragment. Handles nested depth (parentheses,
+        /// brackets, braces). The last parameter may include the
+        /// closing ')' which is stripped.
+        /// </summary>
+        private static void ExtractParameters(
+            string fragment,
+            List<string> allParams
+        )
+        {
+            int depth = 0;
+            int paramStart = 0;
+
+            for (int i = 0; i < fragment.Length; i++)
+            {
+                char c = fragment[i];
+
+                if (c == '(' || c == '[' || c == '{' || c == '<')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}' || c == '>')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                    else if (c == ')')
+                    {
+                        string last = fragment.Substring(paramStart,
+                            i - paramStart).Trim();
+
+                        if (last.Length > 0)
+                        {
+                            allParams.Add(last);
+                        }
+
+                        return;
+                    }
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    string param = fragment.Substring(paramStart,
+                        i - paramStart).Trim();
+
+                    if (param.Length > 0)
+                    {
+                        allParams.Add(param);
+                    }
+
+                    paramStart = i + 1;
+                }
+            }
+
+            // If no closing ')' was found, add remaining as a parameter
+            string remaining = fragment.Substring(paramStart).Trim();
+
+            if (remaining.Length > 0)
+            {
+                // Remove trailing ')' if present
+
+                if (remaining.EndsWith(")"))
+                {
+                    remaining = remaining.Substring(0,
+                        remaining.Length - 1).TrimEnd();
+                }
+
+                if (remaining.Length > 0)
+                {
+                    allParams.Add(remaining);
+                }
+            }
         }
 
         /// <summary>
@@ -100,8 +416,11 @@ namespace CSharpFormatter
         /// <param name="fixedContIndent">The fixed continuation indent (or null on the first call).</param>
         /// <param name="inInitializer">True if the line is inside an initializer block.</param>
         /// <returns>The list of split segments.</returns>
-        private static List<string> SplitLongLine(string line,
-            string fixedContIndent, bool inInitializer)
+        private static List<string> SplitLongLine(
+            string line,
+            string fixedContIndent,
+            bool inInitializer
+        )
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -121,11 +440,11 @@ namespace CSharpFormatter
             }
 
             string indent = line.Substring(0, indentLen);
-
             // Per-element wrapping for initializer content.
             // Must happen after indent computation since initializer
             // elements use the line's own indent level, not the
             // continuation indent.
+
             if (inInitializer)
             {
                 var initializerResult = TrySplitInitializerLine(line,
@@ -155,38 +474,54 @@ namespace CSharpFormatter
                 return new List<string> { line };
             }
 
-            // Two-phase parameter list strategy:
-            // when the break point is right after '(',
-            // try all parameters on one continuation line first.
+            // Multi-parameter layout: when the line has '(' with multiple
+            // comma-separated parameters, always break at '(' and place
+            // each parameter on its own line with ')' on its own line.
+            // Only applies to method declarations, not method calls.
+            int parenBreakAt = FindMultiParamParenBreak(line, isCode,
+                indentLen);
 
-            if (IsAfterOpenParen(line, isCode, breakAt))
+            if (parenBreakAt > 0)
             {
-                string baseIndent = line.Substring(0, indentLen);
+                // Verify this is a method declaration
+                string beforeParen = line.Substring(0, parenBreakAt).
+                TrimEnd();
+                string beforeParenTrimmed = beforeParen.TrimStart();
 
-                string paramIndent = baseIndent +
-                    new string(' ', TextUtils.IndentSize);
-
-                string afterParen = line.Substring(breakAt);
-
-                string singleContinuation = paramIndent +
-                    afterParen.TrimStart();
-
-                if (singleContinuation.Length <= TextUtils.MaxLineLength)
+                if (IsMethodDeclarationLine(beforeParenTrimmed))
                 {
-                    // Phase 1: single continuation line
-                    string firstPart = line.Substring(0, breakAt).TrimEnd();
-                    var phase1Result = new List<string> { firstPart };
+                    // Only apply multi-param layout when the line has
+                    // a complete parameter list (closing ')' is present
+                    // on the same line). Lines that wrap at a generic
+                    // angle bracket (e.g. "List<") are continuation
+                    // lines from a previous split and should not be
+                    // re-formatted here.
+                    int closeParen = line.IndexOf(')', parenBreakAt);
 
-                    phase1Result.AddRange(SplitLongLine(singleContinuation,
-                        paramIndent, false));
+                    if (closeParen >= 0)
+                    {
+                        string baseIndent = line.Substring(0, indentLen);
 
-                    return phase1Result;
-                }
-                else
-                {
-                    // Phase 2: one parameter per line
-                    return SplitParametersPerLine(line, breakAt,
-                        paramIndent);
+                        string paramIndent = baseIndent +
+                            new string(' ', TextUtils.IndentSize);
+
+                        return SplitParametersPerLine(line, parenBreakAt,
+                            paramIndent, baseIndent);
+                    }
+
+                    // Closing ')' is not on the same line — this
+                    // line is a continuation from a previous split.
+                    // Avoid breaking at '<' or '>' inside generic
+                    // type parameter lists. If the safe break point
+                    // would break at these characters, return the
+                    // line as-is instead.
+
+                    if (breakAt > 0 && breakAt <= line.Length &&
+                        (line[breakAt - 1] == '<' ||
+                        line[breakAt - 1] == '>'))
+                    {
+                        return new List<string> { line };
+                    }
                 }
             }
 
@@ -221,10 +556,13 @@ namespace CSharpFormatter
         /// <param name="line">The line to split.</param>
         /// <param name="elementIndent">The indent for each element line (same as the line's own indent).</param>
         /// <returns>The split segments, or null if no commas found.</returns>
-        private static List<string> TrySplitInitializerLine(string line,
-            string elementIndent)
+        private static List<string> TrySplitInitializerLine(
+            string line,
+            string elementIndent
+        )
         {
             var tokens = CSharpTokenizer.Instance.Tokenize(line);
+
             bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line,
                 tokens);
 
@@ -278,6 +616,7 @@ namespace CSharpFormatter
                 if (element.Length > 0)
                 {
                     string elementLine = elementIndent + element + ",";
+
                     result.AddRange(SplitLongLine(elementLine,
                         elementContIndent, false));
                 }
@@ -291,6 +630,7 @@ namespace CSharpFormatter
             if (lastElement.Length > 0)
             {
                 string lastElementLine = elementIndent + lastElement;
+
                 result.AddRange(SplitLongLine(lastElementLine,
                     elementContIndent, false));
             }
@@ -306,8 +646,10 @@ namespace CSharpFormatter
         /// <param name="lines">The line list.</param>
         /// <param name="lineContinuesNext">Per-line continuation flags; entry i corresponds to line i.</param>
         /// <returns>A boolean array; true means the line is inside an initializer block.</returns>
-        private static bool[] ComputeInitializerLines(List<string> lines,
-            bool[] lineContinuesNext)
+        private static bool[] ComputeInitializerLines(
+            List<string> lines,
+            bool[] lineContinuesNext
+        )
         {
             var inInitializer = new bool[lines.Count];
 
@@ -339,6 +681,7 @@ namespace CSharpFormatter
                 }
 
                 // The first code character must be `{`
+
                 if (lines[i][firstNonWs] != '{')
                 {
                     continue;
@@ -392,6 +735,7 @@ namespace CSharpFormatter
 
                 // Mark all lines between the opening `{` and
                 // matching `}` as inside initializer
+
                 for (int j = i + 1; j < endLine; j++)
                 {
                     inInitializer[j] = true;
@@ -415,8 +759,11 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="startIdx">The position to start scanning from.</param>
         /// <returns>The break position, or -1 if none exists.</returns>
-        private static int FindSafeBreakPoint(string line, bool[] isCode,
-            int startIdx)
+        private static int FindSafeBreakPoint(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int caseColonBp = TryCaseLabelBreakPoint(line, isCode, startIdx);
 
@@ -523,8 +870,11 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="startIdx">The position to start scanning from.</param>
         /// <returns>The break position after the case label colon, or -1.</returns>
-        private static int TryCaseLabelBreakPoint(string line, bool[] isCode,
-            int startIdx)
+        private static int TryCaseLabelBreakPoint(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int i = startIdx;
 
@@ -611,8 +961,11 @@ namespace CSharpFormatter
         /// falls within the maximum line length. Returns -1 if no
         /// suitable assignment operator is found.
         /// </summary>
-        private static int TryAssignmentBreakPoint(string line, bool[] isCode,
-            int startIdx)
+        private static int TryAssignmentBreakPoint(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int bestBp = -1;
 
@@ -651,31 +1004,107 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether <paramref name="breakAt"/> is the position
-        /// immediately after an opening parenthesis <c>(</c> that is in
-        /// code context, indicating the start of a parameter list.
+        /// Determines whether the content before the opening paren
+        /// of a method parameter list is a method declaration (not
+        /// a method call). A method declaration line starts with a
+        /// C# keyword such as <c>public</c>, <c>private</c>,
+        /// <c>static</c>, <c>virtual</c>, etc.
         /// </summary>
-        private static bool IsAfterOpenParen(string line, bool[] isCode,
-            int breakAt)
+        /// <param name="beforeParenTrimmed">The trimmed content of
+        /// the line up to and including the <c>(</c>.</param>
+        /// <returns>True if the line is a method declaration.</returns>
+        private static bool IsMethodDeclarationLine(
+            string beforeParenTrimmed)
         {
-            if (breakAt <= 0 || breakAt > line.Length)
+            string text = beforeParenTrimmed.TrimEnd('(').TrimEnd();
+
+            if (text.Length == 0)
             {
                 return false;
             }
 
-            int parenPos = breakAt - 1;
+            string firstWord = text.Split(' ')[0];
 
-            return parenPos < isCode.Length && isCode[parenPos] &&
-                line[parenPos] == '(';
+            return firstWord == "public" || firstWord == "private" ||
+                firstWord == "internal" || firstWord == "protected" ||
+                firstWord == "static" || firstWord == "virtual" ||
+                firstWord == "override" || firstWord == "abstract" ||
+                firstWord == "sealed" || firstWord == "async" ||
+                firstWord == "unsafe" || firstWord == "extern";
+        }
+
+        /// <summary>
+        /// Scans the line for the first <c>(</c> with multiple
+        /// comma-separated parameters and returns the position
+        /// immediately after it. Returns -1 when no such <c>(</c>
+        /// exists.
+        /// </summary>
+        private static int FindMultiParamParenBreak(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
+        {
+            for (int i = startIdx; i < line.Length; i++)
+            {
+                if (!isCode[i])
+                {
+                    continue;
+                }
+
+                if (line[i] == '(')
+                {
+                    // Check for multiple parameters: comma at depth 1
+                    int depth = 1;
+                    bool hasComma = false;
+
+                    for (int j = i + 1; j < line.Length; j++)
+                    {
+                        if (!isCode[j])
+                        {
+                            continue;
+                        }
+
+                        char c = line[j];
+
+                        if (c == '(' || c == '[' || c == '{')
+                        {
+                            depth++;
+                        }
+                        else if (c == ')' || c == ']' || c == '}')
+                        {
+                            depth--;
+
+                            if (depth == 0)
+                            {
+                                break;
+                            }
+                        }
+                        else if (c == ',' && depth == 1)
+                        {
+                            hasComma = true;
+                            break;
+                        }
+                    }
+
+                    return hasComma ? i + 1 : -1;
+                }
+            }
+
+            return -1;
         }
 
         /// <summary>
         /// Splits the line at a parameter list start so that each
         /// parameter occupies its own continuation line. The closing
-        /// <c>)</c> stays on the same line as the last parameter.
+        /// <c>)</c> is placed on its own line at the base indent.
         /// </summary>
-        private static List<string> SplitParametersPerLine(string line,
-            int breakAt, string paramIndent)
+        private static List<string> SplitParametersPerLine(
+            string line,
+            int breakAt,
+            string paramIndent,
+            string baseIndent
+        )
         {
             string beforeParen = line.Substring(0, breakAt).TrimEnd();
             string afterParen = line.Substring(breakAt);
@@ -683,16 +1112,17 @@ namespace CSharpFormatter
             var parameters = new List<string>();
             int depth = 0;
             int paramStart = 0;
+            int closeParenPos = -1;
 
             for (int i = 0; i < afterParen.Length; i++)
             {
                 char c = afterParen[i];
 
-                if (c == '(' || c == '[' || c == '{')
+                if (c == '(' || c == '[' || c == '{' || c == '<')
                 {
                     depth++;
                 }
-                else if (c == ')' || c == ']' || c == '}')
+                else if (c == ')' || c == ']' || c == '}' || c == '>')
                 {
                     if (depth > 0)
                     {
@@ -700,11 +1130,16 @@ namespace CSharpFormatter
                     }
                     else if (c == ')')
                     {
+                        closeParenPos = i;
+
                         string lastParam = afterParen.Substring(paramStart,
                             i - paramStart).Trim();
 
-                        parameters.Add(lastParam + ")");
-                        paramStart = i + 1;
+                        if (lastParam.Length > 0)
+                        {
+                            parameters.Add(lastParam);
+                        }
+
                         break;
                     }
                 }
@@ -717,31 +1152,16 @@ namespace CSharpFormatter
                 }
             }
 
-            if (paramStart < afterParen.Length)
-            {
-                string remaining = afterParen.Substring(paramStart).Trim();
-
-                if (remaining.Length > 0)
-                {
-                    if (parameters.Count > 0)
-                    {
-                        parameters[parameters.Count - 1] =
-                            parameters[parameters.Count - 1] + " " +
-                            remaining;
-                    }
-                    else
-                    {
-                        parameters.Add(remaining);
-                    }
-                }
-            }
-
-            var result = new List<string>(parameters.Count + 1);
+            var result = new List<string>(parameters.Count + 2);
             result.Add(beforeParen);
 
-            foreach (var param in parameters)
+            for (int p = 0; p < parameters.Count; p++)
             {
-                string paramLine = paramIndent + param;
+                string param = parameters[p];
+                bool isLast = p == parameters.Count - 1;
+
+                string paramLine = paramIndent + param +
+                    (isLast ? string.Empty : ",");
 
                 if (paramLine.Length > TextUtils.MaxLineLength)
                 {
@@ -757,6 +1177,21 @@ namespace CSharpFormatter
                 }
             }
 
+            // Closing ')' on its own line at base indent
+            result.Add(baseIndent + ")");
+            // Capture any trailing code after ')' (e.g. "{ }")
+
+            if (closeParenPos >= 0 && closeParenPos + 1 < afterParen.Length)
+            {
+                string trailing = afterParen.Substring(
+                    closeParenPos + 1).TrimEnd();
+
+                if (trailing.Length > 0)
+                {
+                    result.Add(baseIndent + trailing);
+                }
+            }
+
             return result;
         }
 
@@ -769,8 +1204,11 @@ namespace CSharpFormatter
         /// <param name="i">The position of the first character of the operator.</param>
         /// <param name="c">The first character of the operator.</param>
         /// <returns>The break position after the operator, or -1 if not matched.</returns>
-        private static int TryMatchTwoCharOperator(string line, int i,
-            char c)
+        private static int TryMatchTwoCharOperator(
+            string line,
+            int i,
+            char c
+        )
         {
             if (i + 1 >= line.Length)
             {
@@ -831,8 +1269,12 @@ namespace CSharpFormatter
         /// <param name="c">The operator character.</param>
         /// <param name="startIdx">The position to start scanning from.</param>
         /// <returns>The break position after the operator, or -1 if not matched.</returns>
-        private static int TryMatchSingleCharOp(string line, int i, char c,
-            int startIdx)
+        private static int TryMatchSingleCharOp(
+            string line,
+            int i,
+            char c,
+            int startIdx
+        )
         {
             bool isBinaryChar = c == '+' || c == '-' || c == '*' ||
                 c == '/' || c == '%' || c == '<' || c == '>';
@@ -861,8 +1303,11 @@ namespace CSharpFormatter
         /// <param name="i">The position of the candidate operator.</param>
         /// <param name="startIdx">The position to start scanning from.</param>
         /// <returns>True if the operator is in a binary context.</returns>
-        private static bool IsBinaryOpContext(string line, int i,
-            int startIdx)
+        private static bool IsBinaryOpContext(
+            string line,
+            int i,
+            int startIdx
+        )
         {
             int prev = i - 1;
 

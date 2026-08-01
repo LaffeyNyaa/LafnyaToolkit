@@ -42,7 +42,10 @@ namespace CSharpFormatter
         protected override string LanguageName => "C#";
 
         /// <inheritdoc />
-        protected override string FormatPipeline(string source, string filePath)
+        protected override string FormatPipeline(
+            string source,
+            string filePath
+        )
         {
             string rootNamespace = UsingSorter.Instance.ResolveRootNamespace(
                 filePath, Path.GetDirectoryName(filePath));

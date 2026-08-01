@@ -28,8 +28,10 @@ namespace CSharpFormatter
         /// <param name="filePath">The source file path.</param>
         /// <param name="targetRoot">The target root directory path (used as fallback).</param>
         /// <returns>The resolved root namespace.</returns>
-        public string ResolveRootNamespace(string filePath,
-            string targetRoot)
+        public string ResolveRootNamespace(
+            string filePath,
+            string targetRoot
+        )
         {
             string dir = Path.GetDirectoryName(filePath);
 
@@ -88,7 +90,10 @@ namespace CSharpFormatter
         /// <param name="source">The source code string.</param>
         /// <param name="rootNamespace">The root namespace of the current module.</param>
         /// <returns>The source string with <c>using</c> directives sorted.</returns>
-        public string Sort(string source, string rootNamespace)
+        public string Sort(
+            string source,
+            string rootNamespace
+        )
         {
             string unified = source.Replace("\r\n", "\n").Replace("\r", "\n");
             string[] lines = unified.Split('\n');
@@ -223,7 +228,10 @@ namespace CSharpFormatter
         /// </summary>
         /// <param name="block">The accumulating output block.</param>
         /// <param name="group">The group to append.</param>
-        private static void AppendGroup(List<string> block, List<string> group)
+        private static void AppendGroup(
+            List<string> block,
+            List<string> group
+        )
         {
             if (group.Count == 0)
             {
@@ -245,7 +253,10 @@ namespace CSharpFormatter
         /// <param name="a">The first using line.</param>
         /// <param name="b">The second using line.</param>
         /// <returns>The ordinal comparison result.</returns>
-        private static int CompareByNamespace(string a, string b)
+        private static int CompareByNamespace(
+            string a,
+            string b
+        )
         {
             int c = StringComparer.Ordinal.Compare(ExtractNamespace(a),
                 ExtractNamespace(b));

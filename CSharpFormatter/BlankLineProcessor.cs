@@ -41,9 +41,12 @@ namespace CSharpFormatter
         /// <param name="lineContinuesNext">Per-line flag indicating whether the line ends with a continuation operator and thus continues on the next line.</param>
         /// <param name="lineEndsStatement">Per-line flag indicating whether the line ends a statement (last code character is <c>;</c> or <c>}</c>).</param>
         /// <returns>The processed line list.</returns>
-        internal List<string> ApplyBlankLineRules(List<string> lines,
-            bool[] isCodeLine, bool[] lineContinuesNext,
-            bool[] lineEndsStatement)
+        internal List<string> ApplyBlankLineRules(
+            List<string> lines,
+            bool[] isCodeLine,
+            bool[] lineContinuesNext,
+            bool[] lineEndsStatement
+        )
         {
             var nonBlank = new List<NonBlankEntry>(lines.Count);
             bool prevWasBlank = false;
@@ -152,10 +155,14 @@ namespace CSharpFormatter
         /// <param name="lineEndsStatement">Per-line statement-end flag array.</param>
         /// <returns>The populated predicates struct.</returns>
         private static BlankLinePredicates ComputePredicates(
-            NonBlankEntry entry, int index,
-            List<NonBlankEntry> nonBlank, string trimmed,
-            bool[] isCodeLine, bool[] lineContinuesNext,
-            bool[] lineEndsStatement)
+            NonBlankEntry entry,
+            int index,
+            List<NonBlankEntry> nonBlank,
+            string trimmed,
+            bool[] isCodeLine,
+            bool[] lineContinuesNext,
+            bool[] lineEndsStatement
+        )
         {
             int origIdx = entry.OriginalIndex;
 

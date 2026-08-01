@@ -42,9 +42,13 @@ namespace CSharpFormatter
         /// <param name="isCode">Pre-computed code mask of <paramref name="text"/>.</param>
         /// <param name="isCodeLine">Per-line flag indicating whether the line's first non-whitespace character is in a code region.</param>
         /// <returns>The re-indented line list.</returns>
-        public List<string> Reindent(List<string> lines,
-            string text, List<Token> tokens, bool[] isCode,
-            bool[] isCodeLine)
+        public List<string> Reindent(
+            List<string> lines,
+            string text,
+            List<Token> tokens,
+            bool[] isCode,
+            bool[] isCodeLine
+        )
         {
             int[] depths = new int[lines.Count];
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
@@ -160,8 +164,10 @@ namespace CSharpFormatter
         /// <param name="lines">The line list.</param>
         /// <param name="tokens">The token list for the full text.</param>
         /// <returns>A boolean array; true means preserve the line's original indent.</returns>
-        private static bool[] ComputePreserveIndent(List<string> lines,
-            List<Token> tokens)
+        private static bool[] ComputePreserveIndent(
+            List<string> lines,
+            List<Token> tokens
+        )
         {
             var preserveIndent = new bool[lines.Count];
 
@@ -203,8 +209,11 @@ namespace CSharpFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>A boolean array; true means the line is inside an enum block.</returns>
-        private static bool[] ComputeInEnumBlock(List<string> lines,
-            string text, bool[] isCode)
+        private static bool[] ComputeInEnumBlock(
+            List<string> lines,
+            string text,
+            bool[] isCode
+        )
         {
             var inEnumBlock = new bool[lines.Count];
 
@@ -294,8 +303,12 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="isCodeLine">Per-line code-region flag.</param>
         /// <returns>A boolean array; true means the line belongs to a case body.</returns>
-        private static bool[] ComputeCaseScope(List<string> lines,
-            string text, bool[] isCode, bool[] isCodeLine)
+        private static bool[] ComputeCaseScope(
+            List<string> lines,
+            string text,
+            bool[] isCode,
+            bool[] isCodeLine
+        )
         {
             var caseBody = new bool[lines.Count];
 
@@ -421,8 +434,12 @@ namespace CSharpFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the line ends with a continuation indicator.</returns>
-        private static bool IsContinuationIndicator(string line,
-            int lineStart, string text, bool[] isCode)
+        private static bool IsContinuationIndicator(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             return LineClassifier.Instance.IsContinuationIndicator(line,
                 lineStart, text, isCode);
@@ -443,8 +460,12 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="lineStarts">The starting offsets of each line in <paramref name="text"/>.</param>
         /// <returns>A boolean array; true means the line is inside a collection/object initializer block.</returns>
-        private static bool[] ComputeInitializerScope(List<string> lines,
-            string text, bool[] isCode, int[] lineStarts)
+        private static bool[] ComputeInitializerScope(
+            List<string> lines,
+            string text,
+            bool[] isCode,
+            int[] lineStarts
+        )
         {
             var inInitializer = new bool[lines.Count];
 

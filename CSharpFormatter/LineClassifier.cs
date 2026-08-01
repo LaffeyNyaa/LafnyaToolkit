@@ -151,7 +151,10 @@ namespace CSharpFormatter
         /// <param name="trimmed">The trimmed line.</param>
         /// <param name="startAfter">The index after the case keyword.</param>
         /// <returns>The colon index, or -1.</returns>
-        private static int FindCaseLabelColon(string trimmed, int startAfter)
+        private static int FindCaseLabelColon(
+            string trimmed,
+            int startAfter
+        )
         {
             int depth = 0;
             int i = startAfter;
@@ -213,8 +216,10 @@ namespace CSharpFormatter
         /// <param name="lines">The line list.</param>
         /// <param name="isCode">The code mask of the full text.</param>
         /// <returns>A boolean array; true means the line's first non-whitespace character is in a code region.</returns>
-        internal bool[] ComputeIsCodeLine(List<string> lines,
-            bool[] isCode)
+        internal bool[] ComputeIsCodeLine(
+            List<string> lines,
+            bool[] isCode
+        )
         {
             var isCodeLine = new bool[lines.Count];
 
@@ -257,8 +262,12 @@ namespace CSharpFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask of <paramref name="text"/>.</param>
         /// <returns>The index in <paramref name="line"/> of the last code-region non-whitespace character, or -1 if none exists.</returns>
-        internal int LastCodeCharIndex(string line, int lineStart,
-            string text, bool[] isCode)
+        internal int LastCodeCharIndex(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             for (int i = line.Length - 1; i >= 0; i--)
             {
@@ -292,8 +301,12 @@ namespace CSharpFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the last code-region character is <c>;</c> or <c>}</c>; otherwise false.</returns>
-        internal bool EndsStatement(string line, int lineStart,
-            string text, bool[] isCode)
+        internal bool EndsStatement(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             int idx = LastCodeCharIndex(line, lineStart, text, isCode);
 
@@ -330,8 +343,12 @@ namespace CSharpFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the line ends with a continuation indicator; otherwise false.</returns>
-        internal bool IsContinuationIndicator(string line,
-            int lineStart, string text, bool[] isCode)
+        internal bool IsContinuationIndicator(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             int lastCodeIdx = LastCodeCharIndex(line, lineStart, text,
                 isCode);
@@ -391,8 +408,12 @@ namespace CSharpFormatter
         /// <param name="text">The full source text.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>The net open-paren count on the line.</returns>
-        private static int CountUnbalancedParens(string line, int lineStart,
-            string text, bool[] isCode)
+        private static int CountUnbalancedParens(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             int count = 0;
 

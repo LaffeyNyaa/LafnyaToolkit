@@ -75,8 +75,11 @@ namespace CSharpFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="openPos">The position of the opening brace.</param>
         /// <returns>The position of the matching closing brace, or -1 if the block spans multiple lines.</returns>
-        private static int FindSingleLineBraceEnd(string text,
-            bool[] isCode, int openPos)
+        private static int FindSingleLineBraceEnd(
+            string text,
+            bool[] isCode,
+            int openPos
+        )
         {
             int depth = 1;
             int j = openPos + 1;
@@ -122,8 +125,10 @@ namespace CSharpFormatter
         /// <param name="content">The accessor block content.</param>
         /// <param name="indentLevel">The current indentation level.</param>
         /// <returns>The expanded multi-line text.</returns>
-        private static string ExpandAccessors(string content,
-            int indentLevel)
+        private static string ExpandAccessors(
+            string content,
+            int indentLevel
+        )
         {
             var sb = new StringBuilder();
             sb.Append('\n');

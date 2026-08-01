@@ -30,8 +30,11 @@ namespace CSharpFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position,
-            out Token token)
+        protected override int ScanNextToken(
+            string source,
+            int position,
+            out Token token
+        )
         {
             token = default(Token);
             int n = source.Length;
@@ -306,7 +309,10 @@ namespace CSharpFormatter
         /// <param name="source">The source string.</param>
         /// <param name="index">The position of the <c>#</c> character.</param>
         /// <returns>True if the <c>#</c> is at line start; otherwise false.</returns>
-        private static bool IsLineStart(string source, int index)
+        private static bool IsLineStart(
+            string source,
+            int index
+        )
         {
             int j = index - 1;
 
