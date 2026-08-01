@@ -1,0 +1,14 @@
+"Collection initializer test"
+using System.Collections.Generic;
+
+class C
+{
+    void M()
+    {
+        var rules =
+            new Dictionary<string, int>(StringComparer.Ordinal) { { "if", 1 },
+            { "for", 2 }, { "foreach", 3 }, { "while", 4 }, { "do", 5 },
+            { "lock", 6 }, { "using", 7 }, { "fixed", 8 }, { "checked", 9 },
+            { "unchecked", 10 }, { "else", 11 } };
+    }
+}

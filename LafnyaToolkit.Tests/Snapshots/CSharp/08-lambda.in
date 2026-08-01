@@ -1,0 +1,11 @@
+"Lambda expressions"
+using System;
+using System.Linq;
+class C
+{
+    void M()
+    {
+        var result = list.Where(x => x > 0).Select(x => x * 2).ToList();
+        Func<int, int> f = (x) => x * x;
+    }
+}

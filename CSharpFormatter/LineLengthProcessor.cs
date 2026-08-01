@@ -225,6 +225,15 @@ namespace CSharpFormatter
             string beforeParen = line.Substring(0, parenBreakAt).TrimEnd();
             string afterParenFull = line.Substring(parenBreakAt);
 
+            // When afterParenFull is empty (nothing after '(' on the
+            // same line), this is likely a lambda expression or a
+            // continuation that should not be handled by the
+            // multi-param layout. Fall through to normal splitting.
+            if (afterParenFull.Trim().Length == 0)
+            {
+                return false;
+            }
+
             var paramText = new System.Text.StringBuilder();
             paramText.Append(afterParenFull);
 
@@ -233,7 +242,15 @@ namespace CSharpFormatter
                 string next = allLines[lineIndex + 1];
                 string nt = next.Trim();
 
-                if (nt.Length == 0 || nt == "{" || nt == "}")
+                if (nt.Length == 0 || nt.StartsWith("{") || nt == "}")
+                {
+                    break;
+                }
+
+                // Stop if the next line starts with ')' — this
+                // indicates the closing of the current parameter list
+                // or a lambda expression, not a continuation.
+                if (nt.StartsWith(")") || nt.Contains("=>"))
                 {
                     break;
                 }
@@ -254,6 +271,15 @@ namespace CSharpFormatter
                 paramText.ToString(), allParams);
 
             if (allParams.Count == 0)
+            {
+                return false;
+            }
+
+            // When the original line is within the max length and has
+            // only 2 or fewer parameters, skip the multi-param layout
+            // to avoid unnecessarily splitting simple parameter lists
+            // (e.g. "Point(int x, int y)" on a single line).
+            if (line.Length <= TextUtils.MaxLineLength && allParams.Count <= 2)
             {
                 return false;
             }
@@ -285,13 +311,17 @@ namespace CSharpFormatter
             // and the preceding parameter is not itself a pure
             // identifier, it is the name of the preceding parameter
             // type.
+            // Do NOT merge when the preceding parameter is an indexed
+            // expression (e.g. "lineStarts[i]") — such expressions are
+            // not type names.
 
             for (int p = 0; p < allParams.Count - 1; p++)
             {
                 string next = allParams[p + 1].Trim();
 
                 if (!TextUtils.IsPureIdentifier(allParams[p]) &&
-                    TextUtils.IsPureIdentifier(next))
+                    TextUtils.IsPureIdentifier(next) &&
+                    !EndsWithIndexAccess(allParams[p]))
                 {
                     allParams[p] = allParams[p] + " " + next;
                     allParams.RemoveAt(p + 1);
@@ -1364,6 +1394,76 @@ namespace CSharpFormatter
 
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"';
+        }
+
+        /// <summary>
+        /// Determines whether the string is NOT a valid type expression
+        /// suitable for parameter merging. Returns true when the string
+        /// is an expression (indexed access, arithmetic expression, or
+        /// method call) rather than a type name.
+        /// An array type like <c>string[]</c> has empty brackets (<c>[]</c>)
+        /// and returns false. An index access has content inside the
+        /// brackets (<c>[i]</c>) and returns true.
+        /// Arithmetic expressions like <c>keywordPos + 2</c> also return
+        /// true since they are not valid type names.
+        /// </summary>
+        /// <param name="s">The string to check.</param>
+        /// <returns>True if the string is an expression, not a type.</returns>
+        private static bool EndsWithIndexAccess(string s)
+        {
+            string trimmed = s.TrimEnd();
+
+            // Check for arithmetic operators (+, -, *, /, %) at the
+            // top level — these indicate an expression, not a type.
+            for (int i = 0; i < trimmed.Length; i++)
+            {
+                char c = trimmed[i];
+
+                if (c == '+' || c == '-' || c == '*' || c == '/' ||
+                    c == '%')
+                {
+                    // Skip ++ and -- operators
+                    if ((c == '+' || c == '-') && i + 1 < trimmed.Length &&
+                        trimmed[i + 1] == c)
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    return true;
+                }
+            }
+
+            int lastBracket = trimmed.LastIndexOf(']');
+
+            if (lastBracket < 1)
+            {
+                return false;
+            }
+
+            // Find the matching '[' for this ']'
+            int openBracket = trimmed.LastIndexOf('[', lastBracket - 1);
+
+            if (openBracket < 0)
+            {
+                return false;
+            }
+
+            // If the bracket pair is empty or contains only commas
+            // (e.g. "[]" or "[,]"), it's an array type, not an index
+            // access.
+            string inner = trimmed.Substring(openBracket + 1,
+                lastBracket - openBracket - 1);
+
+            foreach (char c in inner)
+            {
+                if (c != ',' && c != ' ' && c != '\t')
+                {
+                    return true; // Has content → index access
+                }
+            }
+
+            return false; // Empty or comma-only → array type
         }
     }
 }
