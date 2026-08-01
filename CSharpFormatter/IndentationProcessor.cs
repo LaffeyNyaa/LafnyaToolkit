@@ -143,6 +143,28 @@ namespace CSharpFormatter
                     }
                 }
 
+                // Lines starting with && or || are continuations of
+                // the previous logical expression (placed there by
+                // the line-length splitter, per the "逻辑运算符前缀"
+                // rule). When the previous line does not itself end
+                // with a continuation indicator (so the existing
+                // check above did not fire), treat this line as a
+                // continuation and indent it one extra level.
+                // This ensures idempotency: the split output from
+                // the first pass is stable on subsequent passes
+                // through the IndentationProcessor.
+
+                if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
+                    !IsContinuationIndicator(lines[i - 1],
+                    lineStarts[i - 1], text, isCode) &&
+                    StartsWithLogicalOp(lines[i]))
+                {
+                    if (depths[i] <= depths[i - 1])
+                    {
+                        baseDepth++;
+                    }
+                }
+
                 if (caseBody[i])
                 {
                     baseDepth++;
@@ -443,6 +465,21 @@ namespace CSharpFormatter
         {
             return LineClassifier.Instance.IsContinuationIndicator(line,
                 lineStart, text, isCode);
+        }
+
+        /// <summary>
+        /// Determines whether the trimmed line starts with a logical
+        /// operator (<c>&&</c> or <c>||</c>). Such lines are
+        /// continuations of a logical expression from the previous
+        /// line, placed at the start of a continuation line by the
+        /// line-length splitter.
+        /// </summary>
+        /// <param name="line">The line text.</param>
+        /// <returns>True if the line starts with <c>&&</c> or <c>||</c>.</returns>
+        private static bool StartsWithLogicalOp(string line)
+        {
+            string trimmed = line.TrimStart();
+            return trimmed.StartsWith("&&") || trimmed.StartsWith("||");
         }
 
         /// <summary>

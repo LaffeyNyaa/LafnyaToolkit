@@ -237,13 +237,17 @@ namespace CSharpFormatter
             }
 
             // Collect all parameters from the current line and any
-            // continuation lines
+            // continuation lines. Concatenate all continuation lines
+            // into a single string before calling ExtractParameters,
+            // so that parameters split across lines (e.g.
+            // "List<string>\nresult)") are correctly treated as a
+            // single parameter rather than two separate ones.
             var allParams = new List<string>();
             string beforeParen = line.Substring(0, parenBreakAt).TrimEnd();
             string afterParenFull = line.Substring(parenBreakAt);
 
-            ExtractParameters(afterParenFull, allParams);
-            // Collect parameters from continuation lines
+            var paramText = new System.Text.StringBuilder();
+            paramText.Append(afterParenFull);
 
             while (lineIndex + 1 < allLines.Count)
             {
@@ -256,8 +260,11 @@ namespace CSharpFormatter
                 }
 
                 lineIndex++;
-                ExtractParameters(nt, allParams);
+                paramText.Append(' ');
+                paramText.Append(nt);
             }
+
+            ExtractParameters(paramText.ToString(), allParams);
 
             if (allParams.Count == 0)
             {
@@ -278,6 +285,25 @@ namespace CSharpFormatter
                 if (openAngles > closeAngles)
                 {
                     allParams[p] = allParams[p] + allParams[p + 1];
+                    allParams.RemoveAt(p + 1);
+                    p--;
+                }
+            }
+
+            // Merge parameters where a type and its parameter name
+            // were split across lines by a previous formatting pass
+            // (e.g. "out List<string>," and "preprocessorLines" were
+            // incorrectly treated as separate parameters). When a
+            // parameter is a pure identifier (single word, no spaces),
+            // it is the name of the preceding parameter type.
+
+            for (int p = 0; p < allParams.Count - 1; p++)
+            {
+                string next = allParams[p + 1].Trim();
+
+                if (TextUtils.IsPureIdentifier(next))
+                {
+                    allParams[p] = allParams[p] + " " + next;
                     allParams.RemoveAt(p + 1);
                     p--;
                 }
