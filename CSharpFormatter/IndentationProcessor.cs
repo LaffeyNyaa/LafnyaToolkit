@@ -133,31 +133,50 @@ namespace CSharpFormatter
 
                 int baseDepth = depths[i];
 
+                // Lines starting with && or || are continuations of
+                // the previous logical expression (placed there by
+                // the line-length splitter). Use the guard logic to
+                // check if the line already has the expected indent,
+                // so that re-running the IndentationProcessor is
+                // idempotent regardless of whether the previous line
+                // is a continuation indicator. This check must come
+                // before the regular continuation check so that ||/&&
+                // lines are always handled by the guard logic.
+
                 if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
-                    IsContinuationIndicator(lines[i - 1], lineStarts[i - 1],
-                    text, isCode))
+                    StartsWithLogicalOp(lines[i]))
                 {
                     if (depths[i] <= depths[i - 1])
                     {
-                        baseDepth++;
+                        int currentIndent = 0;
+
+                        while (currentIndent < lines[i].Length &&
+                            lines[i][currentIndent] == ' ')
+                        {
+                            currentIndent++;
+                        }
+
+                        int expectedIndent =
+                            (depths[i] + 1) * TextUtils.IndentSize;
+
+                        if (currentIndent < expectedIndent)
+                        {
+                            baseDepth++;
+                        }
+                        else
+                        {
+                            // Line already has the expected (or more)
+                            // continuation indent. Set baseDepth to
+                            // depths[i] + 1 so the output is stable
+                            // on subsequent passes, preventing
+                            // oscillation between indent levels.
+                            baseDepth = depths[i] + 1;
+                        }
                     }
                 }
-
-                // Lines starting with && or || are continuations of
-                // the previous logical expression (placed there by
-                // the line-length splitter, per the "逻辑运算符前缀"
-                // rule). When the previous line does not itself end
-                // with a continuation indicator (so the existing
-                // check above did not fire), treat this line as a
-                // continuation and indent it one extra level.
-                // This ensures idempotency: the split output from
-                // the first pass is stable on subsequent passes
-                // through the IndentationProcessor.
-
-                if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
-                    !IsContinuationIndicator(lines[i - 1],
-                    lineStarts[i - 1], text, isCode) &&
-                    StartsWithLogicalOp(lines[i]))
+                else if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
+                    IsContinuationIndicator(lines[i - 1],
+                    lineStarts[i - 1], text, isCode))
                 {
                     if (depths[i] <= depths[i - 1])
                     {

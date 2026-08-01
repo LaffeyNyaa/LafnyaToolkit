@@ -265,6 +265,24 @@ namespace CSharpFormatter
                     break;
                 }
 
+                // Stop if the next line is a case label or a
+                // standalone control-flow statement (break, continue,
+                // return, goto, throw). These are not parameter
+                // continuations and consuming them would cause case
+                // labels to be incorrectly merged into the parameter
+                // list, leading to indentation oscillation on
+                // subsequent formatting passes.
+                if (nt.StartsWith("case ") || nt.StartsWith("case\t") ||
+                    nt == "case" ||
+                    nt.StartsWith("default ") || nt.StartsWith("default\t") ||
+                    nt == "default" || nt == "default:" ||
+                    nt.StartsWith("break") || nt.StartsWith("continue") ||
+                    nt.StartsWith("return") || nt.StartsWith("goto") ||
+                    nt.StartsWith("throw"))
+                {
+                    break;
+                }
+
                 lineIndex++;
                 paramText.Append(' ');
                 paramText.Append(nt);
@@ -395,11 +413,24 @@ namespace CSharpFormatter
 
             // Append any trailing code after the closing ')' (e.g. the
             // method name, additional parameter lists, or trailing ';').
-            // Trailing code is placed on the same line as ')'.
+            // Trailing code is placed on the same line as ')'. When the
+            // resulting line exceeds MaxLineLength, split it using
+            // SplitLongLine to prevent oscillation on subsequent passes.
 
             if (trailingAfterClose != null)
             {
-                result.Add(closeParenIndent + ")" + trailingAfterClose);
+                string trailingLine = closeParenIndent + ")" +
+                    trailingAfterClose;
+
+                if (trailingLine.Length > TextUtils.MaxLineLength)
+                {
+                    result.AddRange(SplitLongLine(trailingLine, null,
+                        false));
+                }
+                else
+                {
+                    result.Add(trailingLine);
+                }
             }
             else
             {
@@ -663,18 +694,12 @@ namespace CSharpFormatter
             }
 
             // Continuation lines that start with a logical operator
-            // (&& or ||) should use the same indent as the original
-            // line, because the IndentationProcessor will detect
-            // these lines and add one extra level of indentation
-            // (see StartsWithLogicalOp). This prevents cascading
-            // indent growth on subsequent format passes and ensures
-            // idempotency.
-
-            if (afterTrimmed.StartsWith("&&") ||
-                afterTrimmed.StartsWith("||"))
-            {
-                fixedContIndent = indent;
-            }
+            // (&& or ||) should use the default continuation indent
+            // (indent + one level), because the IndentationProcessor
+            // will treat these lines as continuations and expect them
+            // to be at indent + 1. Using the same indent would cause
+            // the IndentationProcessor to add one extra level on the
+            // next pass, breaking idempotency.
 
             string first = line.Substring(0, breakAt).TrimEnd();
             string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
@@ -1317,6 +1342,9 @@ namespace CSharpFormatter
             // Capture any trailing code after ')' (e.g. "{ }" or ");").
             // Trailing code is placed on the same line as ')' so that
             // e.g. ".Method(\n  a,\n  b\n);" produces ");" not ")\n;".
+            // When the resulting line exceeds MaxLineLength, split it
+            // using SplitLongLine to prevent oscillation on subsequent
+            // passes.
 
             if (closeParenPos >= 0 && closeParenPos + 1 < afterParen.Length)
             {
@@ -1325,7 +1353,17 @@ namespace CSharpFormatter
 
                 if (trailing.Length > 0)
                 {
-                    result.Add(closeParenIndent + ")" + trailing);
+                    string trailingLine = closeParenIndent + ")" + trailing;
+
+                    if (trailingLine.Length > TextUtils.MaxLineLength)
+                    {
+                        result.AddRange(SplitLongLine(trailingLine, null,
+                            false));
+                    }
+                    else
+                    {
+                        result.Add(trailingLine);
+                    }
                 }
                 else
                 {
