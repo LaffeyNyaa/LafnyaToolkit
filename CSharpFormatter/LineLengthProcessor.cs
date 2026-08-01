@@ -237,6 +237,8 @@ namespace CSharpFormatter
             var paramText = new System.Text.StringBuilder();
             paramText.Append(afterParenFull);
 
+            int savedLineIndex = lineIndex;
+
             while (lineIndex + 1 < allLines.Count)
             {
                 string next = allLines[lineIndex + 1];
@@ -272,6 +274,7 @@ namespace CSharpFormatter
 
             if (allParams.Count == 0)
             {
+                lineIndex = savedLineIndex;
                 return false;
             }
 
@@ -281,6 +284,7 @@ namespace CSharpFormatter
             // (e.g. "Point(int x, int y)" on a single line).
             if (line.Length <= TextUtils.MaxLineLength && allParams.Count <= 2)
             {
+                lineIndex = savedLineIndex;
                 return false;
             }
 
@@ -321,7 +325,8 @@ namespace CSharpFormatter
 
                 if (!TextUtils.IsPureIdentifier(allParams[p]) &&
                     TextUtils.IsPureIdentifier(next) &&
-                    !EndsWithIndexAccess(allParams[p]))
+                    !EndsWithIndexAccess(allParams[p]) &&
+                    !char.IsDigit(allParams[p].TrimStart()[0]))
                 {
                     allParams[p] = allParams[p] + " " + next;
                     allParams.RemoveAt(p + 1);
