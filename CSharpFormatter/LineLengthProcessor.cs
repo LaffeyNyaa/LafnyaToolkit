@@ -259,12 +259,20 @@ namespace CSharpFormatter
                     break;
                 }
 
+                // Stop if the next line looks like a new member
+                // declaration (starts with a C# modifier keyword).
+                if (IsMemberModifier(nt))
+                {
+                    break;
+                }
+
                 lineIndex++;
                 paramText.Append(' ');
                 paramText.Append(nt);
             }
 
-            ExtractParameters(paramText.ToString(), allParams);
+            string trailingAfterClose = ExtractParameters(
+                paramText.ToString(), allParams);
 
             if (allParams.Count == 0)
             {
@@ -348,6 +356,14 @@ namespace CSharpFormatter
 
             result.Add(baseIndent + ")");
 
+            // Append any trailing code after the closing ')' (e.g. the
+            // method name, additional parameter lists, or trailing ';').
+
+            if (trailingAfterClose != null)
+            {
+                result.Add(baseIndent + trailingAfterClose);
+            }
+
             return true;
         }
 
@@ -357,7 +373,9 @@ namespace CSharpFormatter
         /// brackets, braces). The last parameter may include the
         /// closing ')' which is stripped.
         /// </summary>
-        private static void ExtractParameters(
+        /// <returns>The trimmed text after the closing ')', or null if
+        /// there is no remaining text or the closing ')' was not found.</returns>
+        private static string ExtractParameters(
             string fragment,
             List<string> allParams
         )
@@ -389,7 +407,8 @@ namespace CSharpFormatter
                             allParams.Add(last);
                         }
 
-                        return;
+                        string trailing = fragment.Substring(i + 1).Trim();
+                        return trailing.Length > 0 ? trailing : null;
                     }
                 }
                 else if (c == ',' && depth == 0)
@@ -424,6 +443,8 @@ namespace CSharpFormatter
                     allParams.Add(remaining);
                 }
             }
+
+            return null;
         }
 
         /// <summary>
@@ -1042,6 +1063,13 @@ namespace CSharpFormatter
         private static bool IsMethodDeclarationLine(
             string beforeParenTrimmed)
         {
+            // If the text before '(' contains '=' it is a field or
+            // variable initializer, not a method declaration.
+            if (beforeParenTrimmed.Contains("= "))
+            {
+                return false;
+            }
+
             string text = beforeParenTrimmed.TrimEnd('(').TrimEnd();
 
             if (text.Length == 0)
@@ -1049,7 +1077,16 @@ namespace CSharpFormatter
                 return false;
             }
 
-            string firstWord = text.Split(' ')[0];
+            string[] words = text.Split(' ');
+
+            // If the last word is 'new', this is a constructor call
+            // (e.g. "new string(...)"), not a method declaration.
+            if (words.Length > 0 && words[words.Length - 1] == "new")
+            {
+                return false;
+            }
+
+            string firstWord = words[0];
 
             return firstWord == "public" || firstWord == "private" ||
                 firstWord == "internal" || firstWord == "protected" ||
@@ -1057,6 +1094,28 @@ namespace CSharpFormatter
                 firstWord == "override" || firstWord == "abstract" ||
                 firstWord == "sealed" || firstWord == "async" ||
                 firstWord == "unsafe" || firstWord == "extern";
+        }
+
+        /// <summary>
+        /// Determines whether the trimmed line starts with a C# member
+        /// modifier keyword. Used to detect new member declarations
+        /// when collecting continuation lines, so that unrelated
+        /// declarations are not accidentally consumed as parameter
+        /// continuations.
+        /// </summary>
+        /// <param name="trimmedLine">A trimmed line of code.</param>
+        /// <returns>True if the line starts with a member modifier keyword.</returns>
+        private static bool IsMemberModifier(string trimmedLine)
+        {
+            string firstWord = trimmedLine.Split(' ')[0];
+
+            return firstWord == "public" || firstWord == "private" ||
+                firstWord == "internal" || firstWord == "protected" ||
+                firstWord == "static" || firstWord == "virtual" ||
+                firstWord == "override" || firstWord == "abstract" ||
+                firstWord == "sealed" || firstWord == "async" ||
+                firstWord == "unsafe" || firstWord == "extern" ||
+                firstWord == "readonly" || firstWord == "const";
         }
 
         /// <summary>
