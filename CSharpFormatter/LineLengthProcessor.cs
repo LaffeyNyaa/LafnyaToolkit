@@ -127,48 +127,18 @@ namespace CSharpFormatter
                 return false;
             }
 
-            // Quick scan for comma in the parameter area
-            string afterParen = trimmed.Substring(firstParen + 1);
-            int depth = 0;
-            bool hasComma = false;
-            bool hasCloseParen = false;
+            // Tokenize for proper code mask check
+            var tokens = CSharpTokenizer.Instance.Tokenize(line);
 
-            for (int j = 0; j < afterParen.Length; j++)
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line,
+                tokens);
+
+            int parenBreakAt = FindMultiParamParenBreak(line, isCode, 0);
+
+            if (parenBreakAt <= 0)
             {
-                char c = afterParen[j];
-
-                if (c == '(' || c == '[' || c == '{')
-                {
-                    depth++;
-                }
-                else if (c == ')' || c == ']' || c == '}')
-                {
-                    if (depth == 0)
-                    {
-                        hasCloseParen = true;
-                        break;
-                    }
-
-                    depth--;
-                }
-                else if (c == ',' && depth == 0)
-                {
-                    hasComma = true;
-                    break;
-                }
-            }
-
-            if (!hasComma)
-            {
-                if (hasCloseParen)
-                {
-                    // Parameter list is complete with no commas — single
-                    // parameter, no multi-param layout needed.
-                    return false;
-                }
-
-                // No closing ')' on the same line — parameters continue
-                // on the next line. Check continuation lines for commas.
+                // No multi-param '(' found on this line. Check if the
+                // parameter list continues on the next line.
                 bool contHasComma = false;
                 int scanIdx = lineIndex;
 
@@ -200,21 +170,12 @@ namespace CSharpFormatter
                 {
                     return false;
                 }
-            }
 
-            // Tokenize for proper code mask check
-            var tokens = CSharpTokenizer.Instance.Tokenize(line);
-
-            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line,
-                tokens);
-
-            int parenBreakAt = FindMultiParamParenBreak(line, isCode, 0);
-
-            if (parenBreakAt <= 0)
-            {
                 // FindMultiParamParenBreak may return -1 when the '('
                 // is at the end of the line (no commas on the same
-                // line). Compute the position from firstParen.
+                // line). Compute the position from the last '(' in
+                // the trimmed line, which is the innermost paren
+                // (e.g. "CppNonBlankEntry(" in "Add(new CppNonBlankEntry(").
                 int indentCount = 0;
 
                 while (indentCount < line.Length &&
@@ -223,15 +184,33 @@ namespace CSharpFormatter
                     indentCount++;
                 }
 
-                parenBreakAt = indentCount + firstParen + 1;
+                int lastParen = trimmed.LastIndexOf('(');
+
+                parenBreakAt = lastParen >= 0
+                    ? indentCount + lastParen + 1
+                    : indentCount + firstParen + 1;
             }
 
-            // Verify this is a method declaration, not a method call.
+            // Verify that the '(' at parenBreakAt - 1 is in a code
+            // region, not inside a comment or string. This prevents
+            // the multi-param layout from being applied to doc
+            // comment text.
+
+            if (parenBreakAt > 0 && parenBreakAt - 1 < isCode.Length &&
+                !isCode[parenBreakAt - 1])
+            {
+                return false;
+            }
+
+            // Verify this is not a field initializer or control flow statement.
+            // Method calls and constructor calls with multiple parameters
+            // should also receive the multi-parameter layout.
             string beforeParenRaw = line.Substring(0, parenBreakAt).
             TrimEnd();
             string beforeParenTrimmed = beforeParenRaw.TrimStart();
 
-            if (!IsMethodDeclarationLine(beforeParenTrimmed))
+            if (beforeParenTrimmed.Contains("= ") ||
+                TextUtils.IsControlFlowKeyword(beforeParenTrimmed))
             {
                 return false;
             }
@@ -302,14 +281,17 @@ namespace CSharpFormatter
             // were split across lines by a previous formatting pass
             // (e.g. "out List<string>," and "preprocessorLines" were
             // incorrectly treated as separate parameters). When a
-            // parameter is a pure identifier (single word, no spaces),
-            // it is the name of the preceding parameter type.
+            // parameter is a pure identifier (single word, no spaces)
+            // and the preceding parameter is not itself a pure
+            // identifier, it is the name of the preceding parameter
+            // type.
 
             for (int p = 0; p < allParams.Count - 1; p++)
             {
                 string next = allParams[p + 1].Trim();
 
-                if (TextUtils.IsPureIdentifier(next))
+                if (!TextUtils.IsPureIdentifier(allParams[p]) &&
+                    TextUtils.IsPureIdentifier(next))
                 {
                     allParams[p] = allParams[p] + " " + next;
                     allParams.RemoveAt(p + 1);
@@ -354,14 +336,17 @@ namespace CSharpFormatter
                 }
             }
 
-            result.Add(baseIndent + ")");
-
             // Append any trailing code after the closing ')' (e.g. the
             // method name, additional parameter lists, or trailing ';').
+            // Trailing code is placed on the same line as ')'.
 
             if (trailingAfterClose != null)
             {
-                result.Add(baseIndent + trailingAfterClose);
+                result.Add(baseIndent + ")" + trailingAfterClose);
+            }
+            else
+            {
+                result.Add(baseIndent + ")");
             }
 
             return true;
@@ -530,12 +515,16 @@ namespace CSharpFormatter
 
             if (parenBreakAt > 0)
             {
-                // Verify this is a method declaration
                 string beforeParen = line.Substring(0, parenBreakAt).
                 TrimEnd();
                 string beforeParenTrimmed = beforeParen.TrimStart();
 
-                if (IsMethodDeclarationLine(beforeParenTrimmed))
+                // Skip multi-param layout when the text before '('
+                // contains '=', so that the assignment break point
+                // is used first. The continuation line will get the
+                // multi-param layout in the recursive call.
+                if (!beforeParenTrimmed.Contains("= ") &&
+                    !TextUtils.IsControlFlowKeyword(beforeParenTrimmed))
                 {
                     // Only apply multi-param layout when the line has
                     // a complete parameter list (closing ')' is present
@@ -1051,52 +1040,6 @@ namespace CSharpFormatter
         }
 
         /// <summary>
-        /// Determines whether the content before the opening paren
-        /// of a method parameter list is a method declaration (not
-        /// a method call). A method declaration line starts with a
-        /// C# keyword such as <c>public</c>, <c>private</c>,
-        /// <c>static</c>, <c>virtual</c>, etc.
-        /// </summary>
-        /// <param name="beforeParenTrimmed">The trimmed content of
-        /// the line up to and including the <c>(</c>.</param>
-        /// <returns>True if the line is a method declaration.</returns>
-        private static bool IsMethodDeclarationLine(
-            string beforeParenTrimmed)
-        {
-            // If the text before '(' contains '=' it is a field or
-            // variable initializer, not a method declaration.
-            if (beforeParenTrimmed.Contains("= "))
-            {
-                return false;
-            }
-
-            string text = beforeParenTrimmed.TrimEnd('(').TrimEnd();
-
-            if (text.Length == 0)
-            {
-                return false;
-            }
-
-            string[] words = text.Split(' ');
-
-            // If the last word is 'new', this is a constructor call
-            // (e.g. "new string(...)"), not a method declaration.
-            if (words.Length > 0 && words[words.Length - 1] == "new")
-            {
-                return false;
-            }
-
-            string firstWord = words[0];
-
-            return firstWord == "public" || firstWord == "private" ||
-                firstWord == "internal" || firstWord == "protected" ||
-                firstWord == "static" || firstWord == "virtual" ||
-                firstWord == "override" || firstWord == "abstract" ||
-                firstWord == "sealed" || firstWord == "async" ||
-                firstWord == "unsafe" || firstWord == "extern";
-        }
-
-        /// <summary>
         /// Determines whether the trimmed line starts with a C# member
         /// modifier keyword. Used to detect new member declarations
         /// when collecting continuation lines, so that unrelated
@@ -1172,7 +1115,10 @@ namespace CSharpFormatter
                         }
                     }
 
-                    return hasComma ? i + 1 : -1;
+                    if (hasComma)
+                    {
+                        return i + 1;
+                    }
                 }
             }
 
@@ -1262,9 +1208,9 @@ namespace CSharpFormatter
                 }
             }
 
-            // Closing ')' on its own line at base indent
-            result.Add(baseIndent + ")");
-            // Capture any trailing code after ')' (e.g. "{ }")
+            // Capture any trailing code after ')' (e.g. "{ }" or ");").
+            // Trailing code is placed on the same line as ')' so that
+            // e.g. ".Method(\n  a,\n  b\n);" produces ");" not ")\n;".
 
             if (closeParenPos >= 0 && closeParenPos + 1 < afterParen.Length)
             {
@@ -1273,8 +1219,16 @@ namespace CSharpFormatter
 
                 if (trailing.Length > 0)
                 {
-                    result.Add(baseIndent + trailing);
+                    result.Add(baseIndent + ")" + trailing);
                 }
+                else
+                {
+                    result.Add(baseIndent + ")");
+                }
+            }
+            else
+            {
+                result.Add(baseIndent + ")");
             }
 
             return result;

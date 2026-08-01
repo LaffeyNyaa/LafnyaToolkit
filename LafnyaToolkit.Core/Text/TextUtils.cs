@@ -386,6 +386,31 @@ namespace LafnyaToolkit.Core.Text
         }
 
         /// <summary>
+        /// Determines whether the trimmed text starts with a C# control flow
+        /// keyword that has a parenthesized condition/iterator and should
+        /// not receive the multi-parameter layout (e.g. <c>for</c>,
+        /// <c>foreach</c>, <c>while</c>, <c>if</c>, <c>switch</c>).
+        /// </summary>
+        /// <param name="trimmed">The trimmed text to examine.</param>
+        /// <returns>True if the text starts with a control flow keyword.</returns>
+        public static bool IsControlFlowKeyword(string trimmed)
+        {
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                return false;
+            }
+
+            string firstWord = trimmed.Split(' ')[0];
+
+            return firstWord == "for" || firstWord == "foreach" ||
+                firstWord == "while" || firstWord == "if" ||
+                firstWord == "switch" || firstWord == "catch" ||
+                firstWord == "using" || firstWord == "lock" ||
+                firstWord == "fixed" || firstWord == "checked" ||
+                firstWord == "unchecked";
+        }
+
+        /// <summary>
         /// Determines whether a string is a pure identifier: starts with a
         /// letter or underscore and contains only letters, digits, or
         /// underscores.
