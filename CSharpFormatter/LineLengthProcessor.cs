@@ -52,10 +52,14 @@ namespace CSharpFormatter
                 // This catches both single-line declarations and
                 // already-broken parameter continuations.
 
+                bool isContinuation = lineContinuesNext != null &&
+                    i > 0 && i - 1 < lineContinuesNext.Length &&
+                    lineContinuesNext[i - 1];
+
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     if (TryApplyMultiParamLayout(line, result, lines,
-                        ref i))
+                        ref i, isContinuation))
                     {
                         continue;
                     }
@@ -63,10 +67,6 @@ namespace CSharpFormatter
                     result.Add(line);
                     continue;
                 }
-
-                bool isContinuation = lineContinuesNext != null &&
-                    i > 0 && i - 1 < lineContinuesNext.Length &&
-                    lineContinuesNext[i - 1];
 
                 string fixedContIndent;
 
@@ -110,7 +110,8 @@ namespace CSharpFormatter
             string line,
             List<string> result,
             List<string> allLines,
-            ref int lineIndex
+            ref int lineIndex,
+            bool isContinuation
         )
         {
             string trimmed = line.TrimStart();
@@ -344,8 +345,29 @@ namespace CSharpFormatter
 
             string baseIndent = line.Substring(0, indentLen);
 
-            string paramIndent = baseIndent +
-                new string(' ', TextUtils.IndentSize);
+            string paramIndent;
+            string closeParenIndent;
+
+            if (isContinuation)
+            {
+                // Continuation line: parameters at the same indent
+                // as the function call line, closing ')' at the
+                // original base indent.
+                paramIndent = baseIndent;
+                closeParenIndent =
+                    baseIndent.Length >= TextUtils.IndentSize
+                    ? baseIndent.Substring(0,
+                        baseIndent.Length - TextUtils.IndentSize)
+                    : baseIndent;
+            }
+            else
+            {
+                // Non-continuation line: parameters one level deeper,
+                // closing ')' at the line's own indent.
+                paramIndent = baseIndent +
+                    new string(' ', TextUtils.IndentSize);
+                closeParenIndent = baseIndent;
+            }
 
             result.Add(beforeParen);
 
@@ -377,11 +399,11 @@ namespace CSharpFormatter
 
             if (trailingAfterClose != null)
             {
-                result.Add(baseIndent + ")" + trailingAfterClose);
+                result.Add(closeParenIndent + ")" + trailingAfterClose);
             }
             else
             {
-                result.Add(baseIndent + ")");
+                result.Add(closeParenIndent + ")");
             }
 
             return true;
@@ -572,12 +594,47 @@ namespace CSharpFormatter
                     if (closeParen >= 0)
                     {
                         string baseIndent = line.Substring(0, indentLen);
+                        string paramIndent;
+                        string closeParenIndent;
 
-                        string paramIndent = baseIndent +
-                            new string(' ', TextUtils.IndentSize);
+                        // When fixedContIndent == indent (the line's
+                        // own indent), the line is a continuation:
+                        // parameters should use the same indent as the
+                        // function call line, and closing ')' should
+                        // use the original base indent. When
+                        // fixedContIndent != indent, the line is NOT a
+                        // continuation: parameters are one level deeper
+                        // and closing ')' uses the line's own indent.
+                        // This ensures idempotency by preventing
+                        // cascading continuation indent on multi-param
+                        // layout.
+
+                        if (fixedContIndent == indent)
+                        {
+                            // Continuation line: parameters at the same
+                            // indent as the function call line, closing
+                            // ')' at the original base indent.
+                            paramIndent = fixedContIndent;
+                            closeParenIndent =
+                                fixedContIndent.Length >=
+                                TextUtils.IndentSize
+                                ? fixedContIndent.Substring(0,
+                                    fixedContIndent.Length -
+                                    TextUtils.IndentSize)
+                                : fixedContIndent;
+                        }
+                        else
+                        {
+                            // Non-continuation line: parameters one
+                            // level deeper, closing ')' at the line's
+                            // own indent.
+                            paramIndent = baseIndent +
+                                new string(' ', TextUtils.IndentSize);
+                            closeParenIndent = baseIndent;
+                        }
 
                         return SplitParametersPerLine(line, parenBreakAt,
-                            paramIndent, baseIndent);
+                            paramIndent, closeParenIndent);
                     }
 
                     // Closing ')' is not on the same line — this
@@ -601,6 +658,20 @@ namespace CSharpFormatter
             if (afterTrimmed.StartsWith("//") ||
                 afterTrimmed.StartsWith("/*") ||
                 afterTrimmed.StartsWith("*"))
+            {
+                fixedContIndent = indent;
+            }
+
+            // Continuation lines that start with a logical operator
+            // (&& or ||) should use the same indent as the original
+            // line, because the IndentationProcessor will detect
+            // these lines and add one extra level of indentation
+            // (see StartsWithLogicalOp). This prevents cascading
+            // indent growth on subsequent format passes and ensures
+            // idempotency.
+
+            if (afterTrimmed.StartsWith("&&") ||
+                afterTrimmed.StartsWith("||"))
             {
                 fixedContIndent = indent;
             }
@@ -1169,7 +1240,7 @@ namespace CSharpFormatter
             string line,
             int breakAt,
             string paramIndent,
-            string baseIndent
+            string closeParenIndent
         )
         {
             string beforeParen = line.Substring(0, breakAt).TrimEnd();
@@ -1254,16 +1325,16 @@ namespace CSharpFormatter
 
                 if (trailing.Length > 0)
                 {
-                    result.Add(baseIndent + ")" + trailing);
+                    result.Add(closeParenIndent + ")" + trailing);
                 }
                 else
                 {
-                    result.Add(baseIndent + ")");
+                    result.Add(closeParenIndent + ")");
                 }
             }
             else
             {
-                result.Add(baseIndent + ")");
+                result.Add(closeParenIndent + ")");
             }
 
             return result;
