@@ -23,6 +23,18 @@ namespace CSharpFormatter
             if (p.IsBlockStart && p.PrevTrimmed.Length > 0 &&
                 !p.PrevIsBlockStartBrace)
             {
+                // Do not add blank line before `while` in `do-while`
+                // construct. A `while` keyword after a block end
+                // (`}`) is always part of `do-while` when no blank
+                // line separates them in the input.
+                if (p.LineIsCode &&
+                    TextUtils.StartsWithKeyword(p.Trimmed, "while") &&
+                    p.PrevIsBlockEnd &&
+                    !p.EntryHadBlankAbove)
+                {
+                    return BlankLineVerdict.SuppressBlank;
+                }
+
                 return BlankLineVerdict.AddBlankAbove;
             }
 

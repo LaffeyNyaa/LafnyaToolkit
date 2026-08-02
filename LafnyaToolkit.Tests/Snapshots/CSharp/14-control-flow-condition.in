@@ -1,0 +1,27 @@
+"Control flow condition splitting with &&/||"
+using System;
+class C
+{
+    void M()
+    {
+        if (user.IsActive && user.HasSufficientFunds && user.AgeRequirementMet && user.IsVerified)
+        {
+            ProcessUser();
+        }
+        else if (user.IsActive || user.HasSufficientFunds || user.AgeRequirementMet || user.IsVerified)
+        {
+            ProcessUser();
+        }
+
+        while (user.IsActive && user.HasSufficientFunds && user.AgeRequirementMet && user.IsVerified)
+        {
+            ProcessUser();
+        }
+
+        do
+        {
+            ProcessUser();
+        }
+        while (user.IsActive && user.HasSufficientFunds && user.AgeRequirementMet && user.IsVerified);
+    }
+}

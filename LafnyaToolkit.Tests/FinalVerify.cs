@@ -22,6 +22,12 @@ namespace LafnyaToolkit.Tests.Idempotency
         {
             string samplesDir =
                 @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples";
+
+            if (!Directory.Exists(samplesDir))
+            {
+                return;
+            }
+
             string[] files = Directory.GetFiles(samplesDir, "*.cs");
             Array.Sort(files);
 

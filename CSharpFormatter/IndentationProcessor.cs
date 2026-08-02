@@ -162,16 +162,69 @@ namespace CSharpFormatter
                 int level = depths[i] + (caseBody[i] ? 1 : 0);
 
                 if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
-                    depths[i] <= depths[i - 1] &&
-                    (StartsWithLogicalOp(lines[i]) ||
-                        IsContinuationIndicator(
-                            lines[i - 1],
-                            lineStarts[i - 1],
-                            text,
-                            isCode
-                        )))
+                    depths[i] <= depths[i - 1])
                 {
-                    level = Math.Max(level, depths[i] + 1);
+                    if (StartsWithLogicalOp(lines[i]))
+                    {
+                        // Preserve the original indentation for &&/||
+                        // continuation lines as set by the line-length
+                        // splitter, as long as it's at least (depths[i]+1)
+                        // levels. This allows the splitter to align &&/||
+                        // with the content after ( on the first line (e.g.
+                        // for else if conditions where the content is
+                        // further right than a simple indent level).
+                        int origIndent = 0;
+
+                        while (origIndent < lines[i].Length &&
+                            lines[i][origIndent] == ' ')
+                        {
+                            origIndent++;
+                        }
+
+                        int minIndent = (depths[i] + 1) *
+                            TextUtils.IndentSize;
+
+                        if (origIndent >= minIndent)
+                        {
+                            result.Add(lines[i].TrimEnd());
+
+                            // Still process parens on this line so that
+                            // the paren stack is correctly maintained for
+                            // subsequent lines (e.g. a ) on this line must
+                            // pop the matching ( from the stack).
+                            for (int j = 0; j < lines[i].Length; j++)
+                            {
+                                int textPos = lineStarts[i] + j;
+
+                                if (textPos >= isCode.Length ||
+                                    !isCode[textPos])
+                                {
+                                    continue;
+                                }
+
+                                char c = lines[i][j];
+
+                                if (c == '(')
+                                {
+                                    parenOpenLine.Push(i);
+                                }
+                                else if (c == ')' &&
+                                    parenOpenLine.Count > 0)
+                                {
+                                    parenOpenLine.Pop();
+                                }
+                            }
+
+                            continue;
+                        }
+
+                        level = Math.Max(level, depths[i] + 1);
+                    }
+                    else if (IsContinuationIndicator(
+                        lines[i - 1], lineStarts[i - 1], text, isCode))
+                    {
+                        level = Math.Max(level, depths[i] + 1);
+                    }
                 }
 
                 int firstCodeIdx = FindFirstCodeChar(lines[i],

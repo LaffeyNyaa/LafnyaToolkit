@@ -252,6 +252,15 @@ namespace CSharpFormatter
                 return false;
             }
 
+            // Lines starting with && or || are continuations of a
+            // logical expression from the previous line (control flow
+            // conditions split by the line-length processor), not
+            // block body declarations.
+            if (trimmed.StartsWith("&&") || trimmed.StartsWith("||"))
+            {
+                return false;
+            }
+
             if (IsCommentLine(trimmed))
             {
                 return false;

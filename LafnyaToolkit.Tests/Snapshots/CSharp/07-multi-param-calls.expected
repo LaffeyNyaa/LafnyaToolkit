@@ -10,8 +10,7 @@ class C
                 lines[i - 1],
                 lineStarts[i - 1],
                 text,
-                isCode
-            );
+                isCode);
 
         AnotherMethod(
             lineStarts[i],
@@ -20,7 +19,6 @@ class C
             fourthParam,
             fifthParam,
             sixthParam,
-            seventhParam
-        );
+            seventhParam);
     }
 }

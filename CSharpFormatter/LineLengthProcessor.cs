@@ -385,8 +385,8 @@ namespace CSharpFormatter
                 string param = allParams[p];
                 bool isLast = p == allParams.Count - 1;
 
-                string paramLine = paramIndent + param +
-                    (isLast ? string.Empty : ",");
+                string suffix = isLast ? ")" + (trailingAfterClose ?? "") : ",";
+                string paramLine = paramIndent + param + suffix;
 
                 if (paramLine.Length > TextUtils.MaxLineLength)
                 {
@@ -403,35 +403,6 @@ namespace CSharpFormatter
                 {
                     result.Add(paramLine);
                 }
-            }
-
-            // Append any trailing code after the closing ')' (e.g. the
-            // method name, additional parameter lists, or trailing ';').
-            // Trailing code is placed on the same line as ')'. When the
-            // resulting line exceeds MaxLineLength, split it using
-            // SplitLongLine to prevent oscillation on subsequent passes.
-
-            if (trailingAfterClose != null)
-            {
-                string trailingLine = closeParenIndent + ")" +
-                    trailingAfterClose;
-
-                if (trailingLine.Length > TextUtils.MaxLineLength)
-                {
-                    result.AddRange(SplitLongLine(
-                        trailingLine,
-                        null,
-                        false
-                    ));
-                }
-                else
-                {
-                    result.Add(trailingLine);
-                }
-            }
-            else
-            {
-                result.Add(closeParenIndent + ")");
             }
 
             return true;
@@ -581,6 +552,13 @@ namespace CSharpFormatter
                 {
                     return initializerResult;
                 }
+            }
+
+            // Check for control flow condition splitting
+            var controlFlowResult = TrySplitControlFlowCondition(line, fixedContIndent);
+            if (controlFlowResult != null)
+            {
+                return controlFlowResult;
             }
 
             if (fixedContIndent == null)
@@ -1407,8 +1385,21 @@ namespace CSharpFormatter
                 string param = parameters[p];
                 bool isLast = p == parameters.Count - 1;
 
-                string paramLine = paramIndent + param +
-                    (isLast ? string.Empty : ",");
+                string suffix;
+                if (isLast)
+                {
+                    string trailing = "";
+                    if (closeParenPos >= 0 && closeParenPos + 1 < afterParen.Length)
+                    {
+                        trailing = afterParen.Substring(closeParenPos + 1).TrimEnd();
+                    }
+                    suffix = ")" + trailing;
+                }
+                else
+                {
+                    suffix = ",";
+                }
+                string paramLine = paramIndent + param + suffix;
 
                 if (paramLine.Length > TextUtils.MaxLineLength)
                 {
@@ -1427,43 +1418,134 @@ namespace CSharpFormatter
                 }
             }
 
-            // Capture any trailing code after ')' (e.g. "{ }" or ");").
-            // Trailing code is placed on the same line as ')' so that
-            // e.g. ".Method(\n  a,\n  b\n);" produces ");" not ")\n;".
-            // When the resulting line exceeds MaxLineLength, split it
-            // using SplitLongLine to prevent oscillation on subsequent
-            // passes.
+            return result;
+        }
 
-            if (closeParenPos >= 0 && closeParenPos + 1 < afterParen.Length)
+        /// <summary>
+        /// Splits control flow condition lines (if/else if/while/do-while) at each
+        /// &amp;&amp;/|| operator when the line exceeds the max length. Each operand
+        /// occupies its own line, ( stays on the first line with the keyword, ) stays
+        /// on the same line as the last operand, and &amp;&amp;/|| operators are placed
+        /// at the beginning of continuation lines aligned with the first character
+        /// after ( on the first line.
+        /// </summary>
+        private static List<string> TrySplitControlFlowCondition(
+            string line,
+            string fixedContIndent)
+        {
+            // 1. Check if line starts with a control flow keyword followed by (
+            string trimmed = line.TrimStart();
+            string keyword = null;
+
+            if (trimmed.StartsWith("if (", System.StringComparison.Ordinal))
+                keyword = "if";
+            else if (trimmed.StartsWith("while (", System.StringComparison.Ordinal))
+                keyword = "while";
+            else if (trimmed.StartsWith("else if (", System.StringComparison.Ordinal))
+                keyword = "else if";
+            else if (trimmed.StartsWith("} while (", System.StringComparison.Ordinal))
+                keyword = "do-while";
+
+            if (keyword == null)
+                return null;
+
+            // 2. Tokenize to find &&/|| operators inside the condition
+            var tokens = CSharpTokenizer.Instance.Tokenize(line);
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(line, tokens);
+
+            // Find the position of (
+            int parenPos = -1;
+            for (int i = 0; i < line.Length; i++)
             {
-                string trailing = afterParen.Substring(
-                    closeParenPos + 1).TrimEnd();
-
-                if (trailing.Length > 0)
+                if (!isCode[i]) continue;
+                if (line[i] == '(')
                 {
-                    string trailingLine = closeParenIndent + ")" + trailing;
+                    parenPos = i;
+                    break;
+                }
+            }
 
-                    if (trailingLine.Length > TextUtils.MaxLineLength)
-                    {
-                        result.AddRange(SplitLongLine(
-                            trailingLine,
-                            null,
-                            false
-                        ));
-                    }
-                    else
-                    {
-                        result.Add(trailingLine);
-                    }
+            if (parenPos < 0) return null;
+
+            // Find &&/|| operators inside the parenthesized condition
+            // Track depth to stay within the top-level condition
+            var breakPositions = new List<int>(); // positions of &&/|| operators
+            int depth = 0;
+
+            for (int i = parenPos + 1; i < line.Length; i++)
+            {
+                if (!isCode[i]) continue;
+
+                char c = line[i];
+
+                if (c == '(') { depth++; }
+                else if (c == ')')
+                {
+                    if (depth == 0) break; // end of condition
+                    depth--;
+                }
+                else if (c == '&' && i + 1 < line.Length && line[i + 1] == '&' && depth == 0)
+                {
+                    breakPositions.Add(i);
+                    i++; // skip second &
+                }
+                else if (c == '|' && i + 1 < line.Length && line[i + 1] == '|' && depth == 0)
+                {
+                    breakPositions.Add(i);
+                    i++; // skip second |
+                }
+            }
+
+            // Only proceed if there are &&/|| operators and the line is too long
+            if (breakPositions.Count == 0 || line.Length <= TextUtils.MaxLineLength)
+                return null;
+
+            // 3. Build the result
+            var result = new List<string>();
+            int indentLen = 0;
+            while (indentLen < line.Length && line[indentLen] == ' ')
+                indentLen++;
+            string baseIndent = line.Substring(0, indentLen);
+
+            // Align continuation lines with the first character after ( on
+            // the first line. This matches the spec: logical operators at
+            // the start of each continuation line, aligned with the content
+            // after ( on the first line.
+            int contentStart = parenPos + 1;
+
+            while (contentStart < line.Length &&
+                line[contentStart] == ' ')
+            {
+                contentStart++;
+            }
+
+            string contIndent = contentStart < line.Length
+                ? new string(' ', contentStart)
+                : baseIndent + TextUtils.IndentString;
+
+            // First part: keyword + '(' + first operand (up to the first &&/||)
+            string firstPart = line.Substring(0, breakPositions[0]).TrimEnd();
+            result.Add(firstPart);
+
+            // Middle parts: &&/|| + operand
+            for (int i = 0; i < breakPositions.Count; i++)
+            {
+                int start = breakPositions[i];
+                int end = (i + 1 < breakPositions.Count) ? breakPositions[i + 1] : line.Length;
+
+                string segment = line.Substring(start, end - start).TrimEnd();
+                string segmentLine = contIndent + segment;
+
+                if (segmentLine.Length > TextUtils.MaxLineLength)
+                {
+                    // Deep split for very long operands
+                    string deepIndent = contIndent + TextUtils.IndentString;
+                    result.AddRange(SplitLongLine(segmentLine, deepIndent, false));
                 }
                 else
                 {
-                    result.Add(closeParenIndent + ")");
+                    result.Add(segmentLine);
                 }
-            }
-            else
-            {
-                result.Add(closeParenIndent + ")");
             }
 
             return result;
