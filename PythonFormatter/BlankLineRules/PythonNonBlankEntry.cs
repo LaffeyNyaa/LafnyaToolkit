@@ -51,8 +51,14 @@ namespace PythonFormatter
         /// line, or -1.</param>
         /// <param name="defIndent">The indent of the enclosing
         /// <c>def</c>, or 0.</param>
-        public PythonNonBlankEntry(bool hadBlankAbove, string line,
-            int originalIndex, int indent, int prevIndent, int defIndent)
+        public PythonNonBlankEntry(
+            bool hadBlankAbove,
+            string line,
+            int originalIndex,
+            int indent,
+            int prevIndent,
+            int defIndent
+        )
         {
             HadBlankAbove = hadBlankAbove;
             Line = line;

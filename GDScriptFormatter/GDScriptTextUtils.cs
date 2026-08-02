@@ -102,9 +102,18 @@ namespace GDScriptFormatter
 
                         if (next != ' ' && next != '\t')
                         {
-                            sb.Append(text, i, hashEnd + 1 - i);
+                            sb.Append(
+                                text,
+                                i,
+                                hashEnd + 1 - i
+                            );
                             sb.Append(' ');
-                            sb.Append(text, hashEnd + 1, lineEnd - hashEnd - 1);
+
+                            sb.Append(
+                                text,
+                                hashEnd + 1,
+                                lineEnd - hashEnd - 1
+                            );
 
                             if (lineEnd < len)
                             {
@@ -116,7 +125,11 @@ namespace GDScriptFormatter
                         }
                     }
 
-                    sb.Append(text, i, lineEnd - i);
+                    sb.Append(
+                        text,
+                        i,
+                        lineEnd - i
+                    );
 
                     if (lineEnd < len)
                     {
@@ -134,7 +147,11 @@ namespace GDScriptFormatter
                         lineEnd++;
                     }
 
-                    sb.Append(text, i, lineEnd - i);
+                    sb.Append(
+                        text,
+                        i,
+                        lineEnd - i
+                    );
 
                     if (lineEnd < len)
                     {

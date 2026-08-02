@@ -21,6 +21,7 @@ namespace CppFormatter
         public static readonly BraceEnforcer Instance = new BraceEnforcer();
 
         private readonly Dictionary<string, IBraceEnforcerRule> rules;
+
         private BraceEnforcer()
         {
             rules = new Dictionary<string, IBraceEnforcerRule>
@@ -68,7 +69,12 @@ namespace CppFormatter
                 {
                     if (TextUtils.MatchesWord(text, i, pair.Key))
                     {
-                        pair.Value.Apply(text, isCode, i, insertions);
+                        pair.Value.Apply(
+                            text,
+                            isCode,
+                            i,
+                            insertions
+                        );
                         break;
                     }
                 }
@@ -85,12 +91,20 @@ namespace CppFormatter
 
             foreach (var ins in insertions)
             {
-                sb.Append(text, pos, ins.Position - pos);
+                sb.Append(
+                    text,
+                    pos,
+                    ins.Position - pos
+                );
                 sb.Append(ins.Text);
                 pos = ins.Position;
             }
 
-            sb.Append(text, pos, text.Length - pos);
+            sb.Append(
+                text,
+                pos,
+                text.Length - pos
+            );
             return CppTokenizer.Instance.Tokenize(sb.ToString());
         }
 
@@ -100,8 +114,12 @@ namespace CppFormatter
         /// at the statement start and the closing <c>}</c> just after
         /// the statement's terminating semicolon.
         /// </summary>
-        private static void CollectBodyInsertions(string text, bool[] isCode,
-            int startPos, List<Insertion> insertions)
+        private static void CollectBodyInsertions(
+            string text,
+            bool[] isCode,
+            int startPos,
+            List<Insertion> insertions
+        )
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
 
@@ -133,8 +151,11 @@ namespace CppFormatter
         /// after the first semicolon encountered at depth 0, or -1 if
         /// no such semicolon is found.
         /// </summary>
-        private static int ScanStatementEnd(string text, bool[] isCode,
-            int startPos)
+        private static int ScanStatementEnd(
+            string text,
+            bool[] isCode,
+            int startPos
+        )
         {
             int j = startPos;
             int depth = 0;
@@ -173,7 +194,11 @@ namespace CppFormatter
         /// returns the position after the closing <c>)</c> or -1 if not
         /// well-formed.
         /// </summary>
-        private static int SkipParen(string text, bool[] isCode, int start)
+        private static int SkipParen(
+            string text,
+            bool[] isCode,
+            int start
+        )
         {
             int i = TextUtils.SkipWhitespace(text, start);
 
@@ -215,36 +240,58 @@ namespace CppFormatter
 
         private sealed class IfRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 2);
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
 
         private sealed class ForRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 3);
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
 
         private sealed class WhileRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -261,14 +308,23 @@ namespace CppFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterParen, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterParen,
+                    insertions
+                );
             }
         }
 
         private sealed class DoRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int i = TextUtils.SkipWhitespace(text, keywordPos + 2);
 
@@ -305,8 +361,12 @@ namespace CppFormatter
 
         private sealed class SwitchRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 6);
 
@@ -327,14 +387,23 @@ namespace CppFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterParen, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterParen,
+                    insertions
+                );
             }
         }
 
         private sealed class ElseRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterElse = keywordPos + 4;
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
@@ -344,7 +413,12 @@ namespace CppFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterElse, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterElse,
+                    insertions
+                );
             }
         }
     }

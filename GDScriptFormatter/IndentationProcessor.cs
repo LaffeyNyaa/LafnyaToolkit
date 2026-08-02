@@ -34,8 +34,12 @@ namespace GDScriptFormatter
         /// <param name="tokens">The tokenization of text (reused).</param>
         /// <param name="isCode">The code mask of text (reused).</param>
         /// <returns>The re-indented lines.</returns>
-        public List<string> Reindent(List<string> lines, string text,
-            List<Token> tokens, bool[] isCode)
+        public List<string> Reindent(
+            List<string> lines,
+            string text,
+            List<Token> tokens,
+            bool[] isCode
+        )
         {
             bool[] preserveIndent = ComputePreserveIndent(lines, tokens);
             var lineStarts = ComputeLineStarts(lines);
@@ -86,8 +90,11 @@ namespace GDScriptFormatter
             return result;
         }
 
-        private static int GetClosingBracketBaseDepth(LineAnalysis[] lineInfo,
-            int[] depths, int i)
+        private static int GetClosingBracketBaseDepth(
+            LineAnalysis[] lineInfo,
+            int[] depths,
+            int i
+        )
         {
             int targetOpenDepth =
                 lineInfo[i].StartBracketDepth - 1;

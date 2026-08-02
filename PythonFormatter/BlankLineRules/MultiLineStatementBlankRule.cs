@@ -103,7 +103,7 @@ namespace PythonFormatter
 
             if (currentIndex >= 2 &&
                 IsContinuationOfPreviousMultilineStatement(entries,
-                currentIndex))
+                    currentIndex))
             {
                 return BlankLineRuleResult.None;
             }

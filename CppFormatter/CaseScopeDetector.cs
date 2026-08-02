@@ -24,8 +24,11 @@ namespace CppFormatter
         /// Computes which lines within a switch block belong to a case
         /// body (indented one extra level beyond the case label).
         /// </summary>
-        public bool[] ComputeCaseScope(List<string> lines, string text,
-            bool[] isCode)
+        public bool[] ComputeCaseScope(
+            List<string> lines,
+            string text,
+            bool[] isCode
+        )
         {
             var caseBody = new bool[lines.Count];
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
@@ -44,7 +47,11 @@ namespace CppFormatter
                 char c = text[i];
 
                 if (c == 's' && (i == 0 || !TextUtils.IsWordChar(text[i -
-                    1])) && TextUtils.MatchesWord(text, i, "switch"))
+                    1])) && TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "switch"
+                    ))
                 {
                     pendingSwitch = true;
                 }

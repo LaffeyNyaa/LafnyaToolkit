@@ -23,7 +23,11 @@ namespace LafnyaToolkit.Core.Text
         /// <param name="line">The line text.</param>
         /// <param name="index">The line index.</param>
         /// <param name="isBlockStart">Whether the entry starts a logical block.</param>
-        public NonBlankEntry(string line, int index, bool isBlockStart)
+        public NonBlankEntry(
+            string line,
+            int index,
+            bool isBlockStart
+        )
         {
             Line = line;
             Index = index;

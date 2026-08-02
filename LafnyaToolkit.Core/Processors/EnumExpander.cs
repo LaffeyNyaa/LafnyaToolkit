@@ -15,6 +15,7 @@ namespace LafnyaToolkit.Core.Processors
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumExpander Instance = new EnumExpander();
+
         private EnumExpander()
         {
         }
@@ -40,7 +41,11 @@ namespace LafnyaToolkit.Core.Processors
 
                 if (brace < 0)
                 {
-                    sb.Append(text, i, n - i);
+                    sb.Append(
+                        text,
+                        i,
+                        n - i
+                    );
                     break;
                 }
 
@@ -48,7 +53,11 @@ namespace LafnyaToolkit.Core.Processors
 
                 if (closeBrace < 0)
                 {
-                    sb.Append(text, i, n - i);
+                    sb.Append(
+                        text,
+                        i,
+                        n - i
+                    );
                     break;
                 }
 
@@ -56,7 +65,11 @@ namespace LafnyaToolkit.Core.Processors
                 int bodyEnd = closeBrace;
                 string body = text.Substring(bodyStart, bodyEnd - bodyStart);
 
-                sb.Append(text, i, bodyStart - i);
+                sb.Append(
+                    text,
+                    i,
+                    bodyStart - i
+                );
 
                 if (body.IndexOf('\n') < 0)
                 {
@@ -73,7 +86,11 @@ namespace LafnyaToolkit.Core.Processors
             return sb.ToString();
         }
 
-        private static int FindEnumBrace(string text, bool[] isCode, int start)
+        private static int FindEnumBrace(
+            string text,
+            bool[] isCode,
+            int start
+        )
         {
             int i = start;
 
@@ -93,8 +110,11 @@ namespace LafnyaToolkit.Core.Processors
             return -1;
         }
 
-        private static bool IsPrecededByEnumKeyword(string text, bool[] isCode,
-            int bracePos)
+        private static bool IsPrecededByEnumKeyword(
+            string text,
+            bool[] isCode,
+            int bracePos
+        )
         {
             int j = bracePos - 1;
 
@@ -120,8 +140,11 @@ namespace LafnyaToolkit.Core.Processors
             return text.Substring(j + 1, len) == "enum";
         }
 
-        private static int FindMatchingBrace(string text, bool[] isCode,
-            int openPos)
+        private static int FindMatchingBrace(
+            string text,
+            bool[] isCode,
+            int openPos
+        )
         {
             int depth = 1;
             int i = openPos + 1;

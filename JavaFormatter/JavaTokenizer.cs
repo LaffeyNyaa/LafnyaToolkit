@@ -14,6 +14,7 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly JavaTokenizer Instance = new JavaTokenizer();
+
         private JavaTokenizer()
         {
         }
@@ -36,8 +37,11 @@ namespace JavaFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position,
-            out Token token)
+        protected override int ScanNextToken(
+            string source,
+            int position,
+            out Token token
+        )
         {
             token = default(Token);
             int n = source.Length;

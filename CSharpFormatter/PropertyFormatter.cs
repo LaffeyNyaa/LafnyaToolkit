@@ -59,8 +59,11 @@ namespace CSharpFormatter
 
                 string replacement = ExpandAccessors(content, 1);
 
-                replacements.Add(new Replacement(i + 1, braceEnd,
-                    replacement));
+                replacements.Add(new Replacement(
+                    i + 1,
+                    braceEnd,
+                    replacement
+                ));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);

@@ -17,6 +17,7 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CSharpTokenizer Instance = new CSharpTokenizer();
+
         private CSharpTokenizer()
         {
         }
@@ -81,7 +82,7 @@ namespace CSharpFormatter
             if ((c == '$' && position + 1 < n && source[position + 1] == '@' &&
                 position + 2 < n && source[position + 2] == '"') ||
                 (c == '@' && position + 1 < n && source[position + 1] == '$' &&
-                position + 2 < n && source[position + 2] == '"'))
+                    position + 2 < n && source[position + 2] == '"'))
             {
                 int start = position;
                 position += 3;

@@ -61,9 +61,11 @@ namespace CppFormatter
         /// <param name="precedingLines">The lines preceding the block.</param>
         /// <param name="includeLine">The first #include directive line inside the block, used for sorting.</param>
         /// <param name="blockLines">The full content of the #if block (from #if to #endif, inclusive).</param>
-        public IncludeUnit(List<string> precedingLines,
+        public IncludeUnit(
+            List<string> precedingLines,
             string includeLine,
-            List<string> blockLines)
+            List<string> blockLines
+        )
         {
             PrecedingLines = precedingLines;
             IncludeLine = includeLine;

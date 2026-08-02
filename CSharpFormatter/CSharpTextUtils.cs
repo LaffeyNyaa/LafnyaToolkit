@@ -15,6 +15,7 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CSharpTextUtils Instance = new CSharpTextUtils();
+
         private CSharpTextUtils()
         {
         }

@@ -12,6 +12,7 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
+
         private Formatter()
         {
         }
@@ -62,7 +63,7 @@ namespace CSharpFormatter
             {
                 preSplitContinues[i] =
                     LineClassifier.Instance.IsContinuationIndicator(
-                    lines[i], lineStarts[i], text, isCode);
+                        lines[i], lineStarts[i], text, isCode);
             }
 
             lines = LineLengthProcessor.Instance.ApplyLineLengthLimit(lines,
@@ -71,6 +72,7 @@ namespace CSharpFormatter
             text = string.Join("\n", lines);
             tokenized = CSharpTokenizer.Instance.Tokenize(text);
             isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokenized);
+
             isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines,
                 isCode);
 
@@ -99,7 +101,7 @@ namespace CSharpFormatter
             {
                 lineContinuesNext[i] =
                     LineClassifier.Instance.IsContinuationIndicator(
-                    lines[i], lineStarts[i], text, isCode);
+                        lines[i], lineStarts[i], text, isCode);
 
                 lineEndsStatement[i] = LineClassifier.Instance.EndsStatement(
                     lines[i], lineStarts[i], text, isCode);

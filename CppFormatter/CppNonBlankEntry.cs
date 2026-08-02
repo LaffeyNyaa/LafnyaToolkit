@@ -34,8 +34,11 @@ namespace CppFormatter
         /// <param name="hadBlankAbove">Whether a blank line existed above this line in the original input.</param>
         /// <param name="line">The line text.</param>
         /// <param name="isProtected">Whether the line is inside a multi-line string or comment token.</param>
-        public CppNonBlankEntry(bool hadBlankAbove, string line,
-            bool isProtected)
+        public CppNonBlankEntry(
+            bool hadBlankAbove,
+            string line,
+            bool isProtected
+        )
         {
             HadBlankAbove = hadBlankAbove;
             Line = line;

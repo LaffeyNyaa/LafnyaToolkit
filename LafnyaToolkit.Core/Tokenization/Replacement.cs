@@ -23,7 +23,11 @@ namespace LafnyaToolkit.Core.Tokenization
         /// <param name="start">The start position.</param>
         /// <param name="end">The end position.</param>
         /// <param name="newText">The replacement text.</param>
-        public Replacement(int start, int end, string newText)
+        public Replacement(
+            int start,
+            int end,
+            string newText
+        )
         {
             Start = start;
             End = end;

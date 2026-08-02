@@ -24,7 +24,7 @@ namespace GDScriptFormatter
                 !contList[curIdx] &&
                 curIndent <= prevIndent &&
                 !GDScriptTextUtils.Instance.IsBlockStartLine(
-                nonBlank[curIdx - 1].Line.Trim()))
+                    nonBlank[curIdx - 1].Line.Trim()))
             {
                 return 1;
             }
@@ -42,7 +42,7 @@ namespace GDScriptFormatter
                 nonBlank[curIdx].Line.Trim().EndsWith("{") &&
                 nonBlank[curIdx + 1].Line.Trim().Length > 0 &&
                 IndentationProcessor.Instance.LineIndentLevel(
-                nonBlank[curIdx + 1].Line) > curIndent &&
+                    nonBlank[curIdx + 1].Line) > curIndent &&
                 prevIndent == curIndent)
             {
                 return 1;
@@ -58,9 +58,9 @@ namespace GDScriptFormatter
                     prevTrimmedCheck.StartsWith("]") ||
                     prevTrimmedCheck.StartsWith("}")) &&
                     IndentationProcessor.Instance.LineIndentLevel(
-                    nonBlank[curIdx - 1].Line) >=
+                        nonBlank[curIdx - 1].Line) >=
                     IndentationProcessor.Instance.LineIndentLevel(
-                    nonBlank[curIdx].Line))
+                        nonBlank[curIdx].Line))
                 {
                     return 1;
                 }
@@ -75,11 +75,11 @@ namespace GDScriptFormatter
 
                 if (!StartsWithBooleanOperator(curTrimmed) &&
                     (curTrimmed.EndsWith("(") ||
-                    curTrimmed.EndsWith("{") ||
-                    (curTrimmed.EndsWith("[") &&
-                    !(curIdx > 0 &&
-                    contList[curIdx - 1] &&
-                    curTrimmed.StartsWith("%")))))
+                        curTrimmed.EndsWith("{") ||
+                        (curTrimmed.EndsWith("[") &&
+                            !(curIdx > 0 &&
+                                contList[curIdx - 1] &&
+                                curTrimmed.StartsWith("%")))))
                 {
                     return 1;
                 }

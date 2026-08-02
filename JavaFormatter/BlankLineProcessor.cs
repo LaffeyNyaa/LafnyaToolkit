@@ -66,7 +66,12 @@ namespace JavaFormatter
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
-                nonBlank.Add(new JavaNonBlankEntry(hadBlankAbove, line, i));
+
+                nonBlank.Add(new JavaNonBlankEntry(
+                    hadBlankAbove,
+                    line,
+                    i
+                ));
                 prevWasBlank = false;
                 isFirst = false;
             }

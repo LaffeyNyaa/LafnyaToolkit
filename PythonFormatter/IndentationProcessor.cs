@@ -124,8 +124,11 @@ namespace PythonFormatter
         /// text.</param>
         /// <returns>A boolean array indicating preserve-indent flags
         /// per line.</returns>
-        private static bool[] ComputePreserveIndent(List<string> lines,
-            List<Token> tokens, bool[] isCode)
+        private static bool[] ComputePreserveIndent(
+            List<string> lines,
+            List<Token> tokens,
+            bool[] isCode
+        )
         {
             var preserve = new bool[lines.Count];
 

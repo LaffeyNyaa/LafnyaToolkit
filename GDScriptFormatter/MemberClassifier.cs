@@ -150,7 +150,7 @@ namespace GDScriptFormatter
 
             if (TextUtils.StartsWithKeyword(trimmed, "func") ||
                 (trimmed.StartsWith("class ") &&
-                !trimmed.StartsWith("class_name")))
+                    !trimmed.StartsWith("class_name")))
             {
                 return MemberGroup.Method;
             }

@@ -68,7 +68,11 @@ namespace CppFormatter
                 if (i > 0 && IsInitializerContinuationLine(lines, i, result))
                 {
                     int baseIndent =
-                        FindConstructorBaseIndentFromPrevious(lines, i, result);
+                        FindConstructorBaseIndentFromPrevious(
+                            lines,
+                            i,
+                            result
+                        );
 
                     if (baseIndent >= 0)
                     {
@@ -297,8 +301,11 @@ namespace CppFormatter
         /// initializer list (a member initializer that follows the
         /// colon line or previous continuation).
         /// </summary>
-        private bool IsInitializerContinuationLine(List<string> lines,
-            int currentIdx, List<string> processedResult)
+        private bool IsInitializerContinuationLine(
+            List<string> lines,
+            int currentIdx,
+            List<string> processedResult
+        )
         {
             string trimmed = lines[currentIdx].TrimStart();
 
@@ -323,8 +330,11 @@ namespace CppFormatter
         /// Finds the constructor base indent by looking at previous
         /// processed lines.
         /// </summary>
-        private int FindConstructorBaseIndentFromPrevious(List<string> lines,
-            int currentIdx, List<string> processedResult)
+        private int FindConstructorBaseIndentFromPrevious(
+            List<string> lines,
+            int currentIdx,
+            List<string> processedResult
+        )
         {
             for (int scanIdx = processedResult.Count - 1; scanIdx >= 0;
                 scanIdx--)

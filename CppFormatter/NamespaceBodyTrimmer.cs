@@ -31,8 +31,12 @@ namespace CppFormatter
         /// <param name="tokens">The token list.</param>
         /// <param name="isCode">The code mask.</param>
         /// <returns>The processed line list.</returns>
-        public List<string> TrimNamespaceBodyBlankLines(List<string> lines,
-            string text, List<Token> tokens, bool[] isCode)
+        public List<string> TrimNamespaceBodyBlankLines(
+            List<string> lines,
+            string text,
+            List<Token> tokens,
+            bool[] isCode
+        )
         {
             var result = new List<string>(lines.Count);
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
@@ -52,7 +56,11 @@ namespace CppFormatter
                 char c = text[i];
 
                 if (c == 'n' && (i == 0 || !TextUtils.IsWordChar(text[i -
-                    1])) && TextUtils.MatchesWord(text, i, "namespace"))
+                    1])) && TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "namespace"
+                    ))
                 {
                     pendingNamespace = true;
                 }

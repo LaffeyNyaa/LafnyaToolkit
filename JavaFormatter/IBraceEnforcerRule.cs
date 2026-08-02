@@ -24,7 +24,11 @@ namespace JavaFormatter
         /// <param name="isCode">Boolean mask indicating code regions.</param>
         /// <param name="keywordPos">The position of the keyword start.</param>
         /// <param name="insertions">The insertion list to populate.</param>
-        void Apply(string text, bool[] isCode, int keywordPos, List<Insertion>
-            insertions);
+        void Apply(
+            string text,
+            bool[] isCode,
+            int keywordPos,
+            List<Insertion> insertions
+        );
     }
 }

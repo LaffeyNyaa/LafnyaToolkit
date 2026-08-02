@@ -24,8 +24,11 @@ namespace JavaFormatter
         /// it.</param>
         /// <param name="line">The line text.</param>
         /// <param name="originalIndex">The original line index.</param>
-        public JavaNonBlankEntry(bool hadBlankAbove, string line,
-            int originalIndex)
+        public JavaNonBlankEntry(
+            bool hadBlankAbove,
+            string line,
+            int originalIndex
+        )
         {
             HadBlankAbove = hadBlankAbove;
             Line = line;

@@ -19,6 +19,7 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CppTokenizer Instance = new CppTokenizer();
+
         private CppTokenizer()
         {
         }
@@ -41,8 +42,11 @@ namespace CppFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position,
-            out Token token)
+        protected override int ScanNextToken(
+            string source,
+            int position,
+            out Token token
+        )
         {
             token = default(Token);
             int n = source.Length;
@@ -238,8 +242,11 @@ namespace CppFormatter
         /// <param name="tokens">The token list.</param>
         /// <param name="lineCount">The number of lines.</param>
         /// <returns>A boolean array; true means the line is entirely inside a multi-line token.</returns>
-        public bool[] ComputeProtectedLines(string text, List<Token> tokens,
-            int lineCount)
+        public bool[] ComputeProtectedLines(
+            string text,
+            List<Token> tokens,
+            int lineCount
+        )
         {
             var protectedLines = new bool[lineCount];
 
@@ -292,8 +299,12 @@ namespace CppFormatter
         /// <param name="lineStarts">The line start positions.</param>
         /// <param name="lines">The list of lines.</param>
         /// <returns>A boolean array; true means the line's end position is inside a multi-line token.</returns>
-        public bool[] ComputeLineEndsInsideToken(string text, List<Token>
-            tokens, int[] lineStarts, IList<string> lines)
+        public bool[] ComputeLineEndsInsideToken(
+            string text,
+            List<Token> tokens,
+            int[] lineStarts,
+            IList<string> lines
+        )
         {
             int lineCount = lines.Count;
             var result = new bool[lineCount];

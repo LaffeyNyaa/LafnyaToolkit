@@ -17,6 +17,7 @@ namespace PythonFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly PythonTokenizer Instance = new PythonTokenizer();
+
         private PythonTokenizer()
         {
         }
@@ -37,8 +38,11 @@ namespace PythonFormatter
         /// <param name="position">The character position to scan from.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed, or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position,
-            out Token token)
+        protected override int ScanNextToken(
+            string source,
+            int position,
+            out Token token
+        )
         {
             token = default(Token);
             int n = source.Length;
@@ -64,10 +68,20 @@ namespace PythonFormatter
                 if (position + 2 < n && source[position + 1] == c &&
                     source[position + 2] == c)
                 {
-                    return ScanTripleQuoted(source, position, 0, out token);
+                    return ScanTripleQuoted(
+                        source,
+                        position,
+                        0,
+                        out token
+                    );
                 }
 
-                return ScanSingleLineString(source, position, 0, out token);
+                return ScanSingleLineString(
+                    source,
+                    position,
+                    0,
+                    out token
+                );
             }
 
             int prefixLen = TryMatchStringPrefix(source, position, n);
@@ -80,12 +94,20 @@ namespace PythonFormatter
                     source[position + prefixLen + 1] == quote &&
                     source[position + prefixLen + 2] == quote)
                 {
-                    return ScanTripleQuoted(source, position, prefixLen,
-                        out token);
+                    return ScanTripleQuoted(
+                        source,
+                        position,
+                        prefixLen,
+                        out token
+                    );
                 }
 
-                return ScanSingleLineString(source, position, prefixLen,
-                    out token);
+                return ScanSingleLineString(
+                    source,
+                    position,
+                    prefixLen,
+                    out token
+                );
             }
 
             return 0;
@@ -103,8 +125,11 @@ namespace PythonFormatter
         /// <param name="n">The total length of the source.</param>
         /// <returns>The number of characters consumed by the prefix
         /// (1 or 2), or 0 if no prefix is present.</returns>
-        private static int TryMatchStringPrefix(string source, int position,
-            int n)
+        private static int TryMatchStringPrefix(
+            string source,
+            int position,
+            int n
+        )
         {
             if (position >= n)
             {
@@ -164,8 +189,12 @@ namespace PythonFormatter
         /// <param name="token">The produced token.</param>
         /// <returns>The total number of characters consumed by the prefix
         /// and the triple-quoted body.</returns>
-        private static int ScanTripleQuoted(string source, int position,
-            int prefixLen, out Token token)
+        private static int ScanTripleQuoted(
+            string source,
+            int position,
+            int prefixLen,
+            out Token token
+        )
         {
             int start = position;
             int n = source.Length;
@@ -217,8 +246,12 @@ namespace PythonFormatter
         /// <param name="token">The produced token.</param>
         /// <returns>The total number of characters consumed by the prefix
         /// and the string body.</returns>
-        private static int ScanSingleLineString(string source, int position,
-            int prefixLen, out Token token)
+        private static int ScanSingleLineString(
+            string source,
+            int position,
+            int prefixLen,
+            out Token token
+        )
         {
             int start = position;
             int n = source.Length;

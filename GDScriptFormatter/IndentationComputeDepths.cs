@@ -27,8 +27,11 @@ namespace GDScriptFormatter
         /// <param name="lineInfo">The per-line analysis.</param>
         /// <param name="preserveIndent">Per-line flag indicating lines inside triple-quoted strings.</param>
         /// <returns>The depth for each line.</returns>
-        public int[] ComputeDepthsFromStack(List<string> lines,
-            LineAnalysis[] lineInfo, bool[] preserveIndent)
+        public int[] ComputeDepthsFromStack(
+            List<string> lines,
+            LineAnalysis[] lineInfo,
+            bool[] preserveIndent
+        )
         {
             int[] depths = new int[lines.Count];
             var stack = new List<int>();
@@ -58,7 +61,11 @@ namespace GDScriptFormatter
 
                 if (lineInfo[i].IsCloseBrace && !lineInfo[i].IsContinuation)
                 {
-                    HandleCloseBrace(stack, depths, i);
+                    HandleCloseBrace(
+                        stack,
+                        depths,
+                        i
+                    );
                     previousWasColonOrBrace = false;
                     continue;
                 }
@@ -75,8 +82,11 @@ namespace GDScriptFormatter
                 {
                     if (!previousWasColonOrBrace)
                     {
-                        HandleNonContinuationPop(origDepth, stack,
-                            continuationColonPushes);
+                        HandleNonContinuationPop(
+                            origDepth,
+                            stack,
+                            continuationColonPushes
+                        );
                     }
 
                     previousWasColonOrBrace = false;
@@ -90,8 +100,11 @@ namespace GDScriptFormatter
                     trimmed[0] != ']' &&
                     trimmed[0] != '}')
                 {
-                    PopContinuationColonEntries(origDepth, stack,
-                        continuationColonPushes);
+                    PopContinuationColonEntries(
+                        origDepth,
+                        stack,
+                        continuationColonPushes
+                    );
                 }
 
                 if (lineInfo[i].IsContinuation &&
@@ -101,27 +114,33 @@ namespace GDScriptFormatter
                     trimmed[0] != ']' &&
                     trimmed[0] != '}')
                 {
-                    PopContinuationColonEntries(origDepth, stack,
+                    PopContinuationColonEntries(
+                        origDepth,
+                        stack,
                         continuationColonPushes,
-                        currentLineIsColonTerminated: true);
+                        currentLineIsColonTerminated: true
+                    );
                 }
 
                 if (lineInfo[i].IsContinuation &&
                     trimmed.Length > 0 &&
                     (trimmed[0] == ')' || trimmed[0] == ']' ||
-                    trimmed[0] == '}') &&
+                        trimmed[0] == '}') &&
                     lineInfo[i].EndBracketDepth == 0)
                 {
-                    PopContinuationColonEntries(origDepth, stack,
+                    PopContinuationColonEntries(
+                        origDepth,
+                        stack,
                         continuationColonPushes,
-                        currentLineIsColonTerminated: false);
+                        currentLineIsColonTerminated: false
+                    );
                 }
 
                 depths[i] = stack.Count;
 
                 if (lineInfo[i].ColonTerminated ||
                     (lineInfo[i].BraceTerminated &&
-                    !lineInfo[i].IsContinuation))
+                        !lineInfo[i].IsContinuation))
                 {
                     stack.Add(stack.Count + 1);
 
@@ -149,8 +168,11 @@ namespace GDScriptFormatter
         /// <param name="stack">The running block stack.</param>
         /// <param name="depths">The depth array to update.</param>
         /// <param name="i">The current line index.</param>
-        private static void HandleCloseBrace(List<int> stack,
-            int[] depths, int i)
+        private static void HandleCloseBrace(
+            List<int> stack,
+            int[] depths,
+            int i
+        )
         {
             if (stack.Count > 0)
             {
@@ -169,9 +191,11 @@ namespace GDScriptFormatter
         /// <param name="origDepth">The current line's original depth.</param>
         /// <param name="stack">The running block stack.</param>
         /// <param name="continuationColonPushes">The continuation-colon stack.</param>
-        private static void HandleNonContinuationPop(int origDepth,
+        private static void HandleNonContinuationPop(
+            int origDepth,
             List<int> stack,
-            List<(int height, int origDepth)> continuationColonPushes)
+            List<(int height, int origDepth)> continuationColonPushes
+        )
         {
             while (stack.Count > 0 &&
                 origDepth < stack[stack.Count - 1])
@@ -209,10 +233,12 @@ namespace GDScriptFormatter
         /// <param name="stack">The running block stack.</param>
         /// <param name="continuationColonPushes">The continuation-colon stack.</param>
         /// <param name="currentLineIsColonTerminated">Whether the current line is itself colon-terminated (used to determine the comparison policy).</param>
-        private static void PopContinuationColonEntries(int origDepth,
+        private static void PopContinuationColonEntries(
+            int origDepth,
             List<int> stack,
             List<(int height, int origDepth)> continuationColonPushes,
-            bool currentLineIsColonTerminated = false)
+            bool currentLineIsColonTerminated = false
+        )
         {
             while (continuationColonPushes.Count > 0)
             {

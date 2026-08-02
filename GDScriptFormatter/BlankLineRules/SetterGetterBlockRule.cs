@@ -10,8 +10,11 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplySetterGetterBlockRule(string prevTrimmed,
-            string curTrimmed, bool sameIndent)
+        private static int ApplySetterGetterBlockRule(
+            string prevTrimmed,
+            string curTrimmed,
+            bool sameIndent
+        )
         {
             if (!sameIndent)
             {

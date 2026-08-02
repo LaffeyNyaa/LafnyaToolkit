@@ -39,19 +39,29 @@ namespace CppFormatter
         /// <param name="tokens">Pre-computed tokens of <paramref name="text"/>.</param>
         /// <param name="isCode">Pre-computed code mask of <paramref name="text"/>.</param>
         /// <returns>The re-indented line list.</returns>
-        public List<string> Reindent(List<string> lines, string text, List<
-            LafnyaToolkit.Core.Tokenization.Token> tokens, bool[] isCode)
+        public List<string> Reindent(
+            List<string> lines,
+            string text,
+            List< LafnyaToolkit.Core.Tokenization.Token> tokens,
+            bool[] isCode
+        )
         {
             int[] depths =
-                IndentationDepthComputer.Instance.ComputeDepths(lines, text,
-                isCode);
+                IndentationDepthComputer.Instance.ComputeDepths(
+                    lines,
+                    text,
+                    isCode
+                );
 
             bool[] preserveIndent =
                 PreserveIndentComputer.Instance.Compute(lines, tokens);
 
             bool[] inEnumBlock =
-                EnumBlockDetector.Instance.ComputeInEnumBlock(lines, text,
-                isCode);
+                EnumBlockDetector.Instance.ComputeInEnumBlock(
+                    lines,
+                    text,
+                    isCode
+                );
 
             bool[] caseBody = CaseScopeDetector.Instance.ComputeCaseScope(lines,
                 text, isCode);
@@ -62,8 +72,17 @@ namespace CppFormatter
 
             for (int i = 0; i < lines.Count; i++)
             {
-                result.Add(ComputeIndentedLine(i, lines, depths, preserveIndent,
-                    inEnumBlock, caseBody, text, isCode, lineStarts));
+                result.Add(ComputeIndentedLine(
+                    i,
+                    lines,
+                    depths,
+                    preserveIndent,
+                    inEnumBlock,
+                    caseBody,
+                    text,
+                    isCode,
+                    lineStarts
+                ));
             }
 
             return result;
@@ -76,9 +95,17 @@ namespace CppFormatter
         /// adjustment, namespace depth adjustment, and access specifier
         /// adjustment.
         /// </summary>
-        private string ComputeIndentedLine(int i, List<string> lines,
-            int[] depths, bool[] preserveIndent, bool[] inEnumBlock,
-            bool[] caseBody, string text, bool[] isCode, int[] lineStarts)
+        private string ComputeIndentedLine(
+            int i,
+            List<string> lines,
+            int[] depths,
+            bool[] preserveIndent,
+            bool[] inEnumBlock,
+            bool[] caseBody,
+            string text,
+            bool[] isCode,
+            int[] lineStarts
+        )
         {
             if (preserveIndent[i])
             {
@@ -176,8 +203,12 @@ namespace CppFormatter
         /// indented line string, or null if the line is not a
         /// constructor initializer list colon.
         /// </summary>
-        private string TryConstructorColon(int i, List<string> lines,
-            int[] depths, string content)
+        private string TryConstructorColon(
+            int i,
+            List<string> lines,
+            int[] depths,
+            string content
+        )
         {
             int prevLine = i - 1;
 
@@ -204,8 +235,14 @@ namespace CppFormatter
         /// boundaries (semicolon-terminated lines) and code-carrying
         /// lines that are not continuations.
         /// </summary>
-        private int ApplyContinuationScan(int i, List<string> lines,
-            int[] lineStarts, string text, bool[] isCode, int baseDepth)
+        private int ApplyContinuationScan(
+            int i,
+            List<string> lines,
+            int[] lineStarts,
+            string text,
+            bool[] isCode,
+            int baseDepth
+        )
         {
             int scanLine = i - 1;
 
@@ -234,7 +271,11 @@ namespace CppFormatter
                     scanTrimmed.EndsWith("){")) && !isForHeader &&
                     !isSingleLineDecl)
                 {
-                    TryApplyLambdaContinuation(lines, scanLine, ref baseDepth);
+                    TryApplyLambdaContinuation(
+                        lines,
+                        scanLine,
+                        ref baseDepth
+                    );
                     break;
                 }
 
@@ -266,8 +307,13 @@ namespace CppFormatter
         /// the base depth so the closing brace aligns with the
         /// continuation-adjusted content.
         /// </summary>
-        private int AdjustClosingBraceDepth(int i, List<string> lines,
-            string text, bool[] isCode, int baseDepth)
+        private int AdjustClosingBraceDepth(
+            int i,
+            List<string> lines,
+            string text,
+            bool[] isCode,
+            int baseDepth
+        )
         {
             string trimmed = lines[i].TrimStart();
 
@@ -311,8 +357,11 @@ namespace CppFormatter
                         scanLineText.EndsWith("){")) && !isForHeader &&
                         !isSingleLineDecl)
                     {
-                        TryApplyLambdaContinuation(lines, scanLine,
-                            ref baseDepth);
+                        TryApplyLambdaContinuation(
+                            lines,
+                            scanLine,
+                            ref baseDepth
+                        );
                     }
 
                     break;
@@ -339,8 +388,11 @@ namespace CppFormatter
         /// so that the content inside the multi-line parameter block
         /// receives an extra indent.
         /// </summary>
-        private void TryApplyLambdaContinuation(List<string> lines,
-            int scanLine, ref int baseDepth)
+        private void TryApplyLambdaContinuation(
+            List<string> lines,
+            int scanLine,
+            ref int baseDepth
+        )
         {
             int openingLine = scanLine;
             bool isLambda = false;
@@ -397,8 +449,11 @@ namespace CppFormatter
         /// constructor signature start line. The colon should be at
         /// the same indent level as the constructor signature.
         /// </summary>
-        private int FindConstructorColonDepth(List<string> lines,
-            int colonLineIndex, int[] depths)
+        private int FindConstructorColonDepth(
+            List<string> lines,
+            int colonLineIndex,
+            int[] depths
+        )
         {
             for (int scanIdx = colonLineIndex - 1; scanIdx >= 0; scanIdx--)
             {
@@ -459,7 +514,7 @@ namespace CppFormatter
             {
                 if (trimmed.StartsWith(kw) && (trimmed.Length == kw.Length ||
                     (!char.IsLetterOrDigit(trimmed[kw.Length]) &&
-                    trimmed[kw.Length] != '_')))
+                        trimmed[kw.Length] != '_')))
                 {
                     return true;
                 }
@@ -476,8 +531,11 @@ namespace CppFormatter
         /// share the same hanging indent. Otherwise returns
         /// <paramref name="baseDepth"/> + 1.
         /// </summary>
-        private int ComputeStreamOperatorDepth(int i, List<string> lines,
-            int baseDepth)
+        private int ComputeStreamOperatorDepth(
+            int i,
+            List<string> lines,
+            int baseDepth
+        )
         {
             int prev = i - 1;
 
@@ -510,8 +568,12 @@ namespace CppFormatter
         /// its indent so all operator lines stay at the same hanging
         /// indent. Otherwise returns <paramref name="baseDepth"/> + 1.
         /// </summary>
-        private int ComputeBinaryOpDepth(int i, List<string> lines,
-            int baseDepth, char op)
+        private int ComputeBinaryOpDepth(
+            int i,
+            List<string> lines,
+            int baseDepth,
+            char op
+        )
         {
             int prev = i - 1;
 

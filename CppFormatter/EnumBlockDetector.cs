@@ -24,8 +24,11 @@ namespace CppFormatter
         /// <summary>
         /// Computes whether each line lies inside an enum block.
         /// </summary>
-        public bool[] ComputeInEnumBlock(List<string> lines, string text,
-            bool[] isCode)
+        public bool[] ComputeInEnumBlock(
+            List<string> lines,
+            string text,
+            bool[] isCode
+        )
         {
             var inEnumBlock = new bool[lines.Count];
             int[] lineStarts = CppTokenizer.Instance.ComputeLineStarts(lines);
@@ -46,7 +49,11 @@ namespace CppFormatter
                 char c = text[i];
 
                 if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i -
-                    1])) && TextUtils.MatchesWord(text, i, "enum"))
+                    1])) && TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "enum"
+                    ))
                 {
                     pendingEnum = true;
                 }

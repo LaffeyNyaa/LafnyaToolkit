@@ -139,8 +139,12 @@ namespace CSharpFormatter
                 if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
                     depths[i] <= depths[i - 1] &&
                     (StartsWithLogicalOp(lines[i]) ||
-                    IsContinuationIndicator(lines[i - 1],
-                    lineStarts[i - 1], text, isCode)))
+                        IsContinuationIndicator(
+                            lines[i - 1],
+                            lineStarts[i - 1],
+                            text,
+                            isCode
+                        )))
                 {
                     level = Math.Max(level, depths[i] + 1);
                 }
@@ -283,7 +287,11 @@ namespace CSharpFormatter
 
                 if (c == 'e' && (i == 0 ||
                     !TextUtils.IsWordChar(text[i - 1])) &&
-                    TextUtils.MatchesWord(text, i, "enum"))
+                    TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "enum"
+                    ))
                 {
                     pendingEnum = true;
                 }
@@ -376,7 +384,11 @@ namespace CSharpFormatter
 
                 if (c == 's' && (i == 0 ||
                     !TextUtils.IsWordChar(text[i - 1])) &&
-                    TextUtils.MatchesWord(text, i, "switch"))
+                    TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "switch"
+                    ))
                 {
                     pendingSwitch = true;
                 }
@@ -487,8 +499,12 @@ namespace CSharpFormatter
             bool[] isCode
         )
         {
-            return LineClassifier.Instance.IsContinuationIndicator(line,
-                lineStart, text, isCode);
+            return LineClassifier.Instance.IsContinuationIndicator(
+                line,
+                lineStart,
+                text,
+                isCode
+            );
         }
 
         /// <summary>
@@ -577,7 +593,7 @@ namespace CSharpFormatter
 
                 while (firstNonWs < lines[i].Length &&
                     (lines[i][firstNonWs] == ' ' ||
-                    lines[i][firstNonWs] == '\t'))
+                        lines[i][firstNonWs] == '\t'))
                 {
                     firstNonWs++;
                 }
@@ -644,14 +660,19 @@ namespace CSharpFormatter
                 }
 
                 if (prev < 0 ||
-                    !IsContinuationIndicator(lines[prev],
-                    lineStarts[prev], text, isCode))
+                    !IsContinuationIndicator(
+                        lines[prev],
+                        lineStarts[prev],
+                        text,
+                        isCode
+                    ))
                 {
                     continue;
                 }
 
                 // Accept a line starting with '{', or an inline opener
                 // whose '{' stays open past the end of the line.
+
                 if (!lineStartsWithBrace && netBraces <= 0)
                 {
                     continue;

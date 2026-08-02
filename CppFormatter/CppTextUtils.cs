@@ -17,6 +17,7 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly CppTextUtils Instance = new CppTextUtils();
+
         private CppTextUtils()
         {
         }
@@ -31,7 +32,11 @@ namespace CppFormatter
         /// <param name="isCode">Boolean mask indicating code regions.</param>
         /// <param name="start">The character position to start searching from.</param>
         /// <returns>The position of the open brace, or -1 if not found.</returns>
-        public int FindOpenBrace(string text, bool[] isCode, int start)
+        public int FindOpenBrace(
+            string text,
+            bool[] isCode,
+            int start
+        )
         {
             int i = start;
 
@@ -62,7 +67,11 @@ namespace CppFormatter
         /// <param name="isCode">Boolean mask indicating code regions.</param>
         /// <param name="openPos">The position of the open brace.</param>
         /// <returns>The position of the matching close brace, or -1 if not found.</returns>
-        public int FindMatchingClose(string text, bool[] isCode, int openPos)
+        public int FindMatchingClose(
+            string text,
+            bool[] isCode,
+            int openPos
+        )
         {
             int depth = 1;
             int i = openPos + 1;
@@ -151,10 +160,9 @@ namespace CppFormatter
 
             string beforeInit = s.Substring(0, initPos);
             return TextUtils.IsPureIdentifier(beforeInit)
-
-            || (beforeInit.EndsWith("_") && beforeInit.Length > 1 &&
-                TextUtils.IsPureIdentifier(beforeInit.Substring(0,
-                beforeInit.Length - 1)));
+                || (beforeInit.EndsWith("_") && beforeInit.Length > 1 &&
+                    TextUtils.IsPureIdentifier(beforeInit.Substring(0,
+                        beforeInit.Length - 1)));
         }
     }
 }

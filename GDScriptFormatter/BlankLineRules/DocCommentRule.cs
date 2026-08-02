@@ -16,9 +16,13 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplyDocCommentBlankRule(string prevTrimmed,
-            string curTrimmed, List<NonBlankEntry> nonBlank,
-            List<bool> hadBlankAbove, int curIdx)
+        private static int ApplyDocCommentBlankRule(
+            string prevTrimmed,
+            string curTrimmed,
+            List<NonBlankEntry> nonBlank,
+            List<bool> hadBlankAbove,
+            int curIdx
+        )
         {
             if (!curTrimmed.StartsWith("##"))
             {

@@ -53,7 +53,7 @@ namespace CppFormatter
 
             while (nameEnd < rest.Length &&
                 (char.IsLetterOrDigit(rest[nameEnd]) ||
-                rest[nameEnd] == '_'))
+                    rest[nameEnd] == '_'))
             {
                 nameEnd++;
             }

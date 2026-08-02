@@ -345,7 +345,7 @@ namespace GDScriptFormatter
 
                         bool nextIsCloseBrace = nextTrimmed.Length > 0 &&
                             (nextTrimmed[0] == '}' || nextTrimmed[0] == ')' ||
-                            nextTrimmed[0] == ']');
+                                nextTrimmed[0] == ']');
 
                         bool hasBlank = i + 1 < lines.Count && lines[i +
                             1].Trim().Length == 0;
@@ -355,7 +355,9 @@ namespace GDScriptFormatter
                         {
                             if (closeBraceIndent > 0 || (nextTrimmed.Length >
                                 0 &&
-                                !DeclarationClassifier.Instance.IsFuncOrClassDecl(nextTrimmed) &&
+                                !DeclarationClassifier.Instance.IsFuncOrClassDecl(nextTrimmed)
+
+                                &&
                                 !DeclarationClassifier.Instance.IsFileHeaderLine(nextTrimmed)))
                             {
                                 result.Add(string.Empty);

@@ -35,9 +35,15 @@ namespace GDScriptFormatter
         /// <param name="lineStarts">The starting offsets of each line in text.</param>
         /// <param name="lines">The list of lines.</param>
         /// <returns>True if the line is a continuation of the previous line.</returns>
-        public bool IsContinuation(int lineIndex, int parenBracketDepth,
-            bool[] lineContinuesNext, string text, bool[] isCode,
-            int[] lineStarts, List<string> lines)
+        public bool IsContinuation(
+            int lineIndex,
+            int parenBracketDepth,
+            bool[] lineContinuesNext,
+            string text,
+            bool[] isCode,
+            int[] lineStarts,
+            List<string> lines
+        )
         {
             if (parenBracketDepth > 0)
             {
@@ -66,8 +72,12 @@ namespace GDScriptFormatter
         /// <param name="lineStart">The starting offset of the line in text.</param>
         /// <param name="lineLength">The length of the line (excluding the line terminator).</param>
         /// <returns>True if the line ends with a Code-region continuation backslash.</returns>
-        public bool EndsWithBackslash(string text, bool[] isCode, int lineStart,
-            int lineLength)
+        public bool EndsWithBackslash(
+            string text,
+            bool[] isCode,
+            int lineStart,
+            int lineLength
+        )
         {
             int lastIdx = -1;
 

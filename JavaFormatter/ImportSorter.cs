@@ -15,6 +15,7 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly ImportSorter Instance = new ImportSorter();
+
         private ImportSorter()
         {
         }
@@ -29,8 +30,12 @@ namespace JavaFormatter
         /// <param name="currentModule">Output: the fully qualified
         /// package name, or null if no package.</param>
         /// <param name="projectRoot">Output: the project root prefix.</param>
-        public void ResolveCurrentModule(string source, string targetRoot,
-            out string currentModule, out string projectRoot)
+        public void ResolveCurrentModule(
+            string source,
+            string targetRoot,
+            out string currentModule,
+            out string projectRoot
+        )
         {
             currentModule = null;
             projectRoot = null;
@@ -97,8 +102,12 @@ namespace JavaFormatter
             string currentModule;
             string projectRoot;
 
-            ResolveCurrentModule(source, targetRoot, out currentModule,
-                out projectRoot);
+            ResolveCurrentModule(
+                source,
+                targetRoot,
+                out currentModule,
+                out projectRoot
+            );
 
             string unified = source.Replace("\r\n", "\n").Replace("\r", "\n");
             string[] lines = unified.Split('\n');
@@ -151,16 +160,24 @@ namespace JavaFormatter
                 }
                 else if (IsCommentLine(trimmed))
                 {
-                    AppendSortedSegment(newBlock, currentSegment, currentModule,
-                        projectRoot);
+                    AppendSortedSegment(
+                        newBlock,
+                        currentSegment,
+                        currentModule,
+                        projectRoot
+                    );
 
                     currentSegment.Clear();
                     newBlock.Add(trimmed);
                 }
             }
 
-            AppendSortedSegment(newBlock, currentSegment, currentModule,
-                projectRoot);
+            AppendSortedSegment(
+                newBlock,
+                currentSegment,
+                currentModule,
+                projectRoot
+            );
 
             var result = new StringBuilder();
 
@@ -204,8 +221,12 @@ namespace JavaFormatter
             return result.ToString();
         }
 
-        private static void AppendSortedSegment(List<string> newBlock,
-            List<string> segment, string currentModule, string projectRoot)
+        private static void AppendSortedSegment(
+            List<string> newBlock,
+            List<string> segment,
+            string currentModule,
+            string projectRoot
+        )
         {
             if (segment.Count == 0)
             {
@@ -228,7 +249,7 @@ namespace JavaFormatter
                 else if (!string.IsNullOrEmpty(projectRoot) &&
                     ns.StartsWith(projectRoot + ".") &&
                     (string.IsNullOrEmpty(currentModule) || ns !=
-                    currentModule))
+                        currentModule))
                 {
                     projectModuleGroup.Add(imp);
                 }

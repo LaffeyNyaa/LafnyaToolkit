@@ -63,7 +63,12 @@ namespace CSharpFormatter
                 }
 
                 bool hadBlankAbove = !isFirst && prevWasBlank;
-                nonBlank.Add(new NonBlankEntry(idx, hadBlankAbove, line));
+
+                nonBlank.Add(new NonBlankEntry(
+                    idx,
+                    hadBlankAbove,
+                    line
+                ));
                 prevWasBlank = false;
                 isFirst = false;
             }
@@ -171,6 +176,7 @@ namespace CSharpFormatter
 
             string prevTrimmed = index > 0
             ? nonBlank[index - 1].Line.Trim() : string.Empty;
+
             var p = new BlankLinePredicates
             {
                 Trimmed = trimmed,
@@ -207,7 +213,7 @@ namespace CSharpFormatter
 
             p.CurrentIsCatchOrFinally = p.LineIsCode &&
                 (TextUtils.StartsWithKeyword(trimmed, "catch") ||
-                TextUtils.StartsWithKeyword(trimmed, "finally"));
+                    TextUtils.StartsWithKeyword(trimmed, "finally"));
 
             p.CurrentIsElse = p.LineIsCode &&
                 TextUtils.StartsWithKeyword(trimmed, "else");
@@ -238,7 +244,7 @@ namespace CSharpFormatter
 
             p.CurrentIsBlockBodyDeclaration =
                 BlankLineHelpers.IsBlockBodyDeclarationStart(
-                index, nonBlank, isCodeLine, lineContinuesNext);
+                    index, nonBlank, isCodeLine, lineContinuesNext);
 
             return p;
         }

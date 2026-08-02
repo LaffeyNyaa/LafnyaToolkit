@@ -301,7 +301,7 @@ namespace PythonFormatter
             return (s.StartsWith("\"\"\"", StringComparison.Ordinal) &&
                 s.EndsWith("\"\"\"", StringComparison.Ordinal)) ||
                 (s.StartsWith("'''", StringComparison.Ordinal) &&
-                s.EndsWith("'''", StringComparison.Ordinal));
+                    s.EndsWith("'''", StringComparison.Ordinal));
         }
     }
 }

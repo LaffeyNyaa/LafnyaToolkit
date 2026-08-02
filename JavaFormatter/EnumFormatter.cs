@@ -15,6 +15,7 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumFormatter Instance = new EnumFormatter();
+
         private EnumFormatter()
         {
         }
@@ -100,8 +101,11 @@ namespace JavaFormatter
                     sb.Append('\n');
                 }
 
-                replacements.Add(new Replacement(braceStart + 1, braceEnd,
-                    sb.ToString()));
+                replacements.Add(new Replacement(
+                    braceStart + 1,
+                    braceEnd,
+                    sb.ToString()
+                ));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);

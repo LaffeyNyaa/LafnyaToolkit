@@ -7,8 +7,11 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplyFuncClassBlankRule(string prevTrimmed,
-            string curTrimmed, bool sameIndent)
+        private static int ApplyFuncClassBlankRule(
+            string prevTrimmed,
+            string curTrimmed,
+            bool sameIndent
+        )
         {
             if (DeclarationClassifier.Instance.IsFuncOrClassDecl(curTrimmed))
             {

@@ -46,8 +46,12 @@ namespace LafnyaToolkit.Tests.Snapshots
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                 "Snapshots", "Cpp");
 
-            RunCases(dir, "C++", updateSnapshots, input =>
-                CppFormatter.Formatter.Instance.Format(input));
+            RunCases(
+                dir,
+                "C++",
+                updateSnapshots,
+                input => CppFormatter.Formatter.Instance.Format(input)
+            );
         }
 
         private static void RunCSharp(bool updateSnapshots)
@@ -55,8 +59,15 @@ namespace LafnyaToolkit.Tests.Snapshots
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                 "Snapshots", "CSharp");
 
-            RunCases(dir, "C#", updateSnapshots, input =>
-                CSharpFormatter.Formatter.Instance.Format(input, string.Empty));
+            RunCases(
+                dir,
+                "C#",
+                updateSnapshots,
+                input => CSharpFormatter.Formatter.Instance.Format(
+                    input,
+                    string.Empty
+                )
+            );
         }
 
         private static void RunGDScript(bool updateSnapshots)
@@ -64,8 +75,12 @@ namespace LafnyaToolkit.Tests.Snapshots
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                 "Snapshots", "GDScript");
 
-            RunCases(dir, "GDScript", updateSnapshots, input =>
-                GDScriptFormatter.Formatter.Instance.Format(input));
+            RunCases(
+                dir,
+                "GDScript",
+                updateSnapshots,
+                input => GDScriptFormatter.Formatter.Instance.Format(input)
+            );
         }
 
         private static void RunJava(bool updateSnapshots)
@@ -73,8 +88,15 @@ namespace LafnyaToolkit.Tests.Snapshots
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                 "Snapshots", "Java");
 
-            RunCases(dir, "Java", updateSnapshots, input =>
-                JavaFormatter.Formatter.Instance.Format(input, string.Empty));
+            RunCases(
+                dir,
+                "Java",
+                updateSnapshots,
+                input => JavaFormatter.Formatter.Instance.Format(
+                    input,
+                    string.Empty
+                )
+            );
         }
 
         private static void RunJson(bool updateSnapshots)
@@ -82,8 +104,12 @@ namespace LafnyaToolkit.Tests.Snapshots
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                 "Snapshots", "Json");
 
-            RunCases(dir, "JSON", updateSnapshots, input =>
-                JsonFormatter.JsonFormatter.Instance.Format(input));
+            RunCases(
+                dir,
+                "JSON",
+                updateSnapshots,
+                input => JsonFormatter.JsonFormatter.Instance.Format(input)
+            );
         }
 
         private static void RunPython(bool updateSnapshots)
@@ -91,12 +117,20 @@ namespace LafnyaToolkit.Tests.Snapshots
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                 "Snapshots", "Python");
 
-            RunCases(dir, "Python", updateSnapshots, input =>
-                PythonFormatter.Formatter.Instance.Format(input));
+            RunCases(
+                dir,
+                "Python",
+                updateSnapshots,
+                input => PythonFormatter.Formatter.Instance.Format(input)
+            );
         }
 
-        private static void RunCases(string dir, string language,
-            bool updateSnapshots, Func<string, string> format)
+        private static void RunCases(
+            string dir,
+            string language,
+            bool updateSnapshots,
+            Func<string, string> format
+        )
         {
             if (!Directory.Exists(dir))
             {
@@ -161,9 +195,10 @@ namespace LafnyaToolkit.Tests.Snapshots
                         "\n--- EXPECTED ---\n" + expected +
                         "\n--- ACTUAL ---\n" + actual + "\n" +
                         "--- EXPECTED HEX ---\n" + BitConverter.ToString(
-                        System.Text.Encoding.UTF8.GetBytes(expected)) + "\n" +
+                            System.Text.Encoding.UTF8.GetBytes(expected)) +
+                        "\n" +
                         "--- ACTUAL HEX ---\n" + BitConverter.ToString(
-                        System.Text.Encoding.UTF8.GetBytes(actual)) + "\n");
+                            System.Text.Encoding.UTF8.GetBytes(actual)) + "\n");
 
                     Console.Error.WriteLine("DIFF WRITTEN TO: " + debugPath);
                     throw;

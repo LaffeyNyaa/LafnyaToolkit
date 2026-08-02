@@ -24,9 +24,9 @@ namespace JavaFormatter
             bool prevIsRegularComment =
                 prevTrimmed.StartsWith("//") ||
                 (prevTrimmed.StartsWith("/*") &&
-                !prevTrimmed.StartsWith("/**")) ||
+                    !prevTrimmed.StartsWith("/**")) ||
                 (prevTrimmed.StartsWith("*") &&
-                !prevTrimmed.EndsWith("*/"));
+                    !prevTrimmed.EndsWith("*/"));
 
             bool prevIsBlockOpenBrace =
                 prevTrimmed == "{" ||

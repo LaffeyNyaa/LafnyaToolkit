@@ -11,6 +11,7 @@ namespace JavaFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
+
         private Formatter()
         {
         }
@@ -65,8 +66,8 @@ namespace JavaFormatter
             {
                 preSplitContinues[i] =
                     LineClassifier.Instance.IsContinuationIndicator(
-                    lines[i], lineStartsForLimit[i], textForLimit,
-                    isCodeForLimit);
+                        lines[i], lineStartsForLimit[i], textForLimit,
+                        isCodeForLimit);
             }
 
             lines = LineLengthProcessor.Instance.ApplyLineLengthLimit(lines,

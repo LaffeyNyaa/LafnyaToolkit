@@ -14,6 +14,7 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly DoWhileMerger Instance = new DoWhileMerger();
+
         private DoWhileMerger()
         {
         }
@@ -59,12 +60,18 @@ namespace CppFormatter
                     if (bracePos < isCode.Length && isCode[bracePos])
                     {
                         int openBracePos =
-                            BraceMerger.Instance.FindMatchingOpenBrace(text,
-                            isCode, bracePos);
+                            BraceMerger.Instance.FindMatchingOpenBrace(
+                                text,
+                                isCode,
+                                bracePos
+                            );
 
                         if (openBracePos >= 0 &&
-                            BraceMerger.Instance.IsDoKeywordBefore(text, isCode,
-                            openBracePos))
+                            BraceMerger.Instance.IsDoKeywordBefore(
+                                text,
+                                isCode,
+                                openBracePos
+                            ))
                         {
                             int j = i + 1;
 

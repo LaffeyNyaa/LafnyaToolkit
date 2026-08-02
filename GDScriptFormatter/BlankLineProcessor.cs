@@ -61,7 +61,11 @@ namespace GDScriptFormatter
                     lineIdx < isContinuation.Length &&
                     isContinuation[lineIdx];
 
-                nonBlank.Add(new NonBlankEntry(line, idx, false));
+                nonBlank.Add(new NonBlankEntry(
+                    line,
+                    idx,
+                    false
+                ));
                 hadBlankAboveList.Add(hadBlankAbove);
                 contList.Add(cont);
 
@@ -132,10 +136,16 @@ namespace GDScriptFormatter
         /// <param name="prevIndent">The previous line's indent level.</param>
         /// <param name="curIndent">The current line's indent level.</param>
         /// <returns>The desired number of blank lines above the current line.</returns>
-        private static int ComputeDesiredBlanksAbove(string prevTrimmed,
-            string curTrimmed, List<NonBlankEntry> nonBlank,
-            List<bool> hadBlankAbove, List<bool> contList, int curIdx,
-            int prevIndent, int curIndent)
+        private static int ComputeDesiredBlanksAbove(
+            string prevTrimmed,
+            string curTrimmed,
+            List<NonBlankEntry> nonBlank,
+            List<bool> hadBlankAbove,
+            List<bool> contList,
+            int curIdx,
+            int prevIndent,
+            int curIndent
+        )
         {
             if (curTrimmed.Length == 0)
             {

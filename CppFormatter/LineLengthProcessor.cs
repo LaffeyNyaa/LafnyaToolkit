@@ -42,9 +42,13 @@ namespace CppFormatter
         /// <param name="preTokens">Pre-computed tokens of <paramref name="text"/> (optional).</param>
         /// <param name="preIsCode">Pre-computed code mask of <paramref name="text"/> (optional).</param>
         /// <returns>The processed line list.</returns>
-        public List<string> ApplyLineLengthLimit(List<string> lines,
-            string text, bool[] lineContinuesNext, List<Token> preTokens = null,
-            bool[] preIsCode = null)
+        public List<string> ApplyLineLengthLimit(
+            List<string> lines,
+            string text,
+            bool[] lineContinuesNext,
+            List<Token> preTokens = null,
+            bool[] preIsCode = null
+        )
         {
             var tokens = preTokens ?? CppTokenizer.Instance.Tokenize(text);
 
@@ -52,8 +56,11 @@ namespace CppFormatter
                 preIsCode ?? CppTokenizer.Instance.BuildCodeMask(text, tokens);
 
             bool[] protectedLines =
-                CppTokenizer.Instance.ComputeProtectedLines(text, tokens,
-                lines.Count);
+                CppTokenizer.Instance.ComputeProtectedLines(
+                    text,
+                    tokens,
+                    lines.Count
+                );
 
             var result = new List<string>(lines.Count);
 
@@ -84,7 +91,12 @@ namespace CppFormatter
                 {
                     var split = SplitLongLine(unwrapped, null, null);
                     result.AddRange(split);
-                    SkipContinuationLines(lines, lineContinuesNext, ref i);
+
+                    SkipContinuationLines(
+                        lines,
+                        lineContinuesNext,
+                        ref i
+                    );
                     continue;
                 }
 
@@ -133,8 +145,11 @@ namespace CppFormatter
         /// baseIndent so that trailing doc comments (<c>/**&lt;</c>)
         /// use the correct indent.
         /// </summary>
-        private List<string> SplitLongLine(string line, string fixedContIndent,
-            string baseIndent)
+        private List<string> SplitLongLine(
+            string line,
+            string fixedContIndent,
+            string baseIndent
+        )
         {
             if (line.Length <= TextUtils.MaxLineLength)
             {
@@ -167,8 +182,12 @@ namespace CppFormatter
                 out var streamPositions))
             {
                 var streamResult =
-                    OperatorBreakPolicy.Instance.SplitAtStreamOperators(line,
-                    streamPositions, fixedContIndent, baseIndent);
+                    OperatorBreakPolicy.Instance.SplitAtStreamOperators(
+                        line,
+                        streamPositions,
+                        fixedContIndent,
+                        baseIndent
+                    );
 
                 if (streamResult.Count > 0 && streamResult[0].Length >
                     TextUtils.MaxLineLength)
@@ -185,8 +204,12 @@ namespace CppFormatter
                 indentLen, out var binaryPositions))
             {
                 var binaryResult =
-                    OperatorBreakPolicy.Instance.SplitAtBinaryOperators(line,
-                    binaryPositions, fixedContIndent, baseIndent);
+                    OperatorBreakPolicy.Instance.SplitAtBinaryOperators(
+                        line,
+                        binaryPositions,
+                        fixedContIndent,
+                        baseIndent
+                    );
 
                 if (binaryResult.Count > 0 && binaryResult[0].Length >
                     TextUtils.MaxLineLength)
@@ -235,7 +258,12 @@ namespace CppFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest, fixedContIndent, baseIndent));
+
+            result.AddRange(SplitLongLine(
+                rest,
+                fixedContIndent,
+                baseIndent
+            ));
             return result;
         }
 
@@ -247,8 +275,12 @@ namespace CppFormatter
         /// continuation lines into a single unwrapped expression
         /// string returned via <paramref name="unwrapped"/>.
         /// </summary>
-        private static bool TryUnwrapStreamChain(List<string> lines,
-            string line, int startIndex, out string unwrapped)
+        private static bool TryUnwrapStreamChain(
+            List<string> lines,
+            string line,
+            int startIndex,
+            out string unwrapped
+        )
         {
             string trimmed = line.TrimEnd();
 
@@ -360,8 +392,11 @@ namespace CppFormatter
         /// Uses indent-based detection (continuation has greater indent
         /// than the first line of the chain).
         /// </summary>
-        private static void SkipContinuationLines(List<string> lines,
-            bool[] lineContinuesNext, ref int i)
+        private static void SkipContinuationLines(
+            List<string> lines,
+            bool[] lineContinuesNext,
+            ref int i
+        )
         {
             int indentLen = CountLeadingSpaces(lines[i]);
 

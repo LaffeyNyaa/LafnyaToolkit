@@ -54,8 +54,11 @@ namespace PythonFormatter
             return BlankLineRuleResult.None;
         }
 
-        private static bool HasInlineBodyAfterColon(string line, int lineStart,
-            bool[] isCode)
+        private static bool HasInlineBodyAfterColon(
+            string line,
+            int lineStart,
+            bool[] isCode
+        )
         {
             if (string.IsNullOrEmpty(line))
             {

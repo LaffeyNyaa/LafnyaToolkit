@@ -164,8 +164,12 @@ namespace JavaFormatter
         /// <returns>The index in <paramref name="line"/> of the last
         /// code-region non-whitespace character, or -1 if none
         /// exists.</returns>
-        public int LastCodeCharIndex(string line, int lineStart,
-            string text, bool[] isCode)
+        public int LastCodeCharIndex(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             for (int i = line.Length - 1; i >= 0; i--)
             {
@@ -209,8 +213,12 @@ namespace JavaFormatter
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the line ends with a continuation
         /// indicator; otherwise false.</returns>
-        public bool IsContinuationIndicator(string line, int lineStart,
-            string text, bool[] isCode)
+        public bool IsContinuationIndicator(
+            string line,
+            int lineStart,
+            string text,
+            bool[] isCode
+        )
         {
             int lastCodeIdx = LastCodeCharIndex(line, lineStart, text, isCode);
 

@@ -16,6 +16,7 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumFormatter Instance = new EnumFormatter();
+
         private EnumFormatter()
         {
         }
@@ -56,7 +57,11 @@ namespace CppFormatter
                 {
                     afterEnum = nextNonWs + 5;
                 }
-                else if (TextUtils.MatchesWord(text, nextNonWs, "struct"))
+                else if (TextUtils.MatchesWord(
+                    text,
+                    nextNonWs,
+                    "struct"
+                ))
                 {
                     afterEnum = nextNonWs + 6;
                 }
@@ -118,8 +123,11 @@ namespace CppFormatter
                     sb.Append(';');
                 }
 
-                replacements.Add(new Replacement(braceStart + 1, closeEnd + 1,
-                    sb.ToString()));
+                replacements.Add(new Replacement(
+                    braceStart + 1,
+                    closeEnd + 1,
+                    sb.ToString()
+                ));
             }
 
             return TextUtils.ApplyReplacements(text, replacements);

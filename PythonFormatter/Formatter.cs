@@ -15,6 +15,7 @@ namespace PythonFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
+
         private Formatter()
         {
         }

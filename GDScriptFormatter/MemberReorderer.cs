@@ -36,6 +36,7 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly MemberReorderer Instance = new MemberReorderer();
+
         private MemberReorderer()
         {
         }
@@ -90,7 +91,13 @@ namespace GDScriptFormatter
 
             while (idx < lines.Count)
             {
-                var (leading, declLine, body, nextIdx) =
+                var (
+                    leading,
+                    declLine,
+                    body,
+                    nextIdx
+
+                )=
                     CollectMemberInfo(lines, idx);
 
                 if (declLine == null)
@@ -118,12 +125,12 @@ namespace GDScriptFormatter
                     MemberClassifier.Instance.ClassifyMember(trimmedDecl);
 
                 blocks.Add(new MemberBlock
-                {
+                    {
                     PrecedingLines = leading,
                         DeclarationLine = declLine,
                         BodyLines = body,
                         Group = group
-                });
+                    });
             }
 
             for (int i = 0; i < blocks.Count - 1; i++)
@@ -145,7 +152,7 @@ namespace GDScriptFormatter
                     {
                         MemberGroup nextGroup =
                             MemberClassifier.Instance.ClassifyMember(
-                            nextTrimmed);
+                                nextTrimmed);
 
                         blocks[i] = new MemberBlock
                         {
@@ -197,8 +204,12 @@ namespace GDScriptFormatter
         /// <returns>A tuple of (leading lines, declaration line, body lines, next index).
         /// When no member is found (trailing comments or an indented top-level line),
         /// <c>declLine</c> is <c>null</c> and <c>body</c> is <c>null</c>.</returns>
-        private (List<string> leading, string declLine, List<string> body,
-            int nextIdx) CollectMemberInfo(List<string> lines, int startIdx)
+        private (
+            List<string> leading,
+            string declLine,
+            List<string> body,
+            int nextIdx
+        )CollectMemberInfo(List<string> lines, int startIdx)
         {
             int idx = startIdx;
             var leading = new List<string>();
@@ -220,12 +231,22 @@ namespace GDScriptFormatter
 
             if (idx >= lines.Count)
             {
-                return (leading, null, null, idx);
+                return (
+                    leading,
+                    null,
+                    null,
+                    idx
+                );
             }
 
             if (IndentationProcessor.Instance.LineIndentLevel(lines[idx]) > 0)
             {
-                return (leading, null, null, idx);
+                return (
+                    leading,
+                    null,
+                    null,
+                    idx
+                );
             }
 
             string declLine = lines[idx];
@@ -261,7 +282,7 @@ namespace GDScriptFormatter
                 }
                 else if (bodyTrimmed.Length > 0 &&
                     (bodyTrimmed[0] == ')' || bodyTrimmed[0] == ']' ||
-                    bodyTrimmed[0] == '}'))
+                        bodyTrimmed[0] == '}'))
                 {
                     body.Add(lines[idx]);
                     idx++;
@@ -288,7 +309,7 @@ namespace GDScriptFormatter
 
                         if (peekTrim.Length > 0 &&
                             (peekTrim[0] == ')' || peekTrim[0] == ']' ||
-                            peekTrim[0] == '}'))
+                                peekTrim[0] == '}'))
                         {
                             body.Add(lines[idx]);
                             idx++;
@@ -311,7 +332,12 @@ namespace GDScriptFormatter
                 }
             }
 
-            return (leading, declLine, body, idx);
+            return (
+                leading,
+                declLine,
+                body,
+                idx
+            );
         }
     }
 }

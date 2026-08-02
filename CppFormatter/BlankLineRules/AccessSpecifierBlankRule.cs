@@ -27,7 +27,9 @@ namespace CppFormatter
                 return BlankLineRuleResult.None;
             }
 
-            if (LafnyaToolkit.Core.Text.TextUtils.EndsWithOpenBrace(prevTrimmed) ||
+            if (LafnyaToolkit.Core.Text.TextUtils.EndsWithOpenBrace(prevTrimmed)
+
+                ||
                 CppTextUtils.Instance.IsAccessSpecifier(prevTrimmed))
             {
                 return BlankLineRuleResult.None;

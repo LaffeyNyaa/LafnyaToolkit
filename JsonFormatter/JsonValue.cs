@@ -58,9 +58,12 @@ namespace JsonFormatter
         /// </summary>
         public List<JsonValue> Elements { get; private set; }
 
-        private JsonValue(JsonType kind, string rawText,
+        private JsonValue(
+            JsonType kind,
+            string rawText,
             List<KeyValuePair<string, JsonValue>> properties,
-            List<JsonValue> elements)
+            List<JsonValue> elements
+        )
         {
             Kind = kind;
             RawText = rawText;
@@ -74,8 +77,12 @@ namespace JsonFormatter
         /// <returns>A JSON object value with no properties.</returns>
         public static JsonValue FromObject()
         {
-            return new JsonValue(JsonType.Object, null,
-                new List<KeyValuePair<string, JsonValue>>(), null);
+            return new JsonValue(
+                JsonType.Object,
+                null,
+                new List<KeyValuePair<string, JsonValue>>(),
+                null
+            );
         }
 
         /// <summary>
@@ -84,8 +91,12 @@ namespace JsonFormatter
         /// <returns>A JSON array value with no elements.</returns>
         public static JsonValue FromArray()
         {
-            return new JsonValue(JsonType.Array, null, null,
-                new List<JsonValue>());
+            return new JsonValue(
+                JsonType.Array,
+                null,
+                null,
+                new List<JsonValue>()
+            );
         }
 
         /// <summary>
@@ -96,7 +107,12 @@ namespace JsonFormatter
         /// <returns>A scalar JSON value.</returns>
         public static JsonValue FromScalar(JsonType kind, string rawText)
         {
-            return new JsonValue(kind, rawText, null, null);
+            return new JsonValue(
+                kind,
+                rawText,
+                null,
+                null
+            );
         }
     }
 }

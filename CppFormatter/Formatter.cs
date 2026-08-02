@@ -14,6 +14,7 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
+
         private Formatter()
         {
         }
@@ -52,15 +53,19 @@ namespace CppFormatter
             lines = ConstructorInitializerProcessor.Instance.Format(lines);
 
             lines =
-                NamespaceBodyTrimmer.Instance.TrimNamespaceBodyBlankLines(lines,
-                currentText, tokens, isCode);
+                NamespaceBodyTrimmer.Instance.TrimNamespaceBodyBlankLines(
+                    lines,
+                    currentText,
+                    tokens,
+                    isCode
+                );
 
             currentText = string.Join("\n", lines);
             var tokensForLimit = CppTokenizer.Instance.Tokenize(currentText);
 
             bool[] isCodeForLimit =
                 CppTokenizer.Instance.BuildCodeMask(currentText,
-                tokensForLimit);
+                    tokensForLimit);
 
             int[] lineStartsForLimit =
                 CppTokenizer.Instance.ComputeLineStarts(lines);
@@ -71,8 +76,8 @@ namespace CppFormatter
             {
                 preSplitContinues[i] =
                     ContinuationScanner.Instance.IsContinuationIndicator(
-                    lines[i], lineStartsForLimit[i], currentText,
-                    isCodeForLimit);
+                        lines[i], lineStartsForLimit[i], currentText,
+                        isCodeForLimit);
             }
 
             lines = LineLengthProcessor.Instance.ApplyLineLengthLimit(

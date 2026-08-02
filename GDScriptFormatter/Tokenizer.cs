@@ -32,25 +32,45 @@ namespace GDScriptFormatter
         /// <param name="position">The current character position.</param>
         /// <param name="token">When the return value is positive, the token to emit.</param>
         /// <returns>The number of characters consumed (positive), or zero if this character is ordinary code.</returns>
-        protected override int ScanNextToken(string source, int position,
-            out Token token)
+        protected override int ScanNextToken(
+            string source,
+            int position,
+            out Token token
+        )
         {
             int n = source.Length;
             char c = source[position];
 
             if (IsTripleQuoteOpen(source, position, n))
             {
-                return ScanTripleString(source, position, n, c, out token);
+                return ScanTripleString(
+                    source,
+                    position,
+                    n,
+                    c,
+                    out token
+                );
             }
 
             if (c == '"' || c == '\'')
             {
-                return ScanString(source, position, n, c, out token);
+                return ScanString(
+                    source,
+                    position,
+                    n,
+                    c,
+                    out token
+                );
             }
 
             if (c == '#')
             {
-                return ScanComment(source, position, n, out token);
+                return ScanComment(
+                    source,
+                    position,
+                    n,
+                    out token
+                );
             }
 
             if (IsRawStringPrefix(source, position, n))
@@ -77,7 +97,11 @@ namespace GDScriptFormatter
         /// <param name="i">The current position.</param>
         /// <param name="n">The source length.</param>
         /// <returns>True if a triple-quoted string starts at i.</returns>
-        private static bool IsTripleQuoteOpen(string source, int i, int n)
+        private static bool IsTripleQuoteOpen(
+            string source,
+            int i,
+            int n
+        )
         {
             char c = source[i];
 
@@ -95,8 +119,13 @@ namespace GDScriptFormatter
         /// <param name="quote">The quote character.</param>
         /// <param name="token">The emitted token.</param>
         /// <returns>The number of characters consumed.</returns>
-        private static int ScanTripleString(string source, int i, int n,
-            char quote, out Token token)
+        private static int ScanTripleString(
+            string source,
+            int i,
+            int n,
+            char quote,
+            out Token token
+        )
         {
             int start = i;
             i += 3;
@@ -130,8 +159,13 @@ namespace GDScriptFormatter
         /// <param name="quote">The quote character.</param>
         /// <param name="token">The emitted token.</param>
         /// <returns>The number of characters consumed.</returns>
-        private static int ScanString(string source, int i, int n,
-            char quote, out Token token)
+        private static int ScanString(
+            string source,
+            int i,
+            int n,
+            char quote,
+            out Token token
+        )
         {
             int start = i;
             i++;
@@ -181,8 +215,12 @@ namespace GDScriptFormatter
         /// <param name="n">The source length.</param>
         /// <param name="token">The emitted token.</param>
         /// <returns>The number of characters consumed.</returns>
-        private static int ScanComment(string source, int i, int n,
-            out Token token)
+        private static int ScanComment(
+            string source,
+            int i,
+            int n,
+            out Token token
+        )
         {
             int start = i;
 
@@ -207,7 +245,11 @@ namespace GDScriptFormatter
         /// <param name="i">The current position.</param>
         /// <param name="n">The source length.</param>
         /// <returns>True if r/R at i is a raw string prefix.</returns>
-        private static bool IsRawStringPrefix(string source, int i, int n)
+        private static bool IsRawStringPrefix(
+            string source,
+            int i,
+            int n
+        )
         {
             char c = source[i];
 
@@ -245,8 +287,12 @@ namespace GDScriptFormatter
         /// <param name="n">The source length.</param>
         /// <param name="c">The character at i.</param>
         /// <returns>True if &amp;/^ at i is a string sigil prefix.</returns>
-        private static bool IsStringSigilPrefix(string source, int i, int n,
-            char c)
+        private static bool IsStringSigilPrefix(
+            string source,
+            int i,
+            int n,
+            char c
+        )
         {
             if (c != '&' && c != '^')
             {

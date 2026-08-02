@@ -7,8 +7,11 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplyFileHeaderBlankRule(string prevTrimmed,
-            string curTrimmed, bool deeperThanPrev)
+        private static int ApplyFileHeaderBlankRule(
+            string prevTrimmed,
+            string curTrimmed,
+            bool deeperThanPrev
+        )
         {
             if (DeclarationClassifier.Instance.IsFileHeaderLine(prevTrimmed) &&
                 !DeclarationClassifier.Instance.IsFileHeaderLine(curTrimmed) &&

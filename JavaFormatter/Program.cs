@@ -17,6 +17,7 @@ namespace JavaFormatter
 
         /// <summary>Shared stateless instance.</summary>
         public static readonly Program Instance = new Program();
+
         private Program()
         {
         }

@@ -12,6 +12,7 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly Formatter Instance = new Formatter();
+
         private Formatter()
         {
         }
@@ -56,9 +57,12 @@ namespace GDScriptFormatter
                 IndentationProcessor.Instance.ComputeLineStarts(lines);
 
             var lineInfoForLimit =
-                IndentationProcessor.Instance.ComputeLineInfo(lines,
-                textForLimit,
-                isCodeForLimit, lineStartsForLimit);
+                IndentationProcessor.Instance.ComputeLineInfo(
+                    lines,
+                    textForLimit,
+                    isCodeForLimit,
+                    lineStartsForLimit
+                );
 
             var preSplitContinues = new bool[lines.Count];
 
@@ -74,15 +78,18 @@ namespace GDScriptFormatter
 
                 bool[] postCollapseIsCode =
                     ComputeTokensAndMask(postCollapseText,
-                    out var postCollapseTokens);
+                        out var postCollapseTokens);
 
                 int[] postCollapseLineStarts =
                     IndentationProcessor.Instance.ComputeLineStarts(lines);
 
                 var postCollapseLineInfo =
-                    IndentationProcessor.Instance.ComputeLineInfo(lines,
-                    postCollapseText, postCollapseIsCode,
-                    postCollapseLineStarts);
+                    IndentationProcessor.Instance.ComputeLineInfo(
+                        lines,
+                        postCollapseText,
+                        postCollapseIsCode,
+                        postCollapseLineStarts
+                    );
 
                 var newPreSplitContinues = new bool[lines.Count];
 
@@ -103,7 +110,7 @@ namespace GDScriptFormatter
 
                 bool[] reindentIsCode =
                     ComputeTokensAndMask(postSplitTextForReindent,
-                    out var reindentTokens);
+                        out var reindentTokens);
 
                 lines = IndentationProcessor.Instance.Reindent(
                     lines, postSplitTextForReindent, reindentTokens,
@@ -115,7 +122,7 @@ namespace GDScriptFormatter
 
                 bool[] reindentIsCode2 =
                     ComputeTokensAndMask(postSplitTextForReindent2,
-                    out var reindentTokens2);
+                        out var reindentTokens2);
 
                 lines = IndentationProcessor.Instance.Reindent(
                     lines, postSplitTextForReindent2, reindentTokens2,
@@ -135,9 +142,12 @@ namespace GDScriptFormatter
                 IndentationProcessor.Instance.ComputeLineStarts(lines);
 
             var postSplitLineInfo =
-                IndentationProcessor.Instance.ComputeLineInfo(lines,
-                postSplitText,
-                postSplitIsCode, postSplitLineStarts);
+                IndentationProcessor.Instance.ComputeLineInfo(
+                    lines,
+                    postSplitText,
+                    postSplitIsCode,
+                    postSplitLineStarts
+                );
 
             var postSplitContinues = new bool[lines.Count];
 
@@ -208,7 +218,7 @@ namespace GDScriptFormatter
 
                     if (prevBody.Length == 0 ||
                         (!prevBody.EndsWith("(") && !prevBody.EndsWith("=") &&
-                        !prevBody.EndsWith(",")))
+                            !prevBody.EndsWith(",")))
                     {
                         result.Add(line);
                         continue;
@@ -325,7 +335,8 @@ namespace GDScriptFormatter
                     int targetIdx = result.Count - 1;
 
                     while (targetIdx >= 0 && result[targetIdx].Trim().Length
-                    == 0)
+
+                        == 0)
                     {
                         result.RemoveAt(targetIdx);
                         targetIdx--;
@@ -684,8 +695,12 @@ namespace GDScriptFormatter
             return false;
         }
 
-        private static bool HasSiblingContentAtSameIndent(List<string> lines,
-            int openIdx, int closeIdx, int indentOpen)
+        private static bool HasSiblingContentAtSameIndent(
+            List<string> lines,
+            int openIdx,
+            int closeIdx,
+            int indentOpen
+        )
         {
             for (int j = openIdx + 1; j < closeIdx; j++)
             {

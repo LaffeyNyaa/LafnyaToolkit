@@ -21,6 +21,7 @@ namespace CSharpFormatter
         public static readonly BraceEnforcer Instance = new BraceEnforcer();
 
         private readonly Dictionary<string, IBraceEnforcerRule> rules;
+
         private BraceEnforcer()
         {
             rules = new Dictionary<string, IBraceEnforcerRule>
@@ -77,7 +78,12 @@ namespace CSharpFormatter
                 {
                     if (TextUtils.MatchesWord(text, i, pair.Key))
                     {
-                        pair.Value.Apply(text, isCode, i, insertions);
+                        pair.Value.Apply(
+                            text,
+                            isCode,
+                            i,
+                            insertions
+                        );
                         break;
                     }
                 }
@@ -94,12 +100,20 @@ namespace CSharpFormatter
 
             foreach (var ins in insertions)
             {
-                sb.Append(text, pos, ins.Position - pos);
+                sb.Append(
+                    text,
+                    pos,
+                    ins.Position - pos
+                );
                 sb.Append(ins.Text);
                 pos = ins.Position;
             }
 
-            sb.Append(text, pos, text.Length - pos);
+            sb.Append(
+                text,
+                pos,
+                text.Length - pos
+            );
             return CSharpTokenizer.Instance.Tokenize(sb.ToString());
         }
 
@@ -256,7 +270,12 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
@@ -274,7 +293,12 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
@@ -292,7 +316,12 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
@@ -321,7 +350,12 @@ namespace CSharpFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterParen, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterParen,
+                    insertions
+                );
             }
         }
 
@@ -334,7 +368,12 @@ namespace CSharpFormatter
                 List<Insertion> insertions
             )
             {
-                CollectBodyInsertions(text, isCode, keywordPos + 2, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    keywordPos + 2,
+                    insertions
+                );
             }
         }
 
@@ -351,7 +390,12 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
@@ -369,7 +413,12 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
@@ -387,7 +436,12 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
@@ -401,8 +455,12 @@ namespace CSharpFormatter
                 List<Insertion> insertions
             )
             {
-                CollectOptionalParenBody(text, isCode, keywordPos + 7,
-                    insertions);
+                CollectOptionalParenBody(
+                    text,
+                    isCode,
+                    keywordPos + 7,
+                    insertions
+                );
             }
         }
 
@@ -415,8 +473,12 @@ namespace CSharpFormatter
                 List<Insertion> insertions
             )
             {
-                CollectOptionalParenBody(text, isCode, keywordPos + 9,
-                    insertions);
+                CollectOptionalParenBody(
+                    text,
+                    isCode,
+                    keywordPos + 9,
+                    insertions
+                );
             }
         }
 
@@ -437,7 +499,12 @@ namespace CSharpFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterElse, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterElse,
+                    insertions
+                );
             }
         }
 
@@ -466,14 +533,23 @@ namespace CSharpFormatter
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen,
-                        insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
 
                 return;
             }
 
-            CollectBodyInsertions(text, isCode, start, insertions);
+            CollectBodyInsertions(
+                text,
+                isCode,
+                start,
+                insertions
+            );
         }
     }
 }

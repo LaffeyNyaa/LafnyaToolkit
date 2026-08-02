@@ -21,6 +21,7 @@ namespace JavaFormatter
         public static readonly BraceEnforcer Instance = new BraceEnforcer();
 
         private readonly Dictionary<string, IBraceEnforcerRule> rules;
+
         private BraceEnforcer()
         {
             rules = new Dictionary<string, IBraceEnforcerRule>
@@ -69,7 +70,12 @@ namespace JavaFormatter
                 {
                     if (TextUtils.MatchesWord(text, i, pair.Key))
                     {
-                        pair.Value.Apply(text, isCode, i, insertions);
+                        pair.Value.Apply(
+                            text,
+                            isCode,
+                            i,
+                            insertions
+                        );
                         break;
                     }
                 }
@@ -86,12 +92,20 @@ namespace JavaFormatter
 
             foreach (var ins in insertions)
             {
-                sb.Append(text, pos, ins.Position - pos);
+                sb.Append(
+                    text,
+                    pos,
+                    ins.Position - pos
+                );
                 sb.Append(ins.Text);
                 pos = ins.Position;
             }
 
-            sb.Append(text, pos, text.Length - pos);
+            sb.Append(
+                text,
+                pos,
+                text.Length - pos
+            );
             return JavaTokenizer.Instance.Tokenize(sb.ToString());
         }
 
@@ -101,8 +115,12 @@ namespace JavaFormatter
         /// at the statement start and the closing <c>}</c> just after
         /// the statement's terminating semicolon.
         /// </summary>
-        private static void CollectBodyInsertions(string text, bool[] isCode,
-            int startPos, List<Insertion> insertions)
+        private static void CollectBodyInsertions(
+            string text,
+            bool[] isCode,
+            int startPos,
+            List<Insertion> insertions
+        )
         {
             int i = TextUtils.SkipWhitespace(text, startPos);
 
@@ -164,7 +182,11 @@ namespace JavaFormatter
         /// returns the position after the closing <c>)</c> or -1 if not
         /// well-formed.
         /// </summary>
-        private static int SkipParen(string text, bool[] isCode, int start)
+        private static int SkipParen(
+            string text,
+            bool[] isCode,
+            int start
+        )
         {
             int i = TextUtils.SkipWhitespace(text, start);
 
@@ -206,36 +228,58 @@ namespace JavaFormatter
 
         private sealed class IfRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 2);
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
 
         private sealed class ForRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 3);
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
 
         private sealed class WhileRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 5);
 
@@ -252,46 +296,82 @@ namespace JavaFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterParen, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterParen,
+                    insertions
+                );
             }
         }
 
         private sealed class DoRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
-                CollectBodyInsertions(text, isCode, keywordPos + 2, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    keywordPos + 2,
+                    insertions
+                );
             }
         }
 
         private sealed class SynchronizedRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterParen = SkipParen(text, isCode, keywordPos + 12);
 
                 if (afterParen >= 0)
                 {
-                    CollectBodyInsertions(text, isCode, afterParen, insertions);
+                    CollectBodyInsertions(
+                        text,
+                        isCode,
+                        afterParen,
+                        insertions
+                    );
                 }
             }
         }
 
         private sealed class TryRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
-                CollectBodyInsertions(text, isCode, keywordPos + 3, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    keywordPos + 3,
+                    insertions
+                );
             }
         }
 
         private sealed class ElseRule : IBraceEnforcerRule
         {
-            public void Apply(string text, bool[] isCode, int keywordPos, List<
-                Insertion> insertions)
+            public void Apply(
+                string text,
+                bool[] isCode,
+                int keywordPos,
+                List< Insertion> insertions
+            )
             {
                 int afterElse = keywordPos + 4;
                 int nextNonWs = TextUtils.SkipWhitespace(text, afterElse);
@@ -301,7 +381,12 @@ namespace JavaFormatter
                     return;
                 }
 
-                CollectBodyInsertions(text, isCode, afterElse, insertions);
+                CollectBodyInsertions(
+                    text,
+                    isCode,
+                    afterElse,
+                    insertions
+                );
             }
         }
     }

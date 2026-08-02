@@ -19,6 +19,7 @@ namespace CppFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly IncludeSorter Instance = new IncludeSorter();
+
         private IncludeSorter()
         {
         }
@@ -91,8 +92,13 @@ namespace CppFormatter
                 }
             }
 
-            BuildIncludeUnits(lines, firstInclude, lastInclude, out var units,
-                out var preprocessorLines);
+            BuildIncludeUnits(
+                lines,
+                firstInclude,
+                lastInclude,
+                out var units,
+                out var preprocessorLines
+            );
 
             var sortedBlock = BuildSortedIncludeBlock(units, preprocessorLines);
 
@@ -125,7 +131,9 @@ namespace CppFormatter
                         CppTextUtils.Instance.IsIncludeDirective(sortedBlock[0]);
 
                     if (firstIsInclude &&
-                        !CppTextUtils.Instance.IsIncludeDirective(lastBeforeInclude) &&
+                        !CppTextUtils.Instance.IsIncludeDirective(lastBeforeInclude)
+
+                        &&
                         lastBeforeInclude.Length > 0 && lastBeforeInclude[0] ==
                         '#')
                     {
@@ -271,9 +279,13 @@ namespace CppFormatter
         /// Builds include units and collects preprocessor directives
         /// within the include range.
         /// </summary>
-        private static void BuildIncludeUnits(string[] lines, int firstInclude,
-            int lastInclude, out List<IncludeUnit> units, out List<string>
-            preprocessorLines)
+        private static void BuildIncludeUnits(
+            string[] lines,
+            int firstInclude,
+            int lastInclude,
+            out List<IncludeUnit> units,
+            out List<string> preprocessorLines
+        )
         {
             units = new List<IncludeUnit>();
             preprocessorLines = new List<string>();
@@ -308,7 +320,9 @@ namespace CppFormatter
                         }
 
                         if (depth > 0 &&
-                            CppTextUtils.Instance.IsIncludeDirective(jTrimmed) &&
+                            CppTextUtils.Instance.IsIncludeDirective(jTrimmed)
+
+                            &&
                             firstIncludeInBlock == null)
                         {
                             firstIncludeInBlock = lines[j];
@@ -322,8 +336,11 @@ namespace CppFormatter
 
                     if (hasInclude)
                     {
-                        units.Add(new IncludeUnit(new List<string>(),
-                            firstIncludeInBlock, blockLines));
+                        units.Add(new IncludeUnit(
+                            new List<string>(),
+                            firstIncludeInBlock,
+                            blockLines
+                        ));
 
                         inPreprocessorBlock = false;
                     }

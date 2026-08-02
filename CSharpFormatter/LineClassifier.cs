@@ -16,6 +16,7 @@ namespace CSharpFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly LineClassifier Instance = new LineClassifier();
+
         private LineClassifier()
         {
         }
@@ -388,7 +389,12 @@ namespace CSharpFormatter
             }
 
             if (last == ';' &&
-                CountUnbalancedParens(line, lineStart, text, isCode) > 0)
+                CountUnbalancedParens(
+                    line,
+                    lineStart,
+                    text,
+                    isCode
+                )> 0)
             {
                 return true;
             }

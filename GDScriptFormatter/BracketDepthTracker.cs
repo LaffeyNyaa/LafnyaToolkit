@@ -60,8 +60,12 @@ namespace GDScriptFormatter
         /// <param name="lineStart">The starting offset of this line in the isCode array.</param>
         /// <param name="currentDepth">The incoming bracket depth from previous lines.</param>
         /// <returns>The bracket depth after processing the line.</returns>
-        public int UpdateDepth(string line, bool[] isCode, int lineStart,
-            int currentDepth)
+        public int UpdateDepth(
+            string line,
+            bool[] isCode,
+            int lineStart,
+            int currentDepth
+        )
         {
             int depth = currentDepth;
             int end = lineStart + line.Length;
@@ -107,7 +111,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line (or full text).</param>
         /// <param name="startIdx">The starting character index within the line.</param>
         /// <returns>The bracket depth at the end of the line.</returns>
-        public int FindBracketDepth(string line, bool[] isCode, int startIdx)
+        public int FindBracketDepth(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int depth = 0;
 

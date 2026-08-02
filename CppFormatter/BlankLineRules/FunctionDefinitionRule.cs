@@ -41,7 +41,9 @@ namespace CppFormatter
                 isContinuation[i] ||
                 prevTrimmed.Length == 0 ||
                 prevTrimmed == "{" ||
-                LafnyaToolkit.Core.Text.TextUtils.EndsWithOpenBrace(prevTrimmed) ||
+                LafnyaToolkit.Core.Text.TextUtils.EndsWithOpenBrace(prevTrimmed)
+
+                ||
                 CppTextUtils.Instance.IsAccessSpecifier(prevTrimmed) ||
                 isFunctionParamListEnd ||
                 BlankLineHelpers.IsDocCommentLine(prevTrimmed))

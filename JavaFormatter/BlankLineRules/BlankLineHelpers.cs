@@ -16,8 +16,11 @@ namespace JavaFormatter
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the first non-whitespace character is code;
         /// otherwise false.</returns>
-        public static bool FirstNonWsInCode(string line, int lineStart,
-            bool[] isCode)
+        public static bool FirstNonWsInCode(
+            string line,
+            int lineStart,
+            bool[] isCode
+        )
         {
             int i = 0;
 
@@ -45,8 +48,11 @@ namespace JavaFormatter
         /// <param name="isCode">The code mask.</param>
         /// <returns>True if the last non-whitespace character is code;
         /// otherwise false.</returns>
-        public static bool LastNonWsInCode(string line, int lineStart,
-            bool[] isCode)
+        public static bool LastNonWsInCode(
+            string line,
+            int lineStart,
+            bool[] isCode
+        )
         {
             int i = line.Length - 1;
 

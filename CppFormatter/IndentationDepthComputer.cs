@@ -41,8 +41,11 @@ namespace CppFormatter
         /// detected and skipped (they do not contribute an indentation
         /// level).
         /// </summary>
-        public int[] ComputeDepths(List<string> lines, string text,
-            bool[] isCode)
+        public int[] ComputeDepths(
+            List<string> lines,
+            string text,
+            bool[] isCode
+        )
         {
             int[] depths = new int[lines.Count];
             int depth = 0;
@@ -98,7 +101,11 @@ namespace CppFormatter
 
                 if (isCode[i] && c == 'n' && (i == 0 ||
                     !TextUtils.IsWordChar(text[i - 1])) &&
-                    TextUtils.MatchesWord(text, i, "namespace"))
+                    TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "namespace"
+                    ))
                 {
                     pendingNamespace = true;
                 }

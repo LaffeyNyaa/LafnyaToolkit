@@ -20,6 +20,7 @@ namespace JsonFormatter
         private int _index;
         private int _line;
         private int _column;
+
         private JsonParser()
         {
         }

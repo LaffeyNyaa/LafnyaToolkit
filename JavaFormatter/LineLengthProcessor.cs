@@ -160,8 +160,11 @@ namespace JavaFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="startIdx">The scan start position.</param>
         /// <returns>The break point index, or -1 if none found.</returns>
-        private static int FindSafeBreakPoint(string line, bool[] isCode,
-            int startIdx)
+        private static int FindSafeBreakPoint(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int bestInRange = -1;
             int firstOutOfRange = -1;
@@ -192,14 +195,24 @@ namespace JavaFormatter
                 {
                     bp = i + 1;
                 }
-                else if (i > startIdx && IsBinaryOpContext(line, i, startIdx) &&
+                else if (i > startIdx && IsBinaryOpContext(
+                    line,
+                    i,
+                    startIdx
+
+                )&&
                     (c == '+' || c == '-' || c == '*' || c == '/' ||
-                    c == '%' || c == '<' || c == '>'))
+                        c == '%' || c == '<' || c == '>'))
                 {
                     bp = i + 1;
                 }
                 else if (c == '=' && i > startIdx &&
-                    IsBinaryOpContext(line, i, startIdx) &&
+                    IsBinaryOpContext(
+                        line,
+                        i,
+                        startIdx
+
+                    )&&
                     (i + 1 >= line.Length || line[i + 1] != '='))
                 {
                     bp = i + 1;
@@ -239,7 +252,11 @@ namespace JavaFormatter
         /// <param name="startIdx">The scan start position.</param>
         /// <returns>True if in a binary operator context; otherwise
         /// false.</returns>
-        private static bool IsBinaryOpContext(string line, int i, int startIdx)
+        private static bool IsBinaryOpContext(
+            string line,
+            int i,
+            int startIdx
+        )
         {
             int prev = i - 1;
 

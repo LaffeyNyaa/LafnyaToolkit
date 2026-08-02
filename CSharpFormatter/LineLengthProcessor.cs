@@ -51,7 +51,6 @@ namespace CSharpFormatter
                 // per-parameter layout with ')' on its own line.
                 // This catches both single-line declarations and
                 // already-broken parameter continuations.
-
                 bool isContinuation = lineContinuesNext != null &&
                     i > 0 && i - 1 < lineContinuesNext.Length &&
                     lineContinuesNext[i - 1];
@@ -185,10 +184,9 @@ namespace CSharpFormatter
                 }
 
                 int lastParen = trimmed.LastIndexOf('(');
-
                 parenBreakAt = lastParen >= 0
-                    ? indentCount + lastParen + 1
-                    : indentCount + firstParen + 1;
+                ? indentCount + lastParen + 1
+                : indentCount + firstParen + 1;
             }
 
             // Verify that the '(' at parenBreakAt - 1 is in a code
@@ -210,6 +208,7 @@ namespace CSharpFormatter
             // into their own layout, and a later pass would merge
             // them back, causing an oscillation that never converges.
             // Keep such lines as-is.
+
             if (line.Length <= TextUtils.MaxLineLength &&
                 PreviousLineIsLayoutContinuation(lineIndex, allLines))
             {
@@ -238,11 +237,11 @@ namespace CSharpFormatter
             var allParams = new List<string>();
             string beforeParen = line.Substring(0, parenBreakAt).TrimEnd();
             string afterParenFull = line.Substring(parenBreakAt);
-
             // When afterParenFull is empty (nothing after '(' on the
             // same line), this is likely a lambda expression or a
             // continuation that should not be handled by the
             // multi-param layout. Fall through to normal splitting.
+
             if (afterParenFull.Trim().Length == 0)
             {
                 return false;
@@ -252,11 +251,11 @@ namespace CSharpFormatter
             paramText.Append(afterParenFull);
 
             int savedLineIndex = lineIndex;
-
             // When the parameter list already closes on the current
             // line, no following line belongs to it; collecting one
             // would merge an unrelated statement into the parameter
             // layout (e.g. appending "code.Clear();" to a "));" line).
+
             if (!IsParamListClosed(paramText.ToString()))
             {
                 while (lineIndex + 1 < allLines.Count)
@@ -272,6 +271,7 @@ namespace CSharpFormatter
                     // Stop if the next line starts with ')' — this
                     // indicates the closing of the current parameter list
                     // or a lambda expression, not a continuation.
+
                     if (nt.StartsWith(")") || nt.Contains("=>"))
                     {
                         break;
@@ -279,6 +279,7 @@ namespace CSharpFormatter
 
                     // Stop if the next line looks like a new member
                     // declaration (starts with a C# modifier keyword).
+
                     if (IsMemberModifier(nt))
                     {
                         break;
@@ -291,9 +292,12 @@ namespace CSharpFormatter
                     // labels to be incorrectly merged into the parameter
                     // list, leading to indentation oscillation on
                     // subsequent formatting passes.
+
                     if (nt.StartsWith("case ") || nt.StartsWith("case\t") ||
                         nt == "case" ||
-                        nt.StartsWith("default ") || nt.StartsWith("default\t") ||
+                        nt.StartsWith("default ") || nt.StartsWith("default\t")
+
+                        ||
                         nt == "default" || nt == "default:" ||
                         nt.StartsWith("break") || nt.StartsWith("continue") ||
                         nt.StartsWith("return") || nt.StartsWith("goto") ||
@@ -305,10 +309,10 @@ namespace CSharpFormatter
                     lineIndex++;
                     paramText.Append(' ');
                     paramText.Append(nt);
-
                     // Stop once the collected parameter list is closed so
                     // that an unrelated following statement is not consumed
                     // as a parameter continuation.
+
                     if (IsParamListClosed(paramText.ToString()))
                     {
                         break;
@@ -329,6 +333,7 @@ namespace CSharpFormatter
             // only 2 or fewer parameters, skip the multi-param layout
             // to avoid unnecessarily splitting simple parameter lists
             // (e.g. "Point(int x, int y)" on a single line).
+
             if (line.Length <= TextUtils.MaxLineLength && allParams.Count <= 2)
             {
                 lineIndex = savedLineIndex;
@@ -366,6 +371,7 @@ namespace CSharpFormatter
 
             string paramIndent = baseIndent +
                 new string(' ', TextUtils.IndentSize);
+
             string closeParenIndent = baseIndent;
 
             result.Add(beforeParen);
@@ -383,8 +389,11 @@ namespace CSharpFormatter
                     string deepIndent = paramIndent +
                         new string(' ', TextUtils.IndentSize);
 
-                    result.AddRange(SplitLongLine(paramLine, deepIndent,
-                        false));
+                    result.AddRange(SplitLongLine(
+                        paramLine,
+                        deepIndent,
+                        false
+                    ));
                 }
                 else
                 {
@@ -405,8 +414,11 @@ namespace CSharpFormatter
 
                 if (trailingLine.Length > TextUtils.MaxLineLength)
                 {
-                    result.AddRange(SplitLongLine(trailingLine, null,
-                        false));
+                    result.AddRange(SplitLongLine(
+                        trailingLine,
+                        null,
+                        false
+                    ));
                 }
                 else
                 {
@@ -597,11 +609,11 @@ namespace CSharpFormatter
                 string beforeParen = line.Substring(0, parenBreakAt).
                 TrimEnd();
                 string beforeParenTrimmed = beforeParen.TrimStart();
-
                 // Skip multi-param layout when the text before '('
                 // contains '=', so that the assignment break point
                 // is used first. The continuation line will get the
                 // multi-param layout in the recursive call.
+
                 if (!beforeParenTrimmed.Contains("= ") &&
                     !TextUtils.IsControlFlowKeyword(beforeParenTrimmed))
                 {
@@ -616,12 +628,18 @@ namespace CSharpFormatter
                     if (closeParen >= 0)
                     {
                         string baseIndent = line.Substring(0, indentLen);
+
                         string paramIndent = baseIndent +
                             new string(' ', TextUtils.IndentSize);
+
                         string closeParenIndent = baseIndent;
 
-                        return SplitParametersPerLine(line, parenBreakAt,
-                            paramIndent, closeParenIndent);
+                        return SplitParametersPerLine(
+                            line,
+                            parenBreakAt,
+                            paramIndent,
+                            closeParenIndent
+                        );
                     }
 
                     // Closing ')' is not on the same line — this
@@ -633,7 +651,7 @@ namespace CSharpFormatter
 
                     if (breakAt > 0 && breakAt <= line.Length &&
                         (line[breakAt - 1] == '<' ||
-                        line[breakAt - 1] == '>'))
+                            line[breakAt - 1] == '>'))
                     {
                         return new List<string> { line };
                     }
@@ -656,7 +674,6 @@ namespace CSharpFormatter
             // to be at indent + 1. Using the same indent would cause
             // the IndentationProcessor to add one extra level on the
             // next pass, breaking idempotency.
-
             string first = line.Substring(0, breakAt).TrimEnd();
             string rest = fixedContIndent + line.Substring(breakAt).TrimStart();
 
@@ -666,7 +683,12 @@ namespace CSharpFormatter
             }
 
             var result = new List<string> { first };
-            result.AddRange(SplitLongLine(rest, fixedContIndent, false));
+
+            result.AddRange(SplitLongLine(
+                rest,
+                fixedContIndent,
+                false
+            ));
             return result;
         }
 
@@ -740,8 +762,11 @@ namespace CSharpFormatter
                 {
                     string elementLine = elementIndent + element + ",";
 
-                    result.AddRange(SplitLongLine(elementLine,
-                        elementContIndent, false));
+                    result.AddRange(SplitLongLine(
+                        elementLine,
+                        elementContIndent,
+                        false
+                    ));
                 }
 
                 start = commaPos + 1;
@@ -754,8 +779,11 @@ namespace CSharpFormatter
             {
                 string lastElementLine = elementIndent + lastElement;
 
-                result.AddRange(SplitLongLine(lastElementLine,
-                    elementContIndent, false));
+                result.AddRange(SplitLongLine(
+                    lastElementLine,
+                    elementContIndent,
+                    false
+                ));
             }
 
             return result.Count > 0 ? result : null;
@@ -793,7 +821,7 @@ namespace CSharpFormatter
 
                 while (firstNonWs < lines[i].Length &&
                     (lines[i][firstNonWs] == ' ' ||
-                    lines[i][firstNonWs] == '\t'))
+                        lines[i][firstNonWs] == '\t'))
                 {
                     firstNonWs++;
                 }
@@ -1383,8 +1411,11 @@ namespace CSharpFormatter
                     string deepIndent = paramIndent +
                         new string(' ', TextUtils.IndentSize);
 
-                    result.AddRange(SplitLongLine(paramLine, deepIndent,
-                        false));
+                    result.AddRange(SplitLongLine(
+                        paramLine,
+                        deepIndent,
+                        false
+                    ));
                 }
                 else
                 {
@@ -1410,8 +1441,11 @@ namespace CSharpFormatter
 
                     if (trailingLine.Length > TextUtils.MaxLineLength)
                     {
-                        result.AddRange(SplitLongLine(trailingLine, null,
-                            false));
+                        result.AddRange(SplitLongLine(
+                            trailingLine,
+                            null,
+                            false
+                        ));
                     }
                     else
                     {
@@ -1522,7 +1556,7 @@ namespace CSharpFormatter
 
             if (c == '=' && IsBinaryOpContext(line, i, startIdx) &&
                 (i + 1 >= line.Length ||
-                (line[i + 1] != '=' && line[i + 1] != '>')))
+                    (line[i + 1] != '=' && line[i + 1] != '>')))
             {
                 return i + 1;
             }
@@ -1562,6 +1596,5 @@ namespace CSharpFormatter
             return pc == ')' || pc == ']' || char.IsLetterOrDigit(pc) ||
                 pc == '_' || pc == '"';
         }
-
     }
 }

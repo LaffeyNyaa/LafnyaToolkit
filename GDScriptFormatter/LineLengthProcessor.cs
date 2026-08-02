@@ -51,7 +51,7 @@ namespace GDScriptFormatter
 
                     runningBraceDepth =
                         BracketDepthTracker.Instance.UpdateDepth(
-                        line, runningBraceDepth);
+                            line, runningBraceDepth);
 
                     continue;
                 }
@@ -111,9 +111,12 @@ namespace GDScriptFormatter
         /// <param name="continuesNext">Whether the next line is a continuation of this line; when true, top-level = wrapping is skipped to avoid orphan continuation lines.</param>
         /// <param name="inheritedBraceDepth">Brace depth accumulated from previous lines; when greater than 0 the line is inside a brace-delimited construct (dictionary, array, or parenthesised expression) and all splitting is skipped.</param>
         /// <returns>The list of split segments.</returns>
-        private List<string> SplitLongLine(string line,
-            string fixedContIndent, bool continuesNext = false,
-            int inheritedBraceDepth = 0)
+        private List<string> SplitLongLine(
+            string line,
+            string fixedContIndent,
+            bool continuesNext = false,
+            int inheritedBraceDepth = 0
+        )
         {
             if (line.Length <= GDScriptTextUtils.MaxLineLength)
             {
@@ -205,15 +208,26 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="indentLen">The leading-space count.</param>
         /// <returns>The split segments or null.</returns>
-        private List<string> TryArgumentPerLineSplit(string line,
-            string contIndent, bool[] isCode, int indentLen)
+        private List<string> TryArgumentPerLineSplit(
+            string line,
+            string contIndent,
+            bool[] isCode,
+            int indentLen
+        )
         {
             int bracketDepth =
-                BracketDepthTracker.Instance.FindBracketDepth(line,
-                isCode, indentLen);
+                BracketDepthTracker.Instance.FindBracketDepth(
+                    line,
+                    isCode,
+                    indentLen
+                );
 
             if (bracketDepth <= 0 &&
-                !IsConservativeArgumentListLine(line, isCode, indentLen))
+                !IsConservativeArgumentListLine(
+                    line,
+                    isCode,
+                    indentLen
+                ))
             {
                 return null;
             }
@@ -327,8 +341,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="indentLen">The leading-space count.</param>
         /// <returns>True if the line looks like a function/method argument list.</returns>
-        private static bool IsConservativeArgumentListLine(string line,
-            bool[] isCode, int indentLen)
+        private static bool IsConservativeArgumentListLine(
+            string line,
+            bool[] isCode,
+            int indentLen
+        )
         {
             string content = line.Substring(indentLen).TrimStart();
 
@@ -372,8 +389,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="startIdx">The starting index (typically the indent length).</param>
         /// <returns>The position of the first depth-0 <c>(</c>, or -1.</returns>
-        private static int FindOuterOpenParenAtDepth0(string line,
-            bool[] isCode, int startIdx)
+        private static int FindOuterOpenParenAtDepth0(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int depth = 0;
 
@@ -420,8 +440,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="openParenIdx">The index of the opening <c>(</c>.</param>
         /// <returns>The position of the matching <c>)</c>, or -1.</returns>
-        private static int FindMatchingCloseForParen(string line,
-            bool[] isCode, int openParenIdx)
+        private static int FindMatchingCloseForParen(
+            string line,
+            bool[] isCode,
+            int openParenIdx
+        )
         {
             int depth = 1;
 
@@ -465,12 +488,19 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="indentLen">The leading-space count.</param>
         /// <returns>The split segments or null.</returns>
-        private List<string> TryUnclosedBracketSplit(string line,
-            string contIndent, bool[] isCode, int indentLen)
+        private List<string> TryUnclosedBracketSplit(
+            string line,
+            string contIndent,
+            bool[] isCode,
+            int indentLen
+        )
         {
             int bracketDepth =
-                BracketDepthTracker.Instance.FindBracketDepth(line,
-                isCode, indentLen);
+                BracketDepthTracker.Instance.FindBracketDepth(
+                    line,
+                    isCode,
+                    indentLen
+                );
 
             if (bracketDepth <= 0)
             {
@@ -509,12 +539,19 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="indentLen">The leading-space count.</param>
         /// <returns>The split segments or null.</returns>
-        private List<string> TryClosedBracketSplit(string line,
-            string contIndent, bool[] isCode, int indentLen)
+        private List<string> TryClosedBracketSplit(
+            string line,
+            string contIndent,
+            bool[] isCode,
+            int indentLen
+        )
         {
             int bracketDepth =
-                BracketDepthTracker.Instance.FindBracketDepth(line,
-                isCode, indentLen);
+                BracketDepthTracker.Instance.FindBracketDepth(
+                    line,
+                    isCode,
+                    indentLen
+                );
 
             if (bracketDepth > 0)
             {
@@ -556,9 +593,14 @@ namespace GDScriptFormatter
         /// <param name="indentLen">The leading-space count.</param>
         /// <param name="continuesNext">Whether the next line is a continuation.</param>
         /// <returns>The split segments or null.</returns>
-        private List<string> TryTopLevelEqualsSplit(string line,
-            string contIndent, string indent, bool[] isCode, int indentLen,
-            bool continuesNext)
+        private List<string> TryTopLevelEqualsSplit(
+            string line,
+            string contIndent,
+            string indent,
+            bool[] isCode,
+            int indentLen,
+            bool continuesNext
+        )
         {
             if (continuesNext)
             {
@@ -677,8 +719,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="startIdx">The starting index.</param>
         /// <returns>The break position, or -1 if no break found.</returns>
-        private static int FindCommaBreakInBrackets(string line,
-            bool[] isCode, int startIdx)
+        private static int FindCommaBreakInBrackets(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int best = -1;
             int depth = 0;
@@ -735,8 +780,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="startIdx">The starting index.</param>
         /// <returns>The position of the equals sign, or -1 if none.</returns>
-        private static int FindTopLevelEquals(string line, bool[] isCode,
-            int startIdx)
+        private static int FindTopLevelEquals(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int depth = 0;
 
@@ -804,12 +852,19 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the line.</param>
         /// <param name="indentLen">The leading-space count.</param>
         /// <returns>The split segments or null.</returns>
-        private List<string> TryBraceAlignSplit(string line,
-            string contIndent, bool[] isCode, int indentLen)
+        private List<string> TryBraceAlignSplit(
+            string line,
+            string contIndent,
+            bool[] isCode,
+            int indentLen
+        )
         {
             int bracketDepth =
-                BracketDepthTracker.Instance.FindBracketDepth(line,
-                isCode, indentLen);
+                BracketDepthTracker.Instance.FindBracketDepth(
+                    line,
+                    isCode,
+                    indentLen
+                );
 
             if (bracketDepth > 0)
             {
@@ -948,8 +1003,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="lineOffset">The offset of the text in the original line.</param>
         /// <returns>The list of comma-separated items.</returns>
-        private static List<string> SplitByTopLevelCommas(string text,
-            bool[] isCode, int lineOffset)
+        private static List<string> SplitByTopLevelCommas(
+            string text,
+            bool[] isCode,
+            int lineOffset
+        )
         {
             var items = new List<string>();
             int start = 0;

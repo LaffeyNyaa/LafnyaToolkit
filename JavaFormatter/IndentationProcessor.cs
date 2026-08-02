@@ -112,9 +112,12 @@ namespace JavaFormatter
                 int baseDepth = depths[i];
 
                 if (i > 0 && !inEnumBlock[i] &&
-                    LineClassifier.Instance.IsContinuationIndicator(lines[i -
-                    1],
-                    lineStarts[i - 1], text, isCode))
+                    LineClassifier.Instance.IsContinuationIndicator(
+                        lines[i - 1],
+                        lineStarts[i - 1],
+                        text,
+                        isCode
+                    ))
                 {
                     baseDepth++;
                 }
@@ -192,8 +195,11 @@ namespace JavaFormatter
         /// <paramref name="text"/>.</param>
         /// <returns>A boolean array indicating in-enum-block flags per
         /// line.</returns>
-        private static bool[] ComputeInEnumBlock(List<string> lines,
-            string text, bool[] isCode)
+        private static bool[] ComputeInEnumBlock(
+            List<string> lines,
+            string text,
+            bool[] isCode
+        )
         {
             var inEnumBlock = new bool[lines.Count];
             var lineStarts = new int[lines.Count];
@@ -227,7 +233,11 @@ namespace JavaFormatter
 
                 if (c == 'e' && (i == 0 || !TextUtils.IsWordChar(text[i -
                     1])) &&
-                    TextUtils.MatchesWord(text, i, "enum"))
+                    TextUtils.MatchesWord(
+                        text,
+                        i,
+                        "enum"
+                    ))
                 {
                     pendingEnum = true;
                 }

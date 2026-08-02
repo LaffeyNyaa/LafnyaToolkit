@@ -111,9 +111,13 @@ namespace GDScriptFormatter
         /// <param name="hadBlankAbove">Per-entry flag indicating whether a blank line existed above the entry in the original input.</param>
         /// <param name="curIdx">The current index in the non-blank list.</param>
         /// <returns>True if the previous line is an attached comment for the current declaration.</returns>
-        private static bool IsAttachedComment(string prevTrimmed,
-            string curTrimmed, List<NonBlankEntry> nonBlank,
-            List<bool> hadBlankAbove, int curIdx)
+        private static bool IsAttachedComment(
+            string prevTrimmed,
+            string curTrimmed,
+            List<NonBlankEntry> nonBlank,
+            List<bool> hadBlankAbove,
+            int curIdx
+        )
         {
             if (!prevTrimmed.StartsWith("#"))
             {
@@ -127,7 +131,11 @@ namespace GDScriptFormatter
 
             if (prevTrimmed.StartsWith("##"))
             {
-                return !IsFileLevelDocComment(nonBlank, hadBlankAbove, curIdx);
+                return !IsFileLevelDocComment(
+                    nonBlank,
+                    hadBlankAbove,
+                    curIdx
+                );
             }
 
             return !hadBlankAbove[curIdx];

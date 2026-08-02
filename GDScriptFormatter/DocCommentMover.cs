@@ -13,6 +13,7 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly DocCommentMover Instance = new DocCommentMover();
+
         private DocCommentMover()
         {
         }

@@ -14,6 +14,7 @@ namespace GDScriptFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly EnumFormatter Instance = new EnumFormatter();
+
         private EnumFormatter()
         {
         }
@@ -95,8 +96,11 @@ namespace GDScriptFormatter
                     sb.Append('\n');
                 }
 
-                replacements.Add(new Replacement(braceStart + 1, braceEnd,
-                    sb.ToString()));
+                replacements.Add(new Replacement(
+                    braceStart + 1,
+                    braceEnd,
+                    sb.ToString()
+                ));
             }
 
             return LafnyaToolkit.Core.Text.TextUtils.ApplyReplacements(text,
@@ -171,7 +175,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the text.</param>
         /// <param name="start">The starting position.</param>
         /// <returns>The index of the open brace, or -1 if not found.</returns>
-        private static int FindOpenBrace(string text, bool[] isCode, int start)
+        private static int FindOpenBrace(
+            string text,
+            bool[] isCode,
+            int start
+        )
         {
             int i = start;
 
@@ -195,8 +203,11 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of the text.</param>
         /// <param name="openPos">The position of the open brace.</param>
         /// <returns>The index of the matching close brace, or -1 if unbalanced.</returns>
-        private static int FindMatchingClose(string text, bool[] isCode,
-            int openPos)
+        private static int FindMatchingClose(
+            string text,
+            bool[] isCode,
+            int openPos
+        )
         {
             int depth = 1;
             int i = openPos + 1;

@@ -30,7 +30,11 @@ namespace LafnyaToolkit.Core.Tokenization
         /// <param name="kind">The token kind.</param>
         /// <param name="text">The original text of the token.</param>
         /// <param name="start">The starting character position in the source.</param>
-        public Token(TokenKind kind, string text, int start)
+        public Token(
+            TokenKind kind,
+            string text,
+            int start
+        )
         {
             Kind = kind;
             Text = text;

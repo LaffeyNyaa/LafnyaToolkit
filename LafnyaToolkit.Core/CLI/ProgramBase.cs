@@ -108,7 +108,11 @@ namespace LafnyaToolkit.Core.CLI
                 }
             }
 
-            PrintSummary(formatted, skipped, failed);
+            PrintSummary(
+                formatted,
+                skipped,
+                failed
+            );
         }
 
         /// <summary>
@@ -131,7 +135,11 @@ namespace LafnyaToolkit.Core.CLI
                 if (!string.Equals(original, formatted,
                     StringComparison.Ordinal))
                 {
-                    FileIO.WriteFileAtomic(file, formatted, FileIO.Utf8NoBom);
+                    FileIO.WriteFileAtomic(
+                        file,
+                        formatted,
+                        FileIO.Utf8NoBom
+                    );
                     Console.WriteLine("Formatting: " + relative);
                     return ProcessFileResult.Formatted;
                 }
@@ -150,7 +158,11 @@ namespace LafnyaToolkit.Core.CLI
         /// <summary>
         /// Prints the final summary line with totals.
         /// </summary>
-        private void PrintSummary(int formatted, int skipped, int failed)
+        private void PrintSummary(
+            int formatted,
+            int skipped,
+            int failed
+        )
         {
             int total = formatted + skipped + failed;
 

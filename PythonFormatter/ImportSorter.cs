@@ -254,8 +254,11 @@ namespace PythonFormatter
             return sb.Length > 0 && sb[sb.Length - 1] == '\n';
         }
 
-        private static void FlushSegment(List<string> newBlock,
-            List<string> segment, List<string> comments)
+        private static void FlushSegment(
+            List<string> newBlock,
+            List<string> segment,
+            List<string> comments
+        )
         {
             if (segment.Count == 0)
             {
@@ -312,7 +315,11 @@ namespace PythonFormatter
             // Append groups in PEP 8 order: future imports first
             // (without a leading blank line separator), then stdlib,
             // then third-party, then local.
-            AppendGroup(newBlock, futureGroup, suppressLeadingBlank: true);
+            AppendGroup(
+                newBlock,
+                futureGroup,
+                suppressLeadingBlank: true
+            );
             AppendGroup(newBlock, stdlibGroup);
             AppendGroup(newBlock, thirdPartyGroup);
             AppendGroup(newBlock, localGroup);
@@ -322,11 +329,18 @@ namespace PythonFormatter
 
         private static void AppendGroup(List<string> block, List<string> group)
         {
-            AppendGroup(block, group, suppressLeadingBlank: false);
+            AppendGroup(
+                block,
+                group,
+                suppressLeadingBlank: false
+            );
         }
 
-        private static void AppendGroup(List<string> block, List<string> group,
-            bool suppressLeadingBlank)
+        private static void AppendGroup(
+            List<string> block,
+            List<string> group,
+            bool suppressLeadingBlank
+        )
         {
             if (group.Count == 0)
             {

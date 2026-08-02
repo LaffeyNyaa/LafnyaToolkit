@@ -57,8 +57,12 @@ namespace GDScriptFormatter
         /// <param name="isCode">The code mask of text.</param>
         /// <param name="lineStarts">The starting offsets of each line in text.</param>
         /// <returns>The per-line analysis.</returns>
-        public LineAnalysis[] ComputeLineInfo(List<string> lines,
-            string text, bool[] isCode, int[] lineStarts)
+        public LineAnalysis[] ComputeLineInfo(
+            List<string> lines,
+            string text,
+            bool[] isCode,
+            int[] lineStarts
+        )
         {
             var info = new LineAnalysis[lines.Count];
             int parenBracketDepth = 0;
@@ -76,9 +80,12 @@ namespace GDScriptFormatter
                 info[i].IsContinuation = parenBracketDepth > 0;
 
                 if (i > 0 &&
-                    LineContinuationAnalyzer.Instance.EndsWithBackslash(text,
-                    isCode,
-                    lineStarts[i - 1], lines[i - 1].Length))
+                    LineContinuationAnalyzer.Instance.EndsWithBackslash(
+                        text,
+                        isCode,
+                        lineStarts[i - 1],
+                        lines[i - 1].Length
+                    ))
                 {
                     info[i].IsContinuation = true;
                 }
@@ -128,7 +135,7 @@ namespace GDScriptFormatter
                 for (int ci = lineStarts[i];
                     ci < lineStarts[i] + line.Length && ci < isCode.Length;
 
-                ci++)
+                    ci++)
                 {
                     if (!isCode[ci])
                     {
@@ -193,8 +200,13 @@ namespace GDScriptFormatter
 
                 if (!info[i].ColonTerminated)
                 {
-                    CheckColonUnderBrackets(ref info[i], text, isCode,
-                        firstCodeIdx, lastCodeIdx);
+                    CheckColonUnderBrackets(
+                        ref info[i],
+                        text,
+                        isCode,
+                        firstCodeIdx,
+                        lastCodeIdx
+                    );
                 }
             }
 

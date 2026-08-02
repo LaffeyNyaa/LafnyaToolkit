@@ -41,8 +41,11 @@ namespace LafnyaToolkit.Tests.Snapshots
                 {
                     hasVenv = true;
                 }
-                else if (string.Equals(name, ".venv",
-                    StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(
+                    name,
+                    ".venv",
+                    StringComparison.OrdinalIgnoreCase
+                ))
                 {
                     hasDotVenv = true;
                 }

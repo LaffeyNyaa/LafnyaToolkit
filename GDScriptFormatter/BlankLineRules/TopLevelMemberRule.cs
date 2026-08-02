@@ -16,9 +16,14 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplyTopLevelMemberBlankRule(string prevTrimmed,
-            string curTrimmed, bool sameIndent, List<NonBlankEntry> nonBlank,
-            List<bool> contList, int curIdx)
+        private static int ApplyTopLevelMemberBlankRule(
+            string prevTrimmed,
+            string curTrimmed,
+            bool sameIndent,
+            List<NonBlankEntry> nonBlank,
+            List<bool> contList,
+            int curIdx
+        )
         {
             if (!sameIndent)
             {
@@ -77,8 +82,11 @@ namespace GDScriptFormatter
             return 0;
         }
 
-        private static MemberGroup ResolveAnnotationGroup(string trimmed,
-            List<NonBlankEntry> nonBlank, int curIdx)
+        private static MemberGroup ResolveAnnotationGroup(
+            string trimmed,
+            List<NonBlankEntry> nonBlank,
+            int curIdx
+        )
         {
             if (!IsStandaloneAnnotation(trimmed))
             {

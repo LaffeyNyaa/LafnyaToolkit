@@ -85,7 +85,8 @@ namespace LafnyaToolkit.Core.IO
             }
 
             if (afterBrace.StartsWith("//", StringComparison.Ordinal)
-            || afterBrace.StartsWith("/*", StringComparison.Ordinal))
+
+                || afterBrace.StartsWith("/*", StringComparison.Ordinal))
             {
                 return true;
             }
@@ -93,7 +94,7 @@ namespace LafnyaToolkit.Core.IO
             if (LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace,
                 "else")
 
-            || LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace,
+                || LafnyaToolkit.Core.Text.TextUtils.StartsWithKeyword(afterBrace,
                 "catch"))
             {
                 return false;

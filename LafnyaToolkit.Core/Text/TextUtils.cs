@@ -55,7 +55,11 @@ namespace LafnyaToolkit.Core.Text
         /// <param name="pos">The character position to check.</param>
         /// <param name="word">The word to match.</param>
         /// <returns>True if the word matches and is not a substring of a longer word.</returns>
-        public static bool MatchesWord(string text, int pos, string word)
+        public static bool MatchesWord(
+            string text,
+            int pos,
+            string word
+        )
         {
             if (pos + word.Length > text.Length)
             {
@@ -297,12 +301,20 @@ namespace LafnyaToolkit.Core.Text
                     continue;
                 }
 
-                sb.Append(text, pos, r.Start - pos);
+                sb.Append(
+                    text,
+                    pos,
+                    r.Start - pos
+                );
                 sb.Append(r.NewText);
                 pos = r.End;
             }
 
-            sb.Append(text, pos, text.Length - pos);
+            sb.Append(
+                text,
+                pos,
+                text.Length - pos
+            );
             return sb.ToString();
         }
 
@@ -348,8 +360,8 @@ namespace LafnyaToolkit.Core.Text
         public static bool IsCommentLine(string trimmed)
         {
             return trimmed.StartsWith("//", StringComparison.Ordinal)
-            || trimmed.StartsWith("/*", StringComparison.Ordinal)
-            || trimmed.StartsWith("*", StringComparison.Ordinal);
+                || trimmed.StartsWith("/*", StringComparison.Ordinal)
+                || trimmed.StartsWith("*", StringComparison.Ordinal);
         }
 
         /// <summary>

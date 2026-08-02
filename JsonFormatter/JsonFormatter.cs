@@ -19,6 +19,7 @@ namespace JsonFormatter
         public static readonly JsonFormatter Instance = new JsonFormatter();
 
         private static readonly string IndentUnit = new string(' ', IndentSize);
+
         private JsonFormatter()
         {
         }
@@ -32,21 +33,39 @@ namespace JsonFormatter
         {
             JsonValue root = JsonParser.Instance.Parse(text);
             var sb = new StringBuilder(text.Length + 16);
-            SerializeValue(root, 0, sb);
+
+            SerializeValue(
+                root,
+                0,
+                sb
+            );
             sb.Append('\n');
             return sb.ToString();
         }
 
-        private void SerializeValue(JsonValue value, int indent,
-            StringBuilder sb)
+        private void SerializeValue(
+            JsonValue value,
+            int indent,
+            StringBuilder sb
+        )
         {
             switch (value.Kind)
             {
                 case JsonType.Object:
-                    SerializeObject(value, indent, sb);
+
+                    SerializeObject(
+                        value,
+                        indent,
+                        sb
+                    );
                     break;
                 case JsonType.Array:
-                    SerializeArray(value, indent, sb);
+
+                    SerializeArray(
+                        value,
+                        indent,
+                        sb
+                    );
                     break;
                 case JsonType.String:
                 case JsonType.Number:
@@ -68,8 +87,11 @@ namespace JsonFormatter
             }
         }
 
-        private void SerializeObject(JsonValue value, int indent,
-            StringBuilder sb)
+        private void SerializeObject(
+            JsonValue value,
+            int indent,
+            StringBuilder sb
+        )
         {
             if (value.Properties.Count == 0)
             {
@@ -85,7 +107,12 @@ namespace JsonFormatter
                 AppendIndent(sb, indent + 1);
                 sb.Append(pair.Key);
                 sb.Append(": ");
-                SerializeValue(pair.Value, indent + 1, sb);
+
+                SerializeValue(
+                    pair.Value,
+                    indent + 1,
+                    sb
+                );
 
                 if (i < value.Properties.Count - 1)
                 {
@@ -99,8 +126,11 @@ namespace JsonFormatter
             sb.Append('}');
         }
 
-        private void SerializeArray(JsonValue value, int indent,
-            StringBuilder sb)
+        private void SerializeArray(
+            JsonValue value,
+            int indent,
+            StringBuilder sb
+        )
         {
             if (value.Elements.Count == 0)
             {
@@ -113,7 +143,12 @@ namespace JsonFormatter
             for (int i = 0; i < value.Elements.Count; i++)
             {
                 AppendIndent(sb, indent + 1);
-                SerializeValue(value.Elements[i], indent + 1, sb);
+
+                SerializeValue(
+                    value.Elements[i],
+                    indent + 1,
+                    sb
+                );
 
                 if (i < value.Elements.Count - 1)
                 {

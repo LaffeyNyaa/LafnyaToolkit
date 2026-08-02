@@ -36,7 +36,8 @@ namespace CppFormatter
 
             bool prevIsBlockOpenBraceOrAccessSpec =
                 prevTrimmed == "{" ||
-                LafnyaToolkit.Core.Text.TextUtils.EndsWithOpenBrace(prevTrimmed) ||
+                LafnyaToolkit.Core.Text.TextUtils.EndsWithOpenBrace(prevTrimmed)
+                ||
                 CppTextUtils.Instance.IsAccessSpecifier(prevTrimmed);
 
             if (prevTrimmed.Length > 0 && !prevIsDocComment &&

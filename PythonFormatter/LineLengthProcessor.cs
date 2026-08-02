@@ -141,8 +141,11 @@ namespace PythonFormatter
         /// <param name="isCode">The code mask.</param>
         /// <param name="startIdx">The scan start position.</param>
         /// <returns>The break point index, or -1 if none found.</returns>
-        private static int FindSafeBreakPoint(string line, bool[] isCode,
-            int startIdx)
+        private static int FindSafeBreakPoint(
+            string line,
+            bool[] isCode,
+            int startIdx
+        )
         {
             int bestInRange = -1;
             int firstOutOfRange = -1;
@@ -182,7 +185,11 @@ namespace PythonFormatter
                         bp = i + 2;
                     }
                     else if (i > startIdx &&
-                        IsBinaryOpContext(line, i, startIdx))
+                        IsBinaryOpContext(
+                            line,
+                            i,
+                            startIdx
+                        ))
                     {
                         bp = i + 1;
                     }
@@ -194,7 +201,11 @@ namespace PythonFormatter
                         bp = i + 2;
                     }
                     else if (i > startIdx &&
-                        IsBinaryOpContext(line, i, startIdx))
+                        IsBinaryOpContext(
+                            line,
+                            i,
+                            startIdx
+                        ))
                     {
                         bp = i + 1;
                     }
@@ -209,7 +220,11 @@ namespace PythonFormatter
                     {
                     }
                     else if (i > startIdx &&
-                        IsBinaryOpContext(line, i, startIdx))
+                        IsBinaryOpContext(
+                            line,
+                            i,
+                            startIdx
+                        ))
                     {
                         bp = i + 1;
                     }
@@ -236,7 +251,7 @@ namespace PythonFormatter
 
                 if (i + 1 < line.Length &&
                     (line[i + 1] == '=' || line[i + 1] == '<' ||
-                    line[i + 1] == '>'))
+                        line[i + 1] == '>'))
                 {
                     i += 2;
                 }
@@ -267,7 +282,11 @@ namespace PythonFormatter
         /// <param name="startIdx">The scan start position.</param>
         /// <returns>True if in a binary operator context; otherwise
         /// false.</returns>
-        private static bool IsBinaryOpContext(string line, int i, int startIdx)
+        private static bool IsBinaryOpContext(
+            string line,
+            int i,
+            int startIdx
+        )
         {
             int prev = i - 1;
 

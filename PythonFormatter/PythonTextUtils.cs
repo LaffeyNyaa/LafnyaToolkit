@@ -17,6 +17,7 @@ namespace PythonFormatter
     {
         /// <summary>Shared stateless instance.</summary>
         public static readonly PythonTextUtils Instance = new PythonTextUtils();
+
         private PythonTextUtils()
         {
         }
@@ -220,7 +221,8 @@ namespace PythonFormatter
 
                 if (lineEndsInsideToken != null && i <
                     lineEndsInsideToken.Length
-                && lineEndsInsideToken[i])
+
+                    && lineEndsInsideToken[i])
                 {
                     line = lines[i];
                 }
@@ -252,7 +254,11 @@ namespace PythonFormatter
         /// full text.</param>
         /// <param name="isCode">The code mask of the full text.</param>
         /// <returns>The net open-bracket count for the line.</returns>
-        public int NetOpenBrackets(string line, int lineStart, bool[] isCode)
+        public int NetOpenBrackets(
+            string line,
+            int lineStart,
+            bool[] isCode
+        )
         {
             int depth = 0;
 
@@ -298,8 +304,11 @@ namespace PythonFormatter
         /// the full text, as returned by <see cref="ComputeLineStarts"/>.</param>
         /// <returns>An array of per-line end-of-line running bracket
         /// depths.</returns>
-        public int[] ComputeLineEndDepths(List<string> lines, bool[] isCode,
-            int[] lineStarts)
+        public int[] ComputeLineEndDepths(
+            List<string> lines,
+            bool[] isCode,
+            int[] lineStarts
+        )
         {
             int[] depths = new int[lines.Count];
             int running = 0;

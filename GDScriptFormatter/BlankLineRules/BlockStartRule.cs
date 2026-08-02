@@ -7,12 +7,16 @@ namespace GDScriptFormatter
     /// </summary>
     public sealed partial class BlankLineProcessor
     {
-        private static int ApplyBlockStartBlankRule(string prevTrimmed,
-            string curTrimmed, bool sameIndent, bool deeperThanPrev)
+        private static int ApplyBlockStartBlankRule(
+            string prevTrimmed,
+            string curTrimmed,
+            bool sameIndent,
+            bool deeperThanPrev
+        )
         {
             if (GDScriptTextUtils.Instance.IsBlockStartLine(curTrimmed) &&
                 !MemberClassifier.Instance.IsSameGroup(prevTrimmed,
-                curTrimmed) && sameIndent)
+                    curTrimmed) && sameIndent)
             {
                 return 1;
             }

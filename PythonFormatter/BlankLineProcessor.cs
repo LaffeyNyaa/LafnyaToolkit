@@ -51,7 +51,9 @@ namespace PythonFormatter
                 int indent = BlankLineHelpers.ComputeIndentWidth(line);
                 bool hadBlankAbove = !isFirst && prevWasBlank;
 
-                if (LineClassifier.Instance.IsTopLevelDefClass(line.TrimStart()) ||
+                if (LineClassifier.Instance.IsTopLevelDefClass(line.TrimStart())
+
+                    ||
                     LineClassifier.Instance.IsDefLine(line.TrimStart()))
                 {
                     currentDefIndent = indent;
@@ -61,8 +63,14 @@ namespace PythonFormatter
                     currentDefIndent = 0;
                 }
 
-                entries.Add(new PythonNonBlankEntry(hadBlankAbove, line, i,
-                    indent, lastIndent, currentDefIndent));
+                entries.Add(new PythonNonBlankEntry(
+                    hadBlankAbove,
+                    line,
+                    i,
+                    indent,
+                    lastIndent,
+                    currentDefIndent
+                ));
 
                 lastIndent = indent;
                 prevWasBlank = false;
@@ -130,8 +138,12 @@ namespace PythonFormatter
                         wantBlankAbove = true;
                         blankCount = 2;
                     }
-                    else if (ApplyMethodBlankRule(entry, prevEntry.Value,
-                        entries, i) == BlankLineRuleResult.Decided)
+                    else if (ApplyMethodBlankRule(
+                        entry,
+                        prevEntry.Value,
+                        entries,
+                        i
+                    )== BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
                         blankCount = 1;
@@ -142,8 +154,14 @@ namespace PythonFormatter
                         wantBlankAbove = true;
                         blankCount = 1;
                     }
-                    else if (ApplyMultiLineStatementBlankRule(entry,
-                        prevEntry.Value, lineEndDepths, entries, i) ==
+                    else if (ApplyMultiLineStatementBlankRule(
+                        entry,
+                        prevEntry.Value,
+                        lineEndDepths,
+                        entries,
+                        i
+
+                    )==
                         BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
@@ -155,8 +173,13 @@ namespace PythonFormatter
                         wantBlankAbove = true;
                         blankCount = 1;
                     }
-                    else if (ApplyBlockEndRule(entry, prevEntry.Value,
-                        lineStarts[prevEntry.Value.OriginalIndex], isCode) ==
+                    else if (ApplyBlockEndRule(
+                        entry,
+                        prevEntry.Value,
+                        lineStarts[prevEntry.Value.OriginalIndex],
+                        isCode
+
+                    )==
                         BlankLineRuleResult.Decided)
                     {
                         wantBlankAbove = true;
