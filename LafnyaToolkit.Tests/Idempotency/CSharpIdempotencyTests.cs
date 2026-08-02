@@ -100,6 +100,62 @@ namespace LafnyaToolkit.Tests.Idempotency
                 "string argument lost its following comma");
         }
 
+        /// <summary>
+        /// Regression: the multi-parameter layout must never merge a
+        /// value argument (a literal or an identifier expression) with
+        /// the preceding parameter, which would delete the comma and
+        /// produce invalid C# such as "JsonType.Object null". Once the
+        /// parameter list closes on the current line, an unrelated
+        /// following statement must not be consumed as a continuation.
+        /// </summary>
+        public void TestValueArgumentsPreserved(bool unused)
+        {
+            string input =
+                "\"Value argument regression\"\nclass C { void M() { " +
+                "JsonValue v = new JsonValue(JsonType.Object, null, " +
+                "new List<KeyValuePair<string, JsonValue>>(), null); } }";
+            string output = Formatter.Instance.Format(input, string.Empty);
+
+            // Literal arguments keep their separating commas.
+            TestHarness.AssertTrue(output.Contains("JsonType.Object,"),
+                "value argument lost its following comma");
+            TestHarness.AssertTrue(output.Contains(
+                "new List<KeyValuePair<string, JsonValue>>(),"),
+                "value argument lost its following comma");
+
+            string continuationInput =
+                "\"Continuation regression\"\nclass C { void M() { " +
+                "tokens.Add(new Token(TokenKind.Code, code.ToString(), " +
+                "start));\ncode.Clear(); } }";
+            string continuationOutput = Formatter.Instance.Format(
+                continuationInput, string.Empty);
+
+            // Identifier arguments keep their separating commas.
+            TestHarness.AssertTrue(
+                continuationOutput.Contains("code.ToString(),"),
+                "identifier argument lost its following comma");
+
+            // The statement following the closed parameter list must
+            // stay on its own line instead of being appended to the
+            // "));" line. Its line must contain only indentation.
+            int index = continuationOutput.IndexOf("code.Clear();");
+            int lineStart = continuationOutput.LastIndexOf('\n',
+                index - 1) + 1;
+            string linePrefix = continuationOutput.Substring(
+                lineStart, index - lineStart);
+
+            TestHarness.AssertTrue(linePrefix.Trim().Length == 0,
+                "following statement was merged onto the parameter " +
+                "layout line");
+
+            // Both scenarios must be idempotent.
+            TestHarness.AssertEqual(output,
+                Formatter.Instance.Format(output, string.Empty));
+            TestHarness.AssertEqual(continuationOutput,
+                Formatter.Instance.Format(continuationOutput,
+                    string.Empty));
+        }
+
         private static void RunCase(string name, string input)
         {
             string first = Formatter.Instance.Format(input, string.Empty);

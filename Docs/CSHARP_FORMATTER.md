@@ -271,6 +271,47 @@
   }
   ```
 
+#### 参数完整性保护
+
+多参数布局不会删除任何参数之间的逗号，也不会将值实参（字面量如 `null`、`true`、`false`，或标识符表达式）与前一参数合并成"类型+参数名"形式。
+
+- **错误示例**（不得出现）：
+  ```csharp
+  return new JsonValue(
+      JsonType.Object null,
+      new List<KeyValuePair<string, JsonValue>>() null
+  );
+  ```
+- **正确示例**：
+  ```csharp
+  return new JsonValue(
+      JsonType.Object,
+      null,
+      new List<KeyValuePair<string, JsonValue>>(),
+      null
+  );
+  ```
+
+此外，当参数列表已在当前行完整闭合（`(` 与匹配的 `)` 位于同一行）时，格式化器不会收集后续行作为参数续行，从而避免将无关语句拼入参数布局。
+
+- **错误示例**（不得出现）：
+  ```csharp
+  tokens.Add(new Token(
+      TokenKind.Code,
+      code.ToString(),
+      start
+  )); code.Clear();
+  ```
+- **正确示例**：
+  ```csharp
+  tokens.Add(new Token(
+      TokenKind.Code,
+      code.ToString(),
+      start
+  ));
+  code.Clear();
+  ```
+
 ### 空行：代码块与多行语句
 
 - **通用规则**：在代码块和多行语句的上方和下方保留恰好一个空行。

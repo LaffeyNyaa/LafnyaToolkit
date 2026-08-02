@@ -253,52 +253,67 @@ namespace CSharpFormatter
 
             int savedLineIndex = lineIndex;
 
-            while (lineIndex + 1 < allLines.Count)
+            // When the parameter list already closes on the current
+            // line, no following line belongs to it; collecting one
+            // would merge an unrelated statement into the parameter
+            // layout (e.g. appending "code.Clear();" to a "));" line).
+            if (!IsParamListClosed(paramText.ToString()))
             {
-                string next = allLines[lineIndex + 1];
-                string nt = next.Trim();
-
-                if (nt.Length == 0 || nt.StartsWith("{") || nt == "}")
+                while (lineIndex + 1 < allLines.Count)
                 {
-                    break;
-                }
+                    string next = allLines[lineIndex + 1];
+                    string nt = next.Trim();
 
-                // Stop if the next line starts with ')' — this
-                // indicates the closing of the current parameter list
-                // or a lambda expression, not a continuation.
-                if (nt.StartsWith(")") || nt.Contains("=>"))
-                {
-                    break;
-                }
+                    if (nt.Length == 0 || nt.StartsWith("{") || nt == "}")
+                    {
+                        break;
+                    }
 
-                // Stop if the next line looks like a new member
-                // declaration (starts with a C# modifier keyword).
-                if (IsMemberModifier(nt))
-                {
-                    break;
-                }
+                    // Stop if the next line starts with ')' — this
+                    // indicates the closing of the current parameter list
+                    // or a lambda expression, not a continuation.
+                    if (nt.StartsWith(")") || nt.Contains("=>"))
+                    {
+                        break;
+                    }
 
-                // Stop if the next line is a case label or a
-                // standalone control-flow statement (break, continue,
-                // return, goto, throw). These are not parameter
-                // continuations and consuming them would cause case
-                // labels to be incorrectly merged into the parameter
-                // list, leading to indentation oscillation on
-                // subsequent formatting passes.
-                if (nt.StartsWith("case ") || nt.StartsWith("case\t") ||
-                    nt == "case" ||
-                    nt.StartsWith("default ") || nt.StartsWith("default\t") ||
-                    nt == "default" || nt == "default:" ||
-                    nt.StartsWith("break") || nt.StartsWith("continue") ||
-                    nt.StartsWith("return") || nt.StartsWith("goto") ||
-                    nt.StartsWith("throw"))
-                {
-                    break;
-                }
+                    // Stop if the next line looks like a new member
+                    // declaration (starts with a C# modifier keyword).
+                    if (IsMemberModifier(nt))
+                    {
+                        break;
+                    }
 
-                lineIndex++;
-                paramText.Append(' ');
-                paramText.Append(nt);
+                    // Stop if the next line is a case label or a
+                    // standalone control-flow statement (break, continue,
+                    // return, goto, throw). These are not parameter
+                    // continuations and consuming them would cause case
+                    // labels to be incorrectly merged into the parameter
+                    // list, leading to indentation oscillation on
+                    // subsequent formatting passes.
+                    if (nt.StartsWith("case ") || nt.StartsWith("case\t") ||
+                        nt == "case" ||
+                        nt.StartsWith("default ") || nt.StartsWith("default\t") ||
+                        nt == "default" || nt == "default:" ||
+                        nt.StartsWith("break") || nt.StartsWith("continue") ||
+                        nt.StartsWith("return") || nt.StartsWith("goto") ||
+                        nt.StartsWith("throw"))
+                    {
+                        break;
+                    }
+
+                    lineIndex++;
+                    paramText.Append(' ');
+                    paramText.Append(nt);
+
+                    // Stop once the collected parameter list is closed so
+                    // that an unrelated following statement is not consumed
+                    // as a parameter continuation.
+                    if (IsParamListClosed(paramText.ToString()))
+                    {
+                        break;
+                    }
+                }
             }
 
             string trailingAfterClose = ExtractParameters(
@@ -334,35 +349,6 @@ namespace CSharpFormatter
                 if (openAngles > closeAngles)
                 {
                     allParams[p] = allParams[p] + allParams[p + 1];
-                    allParams.RemoveAt(p + 1);
-                    p--;
-                }
-            }
-
-            // Merge parameters where a type and its parameter name
-            // were split across lines by a previous formatting pass
-            // (e.g. "out List<string>," and "preprocessorLines" were
-            // incorrectly treated as separate parameters). When a
-            // parameter is a pure identifier (single word, no spaces)
-            // and the preceding parameter is not itself a pure
-            // identifier, it is the name of the preceding parameter
-            // type.
-            // Do NOT merge when the preceding parameter is an indexed
-            // expression (e.g. "lineStarts[i]") — such expressions are
-            // not type names.
-
-            for (int p = 0; p < allParams.Count - 1; p++)
-            {
-                string next = allParams[p + 1].Trim();
-                string trimmedParam = allParams[p].TrimStart();
-
-                if (!TextUtils.IsPureIdentifier(allParams[p]) &&
-                    TextUtils.IsPureIdentifier(next) &&
-                    !EndsWithIndexAccess(allParams[p]) &&
-                    !char.IsDigit(trimmedParam[0]) &&
-                    trimmedParam[0] != '"' && trimmedParam[0] != '\'')
-                {
-                    allParams[p] = allParams[p] + " " + next;
                     allParams.RemoveAt(p + 1);
                     p--;
                 }
@@ -1203,6 +1189,53 @@ namespace CSharpFormatter
         }
 
         /// <summary>
+        /// Determines whether the parameter list opened before
+        /// <paramref name="fragment"/> closes within the fragment: true when
+        /// the fragment contains a closing parenthesis at nesting depth zero.
+        /// Used to decide whether continuation lines should be collected as
+        /// further parameters.
+        /// </summary>
+        /// <param name="fragment">The text after the opening parenthesis.</param>
+        /// <returns>True if the parameter list closes within the fragment.</returns>
+        private static bool IsParamListClosed(string fragment)
+        {
+            var tokens = CSharpTokenizer.Instance.Tokenize(fragment);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(fragment,
+                tokens);
+
+            int depth = 0;
+
+            for (int i = 0; i < fragment.Length; i++)
+            {
+                if (!isCode[i])
+                {
+                    continue;
+                }
+
+                char c = fragment[i];
+
+                if (c == '(' || c == '[' || c == '{' || c == '<')
+                {
+                    depth++;
+                }
+                else if (c == ')' || c == ']' || c == '}' || c == '>')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                    else if (c == ')')
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Scans the line for the first <c>(</c> with multiple
         /// comma-separated parameters and returns the position
         /// immediately after it. Returns -1 when no such <c>(</c>
@@ -1530,74 +1563,5 @@ namespace CSharpFormatter
                 pc == '_' || pc == '"';
         }
 
-        /// <summary>
-        /// Determines whether the string is NOT a valid type expression
-        /// suitable for parameter merging. Returns true when the string
-        /// is an expression (indexed access, arithmetic expression, or
-        /// method call) rather than a type name.
-        /// An array type like <c>string[]</c> has empty brackets (<c>[]</c>)
-        /// and returns false. An index access has content inside the
-        /// brackets (<c>[i]</c>) and returns true.
-        /// Arithmetic expressions like <c>keywordPos + 2</c> also return
-        /// true since they are not valid type names.
-        /// </summary>
-        /// <param name="s">The string to check.</param>
-        /// <returns>True if the string is an expression, not a type.</returns>
-        private static bool EndsWithIndexAccess(string s)
-        {
-            string trimmed = s.TrimEnd();
-
-            // Check for arithmetic operators (+, -, *, /, %) at the
-            // top level — these indicate an expression, not a type.
-            for (int i = 0; i < trimmed.Length; i++)
-            {
-                char c = trimmed[i];
-
-                if (c == '+' || c == '-' || c == '*' || c == '/' ||
-                    c == '%')
-                {
-                    // Skip ++ and -- operators
-                    if ((c == '+' || c == '-') && i + 1 < trimmed.Length &&
-                        trimmed[i + 1] == c)
-                    {
-                        i++;
-                        continue;
-                    }
-
-                    return true;
-                }
-            }
-
-            int lastBracket = trimmed.LastIndexOf(']');
-
-            if (lastBracket < 1)
-            {
-                return false;
-            }
-
-            // Find the matching '[' for this ']'
-            int openBracket = trimmed.LastIndexOf('[', lastBracket - 1);
-
-            if (openBracket < 0)
-            {
-                return false;
-            }
-
-            // If the bracket pair is empty or contains only commas
-            // (e.g. "[]" or "[,]"), it's an array type, not an index
-            // access.
-            string inner = trimmed.Substring(openBracket + 1,
-                lastBracket - openBracket - 1);
-
-            foreach (char c in inner)
-            {
-                if (c != ',' && c != ' ' && c != '\t')
-                {
-                    return true; // Has content → index access
-                }
-            }
-
-            return false; // Empty or comma-only → array type
-        }
     }
 }

@@ -1,0 +1,36 @@
+"Value arguments must not be merged with the preceding parameter"
+using System.Collections.Generic;
+
+public class Sample
+{
+    public void AddTokens()
+    {
+        tokens.Add(new Token(TokenKind.Code, code.ToString(), start));
+        code.Clear();
+    }
+
+    public void AddUnits()
+    {
+        units.Add(new IncludeUnit(new List<string>(),
+            firstIncludeInBlock, blockLines));
+    }
+
+    public void ApplyRule(Entry entry)
+    {
+        if (entry.Active)
+        {
+            ApplyDefault();
+        }
+        else if (ApplyMethodBlankRule(entry,
+            prevEntry.Value, entries, i) == BlankLineRuleResult.Decided)
+        {
+            ApplyBlank();
+        }
+    }
+
+    public JsonValue CreateValue()
+    {
+        return new JsonValue(JsonType.Object, null,
+            new List<KeyValuePair<string, JsonValue>>(), null);
+    }
+}
