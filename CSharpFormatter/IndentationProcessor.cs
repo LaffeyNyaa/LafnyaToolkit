@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using LafnyaToolkit.Core.Text;
@@ -114,6 +115,8 @@ namespace CSharpFormatter
                 isCode, lineStarts);
 
             var result = new List<string>(lines.Count);
+            var lineLevel = new int[lines.Count];
+            var parenOpenLine = new Stack<int>();
 
             for (int i = 0; i < lines.Count; i++)
             {
@@ -131,65 +134,67 @@ namespace CSharpFormatter
                     continue;
                 }
 
-                int baseDepth = depths[i];
-
-                // Lines starting with && or || are continuations of
-                // the previous logical expression (placed there by
-                // the line-length splitter). Use the guard logic to
-                // check if the line already has the expected indent,
-                // so that re-running the IndentationProcessor is
-                // idempotent regardless of whether the previous line
-                // is a continuation indicator. This check must come
-                // before the regular continuation check so that ||/&&
-                // lines are always handled by the guard logic.
+                int level = depths[i] + (caseBody[i] ? 1 : 0);
 
                 if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
-                    StartsWithLogicalOp(lines[i]))
-                {
-                    if (depths[i] <= depths[i - 1])
-                    {
-                        int currentIndent = 0;
-
-                        while (currentIndent < lines[i].Length &&
-                            lines[i][currentIndent] == ' ')
-                        {
-                            currentIndent++;
-                        }
-
-                        int expectedIndent =
-                            (depths[i] + 1) * TextUtils.IndentSize;
-
-                        if (currentIndent < expectedIndent)
-                        {
-                            baseDepth++;
-                        }
-                        else
-                        {
-                            // Line already has the expected (or more)
-                            // continuation indent. Set baseDepth to
-                            // depths[i] + 1 so the output is stable
-                            // on subsequent passes, preventing
-                            // oscillation between indent levels.
-                            baseDepth = depths[i] + 1;
-                        }
-                    }
-                }
-                else if (i > 0 && !inEnumBlock[i] && !inInitializer[i] &&
+                    depths[i] <= depths[i - 1] &&
+                    (StartsWithLogicalOp(lines[i]) ||
                     IsContinuationIndicator(lines[i - 1],
-                    lineStarts[i - 1], text, isCode))
+                    lineStarts[i - 1], text, isCode)))
                 {
-                    if (depths[i] <= depths[i - 1])
+                    level = Math.Max(level, depths[i] + 1);
+                }
+
+                int firstCodeIdx = FindFirstCodeChar(lines[i],
+                    lineStarts[i], isCode);
+
+                bool startsWithCloseParen = firstCodeIdx >= 0 &&
+                    lines[i][firstCodeIdx] == ')';
+
+                if (!inInitializer[i])
+                {
+                    if (startsWithCloseParen &&
+                        parenOpenLine.Count > 0)
                     {
-                        baseDepth++;
+                        int openLine = parenOpenLine.Pop();
+                        level = Math.Max(level, lineLevel[openLine]);
+                    }
+                    else if (parenOpenLine.Count > 0)
+                    {
+                        level = Math.Max(level,
+                            lineLevel[parenOpenLine.Peek()] + 1);
                     }
                 }
 
-                if (caseBody[i])
+                lineLevel[i] = level;
+
+                for (int j = 0; j < lines[i].Length; j++)
                 {
-                    baseDepth++;
+                    if (startsWithCloseParen && j == firstCodeIdx)
+                    {
+                        continue;
+                    }
+
+                    int textPos = lineStarts[i] + j;
+
+                    if (textPos >= isCode.Length || !isCode[textPos])
+                    {
+                        continue;
+                    }
+
+                    char c = lines[i][j];
+
+                    if (c == '(')
+                    {
+                        parenOpenLine.Push(i);
+                    }
+                    else if (c == ')' && parenOpenLine.Count > 0)
+                    {
+                        parenOpenLine.Pop();
+                    }
                 }
 
-                result.Add(new string(' ', baseDepth * TextUtils.IndentSize) +
+                result.Add(new string(' ', level * TextUtils.IndentSize) +
                     content);
             }
 
@@ -502,6 +507,41 @@ namespace CSharpFormatter
         }
 
         /// <summary>
+        /// Finds the index of the first non-whitespace character in
+        /// the line that lies in a code region, or -1 when the line
+        /// has no such character.
+        /// </summary>
+        /// <param name="line">The line text.</param>
+        /// <param name="lineStart">The line's start offset in the full text.</param>
+        /// <param name="isCode">The code mask.</param>
+        /// <returns>The character index, or -1.</returns>
+        private static int FindFirstCodeChar(
+            string line,
+            int lineStart,
+            bool[] isCode
+        )
+        {
+            for (int j = 0; j < line.Length; j++)
+            {
+                char c = line[j];
+
+                if (c == ' ' || c == '\t' || c == '\r')
+                {
+                    continue;
+                }
+
+                int textPos = lineStart + j;
+
+                if (textPos < isCode.Length && isCode[textPos])
+                {
+                    return j;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
         /// Computes whether each line falls inside a collection or
         /// object initializer block. These are <c>{ ... }</c> blocks
         /// whose opening brace is on a line starting with <c>{</c>
@@ -548,11 +588,49 @@ namespace CSharpFormatter
                 }
 
                 int firstCodePos = lineStarts[i] + firstNonWs;
-                // The first code character must be `{`
 
                 if (firstCodePos >= isCode.Length ||
-                    !isCode[firstCodePos] ||
-                    text[firstCodePos] != '{')
+                    !isCode[firstCodePos])
+                {
+                    continue;
+                }
+
+                // Locate the first code-region '{' on the line and the
+                // net brace balance. An initializer may open with '{'
+                // as the first code character (block style) or inline
+                // at the end of a statement (e.g.
+                // "new Dictionary<string, int>(...) { ...").
+                bool lineStartsWithBrace = text[firstCodePos] == '{';
+                int bracePos = -1;
+                int netBraces = 0;
+
+                for (int j = 0; j < lines[i].Length; j++)
+                {
+                    int tp = lineStarts[i] + j;
+
+                    if (tp >= isCode.Length || !isCode[tp])
+                    {
+                        continue;
+                    }
+
+                    char ch = lines[i][j];
+
+                    if (ch == '{')
+                    {
+                        netBraces++;
+
+                        if (bracePos < 0)
+                        {
+                            bracePos = tp;
+                        }
+                    }
+                    else if (ch == '}')
+                    {
+                        netBraces--;
+                    }
+                }
+
+                if (bracePos < 0)
                 {
                     continue;
                 }
@@ -572,11 +650,18 @@ namespace CSharpFormatter
                     continue;
                 }
 
+                // Accept a line starting with '{', or an inline opener
+                // whose '{' stays open past the end of the line.
+                if (!lineStartsWithBrace && netBraces <= 0)
+                {
+                    continue;
+                }
+
                 // Find the matching `}` for this `{`
                 int depth = 1;
                 int endPos = -1;
 
-                for (int ti = firstCodePos + 1;
+                for (int ti = bracePos + 1;
                     ti < text.Length && depth > 0; ti++)
                 {
                     if (isCode[ti])
@@ -607,7 +692,7 @@ namespace CSharpFormatter
 
                 for (int j = 0; j < lines.Count; j++)
                 {
-                    if (lineStarts[j] > firstCodePos &&
+                    if (lineStarts[j] > bracePos &&
                         lineStarts[j] < endPos)
                     {
                         inInitializer[j] = true;

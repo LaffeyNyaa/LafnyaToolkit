@@ -71,6 +71,22 @@ namespace CSharpFormatter
             text = string.Join("\n", lines);
             tokenized = CSharpTokenizer.Instance.Tokenize(text);
             isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokenized);
+            isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines,
+                isCode);
+
+            // Re-run indentation after line-length splitting so that
+            // continuation fragments emitted by the splitter are
+            // normalised to the canonical paren-based indentation.
+            // Without this, a split can emit fragments whose indent
+            // differs from what Reindent computes on the next pass
+            // (e.g. a fragment after a paren-close), breaking
+            // idempotency.
+            lines = IndentationProcessor.Instance.Reindent(lines, text,
+                tokenized, isCode, isCodeLine);
+
+            text = string.Join("\n", lines);
+            tokenized = CSharpTokenizer.Instance.Tokenize(text);
+            isCode = CSharpTokenizer.Instance.BuildCodeMask(text, tokenized);
 
             isCodeLine = LineClassifier.Instance.ComputeIsCodeLine(lines,
                 isCode);

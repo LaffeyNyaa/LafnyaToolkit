@@ -1,0 +1,18 @@
+"String atomicity test"
+using System;
+
+class C
+{
+    void M()
+    {
+        Run(
+            "C#",
+            "some, comma, filled, string, argument",
+            true,
+            100,
+            200,
+            300,
+            400
+        );
+    }
+}

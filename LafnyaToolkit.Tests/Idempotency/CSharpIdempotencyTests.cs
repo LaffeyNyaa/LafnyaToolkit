@@ -62,6 +62,42 @@ namespace LafnyaToolkit.Tests.Idempotency
             RunCase("async method",
                 "public async Task<int> GetAsync(){await Task.Delay(100);return 42;}");
             RunCase("trailing whitespace", "int x=1;   \nint y=2;\t\n");
+
+            RunCase("multi-param with comma string",
+                "\"String atomicity test\"\nclass C { void M() { " +
+                "Run(\"C#\", \"some, comma, filled, string, argument\", " +
+                "true, 100, 200, 300, 400); } }");
+
+            RunCase("nested param indent",
+                "\"Nested parameter indent test\"\nclass C { void M() { " +
+                "var result = Outer(Inner(arg1, arg2, arg3, arg4), " +
+                "Another(arg5, arg6, arg7, arg8), Tail()); } }");
+        }
+
+        /// <summary>
+        /// Regression: the line-length splitter must treat a string
+        /// literal as atomic. A long call whose arguments include a
+        /// string containing commas must not be split inside the
+        /// string, and the string parameter must stay whole on its
+        /// own line.
+        /// </summary>
+        public void TestStringLiteralPreserved(bool unused)
+        {
+            string input =
+                "\"String atomicity test\"\nclass C { void M() { " +
+                "Run(\"C#\", \"some, comma, filled, string, argument\", " +
+                "true, 100, 200, 300, 400); } }";
+            string output = Formatter.Instance.Format(input, string.Empty);
+
+            // The comma-filled string literal must survive byte-for-byte.
+            TestHarness.AssertTrue(output.Contains(
+                "\"some, comma, filled, string, argument\""),
+                "comma-filled string literal was split or altered");
+
+            // The string argument must not be merged with its
+            // neighbours; the parameter separators must be preserved.
+            TestHarness.AssertTrue(output.Contains("\"C#\","),
+                "string argument lost its following comma");
         }
 
         private static void RunCase(string name, string input)

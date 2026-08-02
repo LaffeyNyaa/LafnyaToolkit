@@ -8,9 +8,9 @@ using LafnyaToolkit.Tests;
 namespace LafnyaToolkit.Tests.Idempotency
 {
     /// <summary>
-    /// Idempotency verification for the 5 known oscillating sample
-    /// files. Asserts that Format(Format(x)) == Format(x) for each
-    /// file.
+    /// Idempotency verification for every sample file found in the
+    /// Samples directory. Asserts that Format(Format(x)) == Format(x)
+    /// for each file.
     /// </summary>
     public sealed class FinalVerifyTests
     {
@@ -19,20 +19,15 @@ namespace LafnyaToolkit.Tests.Idempotency
         /// </summary>
         public void TestIdempotency(bool unused)
         {
-            string[] files = new[] {
-                @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples\OperatorBreakPolicy.cs",
-                @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples\JsonFormatter.cs",
-                @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples\ImportSorter.cs",
-                @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples\ProgramBase.cs",
-                @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples\LineLengthProcessor.cs"
-            };
+            string samplesDir = @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples";
+            string[] files = Directory.GetFiles(samplesDir, "*.cs");
+            Array.Sort(files);
 
             foreach (var path in files)
             {
                 string name = Path.GetFileName(path);
                 string current = FileIO.ReadAllTextAutoDetect(path);
 
-                // Pass 1: format the original file (expected to change)
                 string next = Formatter.Instance.Format(current, "");
                 bool changed = !string.Equals(current, next,
                     StringComparison.Ordinal);
@@ -41,7 +36,6 @@ namespace LafnyaToolkit.Tests.Idempotency
 
                 current = next;
 
-                // Passes 2-5: verify stability (idempotency)
                 for (int i = 2; i <= 5; i++)
                 {
                     next = Formatter.Instance.Format(current, "");
@@ -52,9 +46,7 @@ namespace LafnyaToolkit.Tests.Idempotency
 
                     if (changed)
                     {
-                        // Save diagnostic outputs
-                        string dir = @"C:\Users\LaffeyNyaa\Desktop\Repositories\LafnyaToolkit\Samples_pass" +
-                            (i - 1);
+                        string dir = samplesDir + "_pass" + (i - 1);
 
                         System.IO.Directory.CreateDirectory(dir);
                         System.IO.File.WriteAllText(

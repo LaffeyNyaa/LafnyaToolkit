@@ -59,7 +59,7 @@ namespace CSharpFormatter
                 if (line.Length <= TextUtils.MaxLineLength)
                 {
                     if (TryApplyMultiParamLayout(line, result, lines,
-                        ref i, isContinuation))
+                        ref i))
                     {
                         continue;
                     }
@@ -110,8 +110,7 @@ namespace CSharpFormatter
             string line,
             List<string> result,
             List<string> allLines,
-            ref int lineIndex,
-            bool isContinuation
+            ref int lineIndex
         )
         {
             string trimmed = line.TrimStart();
@@ -199,6 +198,20 @@ namespace CSharpFormatter
 
             if (parenBreakAt > 0 && parenBreakAt - 1 < isCode.Length &&
                 !isCode[parenBreakAt - 1])
+            {
+                return false;
+            }
+
+            // A short line that is itself a parameter continuation of
+            // an enclosing multi-parameter layout (the previous
+            // non-blank line ends with '(' or ',') is already in
+            // canonical form. Re-laying it out would split nested
+            // call arguments (e.g. "Inner(arg1, arg2, arg3, arg4),")
+            // into their own layout, and a later pass would merge
+            // them back, causing an oscillation that never converges.
+            // Keep such lines as-is.
+            if (line.Length <= TextUtils.MaxLineLength &&
+                PreviousLineIsLayoutContinuation(lineIndex, allLines))
             {
                 return false;
             }
@@ -341,11 +354,13 @@ namespace CSharpFormatter
             for (int p = 0; p < allParams.Count - 1; p++)
             {
                 string next = allParams[p + 1].Trim();
+                string trimmedParam = allParams[p].TrimStart();
 
                 if (!TextUtils.IsPureIdentifier(allParams[p]) &&
                     TextUtils.IsPureIdentifier(next) &&
                     !EndsWithIndexAccess(allParams[p]) &&
-                    !char.IsDigit(allParams[p].TrimStart()[0]))
+                    !char.IsDigit(trimmedParam[0]) &&
+                    trimmedParam[0] != '"' && trimmedParam[0] != '\'')
                 {
                     allParams[p] = allParams[p] + " " + next;
                     allParams.RemoveAt(p + 1);
@@ -363,29 +378,9 @@ namespace CSharpFormatter
 
             string baseIndent = line.Substring(0, indentLen);
 
-            string paramIndent;
-            string closeParenIndent;
-
-            if (isContinuation)
-            {
-                // Continuation line: parameters at the same indent
-                // as the function call line, closing ')' at the
-                // original base indent.
-                paramIndent = baseIndent;
-                closeParenIndent =
-                    baseIndent.Length >= TextUtils.IndentSize
-                    ? baseIndent.Substring(0,
-                        baseIndent.Length - TextUtils.IndentSize)
-                    : baseIndent;
-            }
-            else
-            {
-                // Non-continuation line: parameters one level deeper,
-                // closing ')' at the line's own indent.
-                paramIndent = baseIndent +
-                    new string(' ', TextUtils.IndentSize);
-                closeParenIndent = baseIndent;
-            }
+            string paramIndent = baseIndent +
+                new string(' ', TextUtils.IndentSize);
+            string closeParenIndent = baseIndent;
 
             result.Add(beforeParen);
 
@@ -453,11 +448,21 @@ namespace CSharpFormatter
             List<string> allParams
         )
         {
+            var tokens = CSharpTokenizer.Instance.Tokenize(fragment);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(fragment,
+                tokens);
+
             int depth = 0;
             int paramStart = 0;
 
             for (int i = 0; i < fragment.Length; i++)
             {
+                if (!isCode[i])
+                {
+                    continue;
+                }
+
                 char c = fragment[i];
 
                 if (c == '(' || c == '[' || c == '{' || c == '<')
@@ -625,44 +630,9 @@ namespace CSharpFormatter
                     if (closeParen >= 0)
                     {
                         string baseIndent = line.Substring(0, indentLen);
-                        string paramIndent;
-                        string closeParenIndent;
-
-                        // When fixedContIndent == indent (the line's
-                        // own indent), the line is a continuation:
-                        // parameters should use the same indent as the
-                        // function call line, and closing ')' should
-                        // use the original base indent. When
-                        // fixedContIndent != indent, the line is NOT a
-                        // continuation: parameters are one level deeper
-                        // and closing ')' uses the line's own indent.
-                        // This ensures idempotency by preventing
-                        // cascading continuation indent on multi-param
-                        // layout.
-
-                        if (fixedContIndent == indent)
-                        {
-                            // Continuation line: parameters at the same
-                            // indent as the function call line, closing
-                            // ')' at the original base indent.
-                            paramIndent = fixedContIndent;
-                            closeParenIndent =
-                                fixedContIndent.Length >=
-                                TextUtils.IndentSize
-                                ? fixedContIndent.Substring(0,
-                                    fixedContIndent.Length -
-                                    TextUtils.IndentSize)
-                                : fixedContIndent;
-                        }
-                        else
-                        {
-                            // Non-continuation line: parameters one
-                            // level deeper, closing ')' at the line's
-                            // own indent.
-                            paramIndent = baseIndent +
-                                new string(' ', TextUtils.IndentSize);
-                            closeParenIndent = baseIndent;
-                        }
+                        string paramIndent = baseIndent +
+                            new string(' ', TextUtils.IndentSize);
+                        string closeParenIndent = baseIndent;
 
                         return SplitParametersPerLine(line, parenBreakAt,
                             paramIndent, closeParenIndent);
@@ -1193,6 +1163,46 @@ namespace CSharpFormatter
         }
 
         /// <summary>
+        /// Determines whether the previous non-blank line before
+        /// <paramref name="lineIndex"/> is a continuation of a
+        /// multi-parameter layout: it either ends with an opening
+        /// parenthesis <c>(</c> (the call line) or with a comma
+        /// <c>,</c> (a preceding parameter line). Comment-only lines
+        /// are ignored. Used to detect parameter continuation lines
+        /// that already belong to a multi-parameter layout.
+        /// </summary>
+        /// <param name="lineIndex">The index of the current line.</param>
+        /// <param name="allLines">The full line list.</param>
+        /// <returns>True if the previous non-blank line ends with <c>(</c> or <c>,</c>.</returns>
+        private static bool PreviousLineIsLayoutContinuation(
+            int lineIndex,
+            List<string> allLines
+        )
+        {
+            int prev = lineIndex - 1;
+
+            while (prev >= 0 && allLines[prev].Trim().Length == 0)
+            {
+                prev--;
+            }
+
+            if (prev < 0)
+            {
+                return false;
+            }
+
+            string trimmed = allLines[prev].Trim();
+
+            if (trimmed.StartsWith("//") || trimmed.StartsWith("/*") ||
+                trimmed.StartsWith("*"))
+            {
+                return false;
+            }
+
+            return trimmed.EndsWith("(") || trimmed.EndsWith(",");
+        }
+
+        /// <summary>
         /// Scans the line for the first <c>(</c> with multiple
         /// comma-separated parameters and returns the position
         /// immediately after it. Returns -1 when no such <c>(</c>
@@ -1271,6 +1281,11 @@ namespace CSharpFormatter
             string beforeParen = line.Substring(0, breakAt).TrimEnd();
             string afterParen = line.Substring(breakAt);
 
+            var tokens = CSharpTokenizer.Instance.Tokenize(afterParen);
+
+            bool[] isCode = CSharpTokenizer.Instance.BuildCodeMask(
+                afterParen, tokens);
+
             var parameters = new List<string>();
             int depth = 0;
             int paramStart = 0;
@@ -1278,6 +1293,11 @@ namespace CSharpFormatter
 
             for (int i = 0; i < afterParen.Length; i++)
             {
+                if (!isCode[i])
+                {
+                    continue;
+                }
+
                 char c = afterParen[i];
 
                 if (c == '(' || c == '[' || c == '{' || c == '<')
