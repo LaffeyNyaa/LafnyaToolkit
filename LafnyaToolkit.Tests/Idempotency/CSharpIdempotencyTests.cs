@@ -72,6 +72,22 @@ namespace LafnyaToolkit.Tests.Idempotency
                 "\"Nested parameter indent test\"\nclass C { void M() { " +
                 "var result = Outer(Inner(arg1, arg2, arg3, arg4), " +
                 "Another(arg5, arg6, arg7, arg8), Tail()); } }");
+
+            RunCase("lambda continuation pattern",
+                "\"Lambda continuation test\"\nclass C { void M() {" +
+                "Action a = () => { DoSomething(); }, token); } }");
+
+            RunCase("using with resource acquisition",
+                "\"Using resource test\"\nclass C { void M() {" +
+                "using (var bmp = new System.Drawing.Bitmap(w, h, s, " +
+                "System.Drawing.Imaging.PixelFormat.Format24bppRgb, ptr))" +
+                "{ Use(bmp); } } }");
+
+            RunCase("nested method calls multi-param",
+                "\"Nested multi-param test\"\nclass C { void M() {" +
+                "var result = Call(Inner(arg1, arg2, arg3, arg4), " +
+                "Outer(arg5, arg6, arg7, arg8, arg9, arg10), " +
+                "Tail()); } }");
         }
 
         /// <summary>

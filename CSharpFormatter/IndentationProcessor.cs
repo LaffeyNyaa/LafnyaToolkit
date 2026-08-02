@@ -100,10 +100,35 @@ namespace CSharpFormatter
                         depth = 0;
                     }
 
+                    // Only adjust the line's depth to the post-decrement
+                    // value when '}' is the last code character on the
+                    // line. Lines like "}, token);" where '}' is followed
+                    // by non-whitespace code should retain the
+                    // pre-decrement depth so that the continuation
+                    // (", token);") stays at the same level as the
+                    // opening line, preventing indentation drift on
+                    // subsequent formatting passes.
+
                     if (lineIdx < depths.Length &&
                         !lineHasCodeContent[lineIdx])
                     {
-                        depths[lineIdx] = depth;
+                        bool hasMoreCode = false;
+
+                        for (int k = i + 1; k < text.Length &&
+                            text[k] != '\n'; k++)
+                        {
+                            if (isCode[k] && text[k] != ' ' &&
+                                text[k] != '\t' && text[k] != '\r')
+                            {
+                                hasMoreCode = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasMoreCode)
+                        {
+                            depths[lineIdx] = depth;
+                        }
                     }
                 }
             }

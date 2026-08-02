@@ -3,12 +3,7 @@ using System.Collections.Generic;
 
 class C
 {
-    void M(
-        List<string> lines,
-        string text,
-        bool[] isCode,
-        bool[] isCodeLine
-    )
+    void M(List<string> lines, string text, bool[] isCode, bool[] isCodeLine)
     {
         bool result =
             IsContinuationIndicator(

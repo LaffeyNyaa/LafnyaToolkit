@@ -329,12 +329,16 @@ namespace CSharpFormatter
                 return false;
             }
 
-            // When the original line is within the max length and has
-            // only 2 or fewer parameters, skip the multi-param layout
-            // to avoid unnecessarily splitting simple parameter lists
-            // (e.g. "Point(int x, int y)" on a single line).
+            // When the original line is within the max length, skip
+            // the multi-param layout to avoid unnecessarily expanding
+            // compact parameter lists (e.g. "this(host, username,
+            // password, null, null)" on a single line). Expanding
+            // such lines causes oscillation on subsequent formatting
+            // passes since the expanded form will be re-processed
+            // differently. Only apply the multi-param layout when the
+            // line exceeds the max length (handled by SplitLongLine).
 
-            if (line.Length <= TextUtils.MaxLineLength && allParams.Count <= 2)
+            if (line.Length <= TextUtils.MaxLineLength)
             {
                 lineIndex = savedLineIndex;
                 return false;
