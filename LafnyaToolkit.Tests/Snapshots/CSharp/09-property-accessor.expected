@@ -4,6 +4,7 @@ using System;
 class C
 {
     private int x;
+
     public int X
     {
         get

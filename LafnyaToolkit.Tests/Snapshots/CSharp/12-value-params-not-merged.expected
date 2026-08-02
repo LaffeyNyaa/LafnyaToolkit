@@ -1,5 +1,6 @@
 "Value arguments must not be merged with the preceding parameter"
 using System.Collections.Generic;
+
 public class Sample
 {
     public void AddTokens()

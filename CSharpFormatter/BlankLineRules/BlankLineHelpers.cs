@@ -89,6 +89,9 @@ namespace CSharpFormatter
 
         /// <summary>Whether the input had a blank line immediately above this entry.</summary>
         public bool EntryHadBlankAbove;
+
+        /// <summary>Whether the current line begins a declaration with a block body (<c>{...}</c>).</summary>
+        public bool CurrentIsBlockBodyDeclaration;
     }
 
     /// <summary>
@@ -192,6 +195,98 @@ namespace CSharpFormatter
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Determines whether the non-blank line at <paramref name="index"/>
+        /// begins a declaration whose body is a block (<c>{</c>): methods,
+        /// constructors, local functions, properties, indexers, etc. The
+        /// declaration must be a fresh line (not a continuation of a previous
+        /// statement) and must be followed, after any continuation lines, by a
+        /// lone block-opening brace.
+        /// </summary>
+        /// <param name="index">The index in <paramref name="nonBlank"/> of the line to inspect.</param>
+        /// <param name="nonBlank">The non-blank line list.</param>
+        /// <param name="isCodeLine">Per-line code-region flag array (indexed by original line index).</param>
+        /// <param name="lineContinuesNext">Per-line continuation flag array (indexed by original line index).</param>
+        /// <returns>True if the line begins a block-bodied declaration; otherwise false.</returns>
+        public static bool IsBlockBodyDeclarationStart(
+            int index,
+            List<NonBlankEntry> nonBlank,
+            bool[] isCodeLine,
+            bool[] lineContinuesNext)
+        {
+            if (index < 0 || index >= nonBlank.Count)
+            {
+                return false;
+            }
+
+            NonBlankEntry entry = nonBlank[index];
+            int origIdx = entry.OriginalIndex;
+
+            if (origIdx < 0 || origIdx >= isCodeLine.Length ||
+                !isCodeLine[origIdx])
+            {
+                return false;
+            }
+
+            string trimmed = entry.Line.Trim();
+
+            if (trimmed.Length == 0 || trimmed == "{")
+            {
+                return false;
+            }
+
+            if (trimmed[0] == ')' || trimmed[0] == ']')
+            {
+                return false;
+            }
+
+            if (LineClassifier.Instance.IsBlockEndLine(trimmed))
+            {
+                return false;
+            }
+
+            if (trimmed.EndsWith(";"))
+            {
+                return false;
+            }
+
+            if (IsCommentLine(trimmed))
+            {
+                return false;
+            }
+
+            if (LineClassifier.Instance.IsBlockStartLine(trimmed))
+            {
+                return false;
+            }
+
+            if (LineClassifier.Instance.IsCaseLabelLine(trimmed))
+            {
+                return false;
+            }
+
+            if (index > 0 &&
+                lineContinuesNext[nonBlank[index - 1].OriginalIndex])
+            {
+                return false;
+            }
+
+            int scan = index;
+
+            while (scan + 1 < nonBlank.Count &&
+                lineContinuesNext[nonBlank[scan].OriginalIndex])
+            {
+                scan++;
+            }
+
+            if (scan + 1 >= nonBlank.Count)
+            {
+                return false;
+            }
+
+            return nonBlank[scan + 1].Line.Trim() == "{";
         }
     }
 }

@@ -76,6 +76,7 @@
     <Compile Include="BlankLineRules\UsingDirectiveRule.cs" />
     <Compile Include="BlankLineRules\PreserveAuthorBlankRule.cs" />
     <Compile Include="BlankLineRules\BlankLineHelpers.cs" />
+    <Compile Include="BlankLineRules\BlockBodyDeclarationRule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

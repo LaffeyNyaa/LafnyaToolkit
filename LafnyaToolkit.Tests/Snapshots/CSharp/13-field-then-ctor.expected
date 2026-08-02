@@ -1,0 +1,18 @@
+namespace CppFormatter
+{
+    /// <summary>
+    /// Merges a lone open brace onto the previous line (K&amp;R style)
+    /// and provides brace-matching utilities used by do-while merging.
+    /// Stateless; the single shared instance is exposed via
+    /// <see cref="Instance"/>.
+    /// </summary>
+    internal sealed class BraceMerger
+    {
+        /// <summary>Shared stateless instance.</summary>
+        public static readonly BraceMerger Instance = new BraceMerger();
+
+        private BraceMerger()
+        {
+        }
+    }
+}

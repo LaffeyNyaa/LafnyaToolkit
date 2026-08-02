@@ -54,6 +54,11 @@ namespace CSharpFormatter
             if (v == BlankLineVerdict.AddBlankAbove) { return true; }
 
             if (v == BlankLineVerdict.SuppressBlank) { return false; }
+            v = processor.ApplyBlockBodyDeclarationRule(p);
+
+            if (v == BlankLineVerdict.AddBlankAbove) { return true; }
+
+            if (v == BlankLineVerdict.SuppressBlank) { return false; }
             v = processor.ApplyUsingDirectiveRule(p);
 
             if (v == BlankLineVerdict.AddBlankAbove) { return true; }

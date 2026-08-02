@@ -5,6 +5,7 @@ namespace Example
     public class Service
     {
         private readonly List<string> items = new List<string>();
+
         public void Add(string item)
         {
             if (!string.IsNullOrEmpty(item))

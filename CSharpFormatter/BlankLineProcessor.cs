@@ -236,6 +236,10 @@ namespace CSharpFormatter
             p.PrevIsPlainStmt = BlankLineHelpers.IsPlainSingleLineStatement(
                 prevTrimmed, prevOrigIdx, isCodeLine, lineEndsStatement);
 
+            p.CurrentIsBlockBodyDeclaration =
+                BlankLineHelpers.IsBlockBodyDeclarationStart(
+                index, nonBlank, isCodeLine, lineContinuesNext);
+
             return p;
         }
     }
